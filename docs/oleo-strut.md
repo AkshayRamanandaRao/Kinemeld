@@ -1,5 +1,7 @@
 # Nonlinear oleo strut
 
+[Watch the slowed simulation recording](demos/oleo-strut.mp4).
+
 The spatial editor can add an **oleo strut** between two bodies, or between a body and ground. MBDyn's native `shock absorber` constitutive law provides a polytropic gas force, quadratic hydraulic damping with different compression/rebound metering areas, and soft stroke stops. It acts along the line between the selected local attachment points. STEP geometry supplies the visualization; it does not set the strut dimensions, calibration, joint, or forces.
 
 ## Worked STEP wheel-end fixture

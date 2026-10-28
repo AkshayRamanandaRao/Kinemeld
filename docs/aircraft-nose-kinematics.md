@@ -1,5 +1,7 @@
 # Aircraft nose-gear STEP kinematic demonstration
 
+[Watch the slowed simulation recording](demos/aircraft-nose-gear.mp4).
+
 ![Open-source STEP gear, inferred linkage and prescribed slider motion](images/aircraft-nose-kinematics.png)
 
 This is an **inferred kinematic demonstration only** using all 11 unchanged occurrences of the [source aircraft nose-gear STEP assembly](../examples/open-aircraft-nose-gear/README.md). The source has known initial solid overlaps. The substitutes used for two scissor joints admit different freedoms from physical pins, and all material densities, masses, mounting and driving assumptions are illustrative. **Do not interpret this fixture's joint reactions as aircraft load, actuator capacity, bearing design, stress or certification results.** It is not a drop test and has no tire–ground contact, brake, steering, pneumatic or hydraulic strut model.

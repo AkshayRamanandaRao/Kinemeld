@@ -1,5 +1,7 @@
 # Open-CAD double-wishbone linkage study
 
+[Watch the slowed simulation recording](demos/double-wishbone.mp4).
+
 ![The sourced CAD linkage and MBDyn wheel-position history](images/open-suspension.png)
 
 Open `examples/open-suspension/suspension.mbdyn-studio` for a four-body, five-joint closed-loop multibody study. It combines five unchanged STEP exports—upper arm, lower arm, knuckle, hub and tire—from the [MIT-licensed source suspension CAD project](../examples/step-suspension/README.md). Unlike a wheel-only fixture, this example moves both arms and the upright in a three-dimensional loop. It is an **inferred teaching reconstruction**, not the original source assembly or an OEM-validated suspension. The source does not provide assembly constraints, hardpoint data, material specifications or calibrated tire and damper properties.

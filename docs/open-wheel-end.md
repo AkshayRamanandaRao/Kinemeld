@@ -1,5 +1,7 @@
 # Open CAD wheel-end: torque and drop studies
 
+[Watch the slowed torque simulation recording](demos/wheel-end.mp4).
+
 ![Wheel-end torque study in Kinemeld](images/open-wheel-end.png)
 
 These worked examples use original STEP models of a knuckle, hub, and tyre from a community-authored double-wishbone CAD project. They are an **illustrative wheel-end subset**, not a complete suspension, OEM geometry, a verified manufactured part, or a validated vehicle. The two studies demonstrate how to connect real CAD geometry to rigid-body equations and check a result independently. They do not assess structural strength or tire performance. For hardpoint measurement, suspension kinematics and compliance, and correlation planning, see the [suspension engineering workflow](suspension-engineering-workflow.md).

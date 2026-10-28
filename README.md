@@ -14,52 +14,58 @@ same Python service and solver workflow.
 
 ## Industry-inspired demos
 
-These screenshots show the actual application. Open the linked `.mbdyn-studio`
-project from **Open project**, then validate and run it with a configured MBDyn
-installation. Each guide documents the source geometry, assumptions and checks.
+These silent, slowed recordings show actual MBDyn results in the application.
+The animated previews loop; select **Watch MP4** for the full-resolution clip.
+Open a linked `.mbdyn-studio` project from **Open project**, then validate and
+run it with a configured MBDyn installation. Each guide documents the source
+geometry, assumptions and checks. See [how the demos were recorded](docs/demo-videos.md).
 
 ### Aircraft nose-gear kinematics
 
-![Aircraft nose-gear STEP assembly and slider travel](docs/images/aircraft-nose-kinematics.png)
+![Animated aircraft nose-gear STEP assembly and slider travel](docs/demos/aircraft-nose-gear.gif)
 
 Explore an open-source STEP assembly with 11 occurrences, six modeled bodies,
 and a prescribed 10 mm strut sweep. The linkage and material assumptions are
 inferred; source overlaps and joint substitutions make this a **kinematic
 illustration only**, not an aircraft load prediction.
+[Watch MP4](docs/demos/aircraft-nose-gear.mp4) ·
 [Open project](examples/open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio) ·
 [Engineering guide](docs/aircraft-nose-kinematics.md) ·
 [STEP source and license](examples/open-aircraft-nose-gear/README.md)
 
 ### Double-wishbone suspension
 
-![STEP double-wishbone suspension with MBDyn wheel response](docs/images/open-suspension.png)
+![Animated STEP double-wishbone suspension with MBDyn wheel response](docs/demos/double-wishbone.gif)
 
 Study a reconstructed spatial closed loop using five original STEP parts:
 control arms, knuckle, hub and tire. Observe wheel motion and measure camber,
 toe and travel. Hardpoints, connections and material properties are inferred;
 there is no steering tie rod or validated tire model.
+[Watch MP4](docs/demos/double-wishbone.mp4) ·
 [Open project](examples/open-suspension/suspension.mbdyn-studio) ·
 [Engineering guide](docs/open-suspension.md) ·
 [STEP source and license](examples/step-suspension/README.md)
 
 ### Wheel-end torque and drop
 
-![STEP wheel-end model and torque response](docs/images/open-wheel-end.png)
+![Animated STEP wheel-end model and torque response](docs/demos/wheel-end.gif)
 
 Use source STEP geometry for a knuckle, hub and tire to study an idealized
 wheel-bearing torque case or a sphere-plane drop. The tire is rigid and the
 bearing and material properties are approximations.
+[Watch MP4](docs/demos/wheel-end.mp4) ·
 [Torque project](examples/open-wheel-end/wheel-end.mbdyn-studio) ·
 [Drop project](examples/open-wheel-end/wheel-end-drop.mbdyn-studio) ·
 [Engineering guide](docs/open-wheel-end.md)
 
 ### Nonlinear oleo strut
 
-![Oleo force model and simulation response](docs/images/oleo-strut.png)
+![Animated oleo force model and simulation response](docs/demos/oleo-strut.gif)
 
 Investigate gas pressure, asymmetric compression/rebound damping and stroke stops
 on a STEP wheel-end fixture. Its parameters and imposed motion are illustrative,
 not a calibrated landing-gear strut.
+[Watch MP4](docs/demos/oleo-strut.mp4) ·
 [Open project](examples/oleo-strut/wheel-oleo.mbdyn-studio) ·
 [Engineering guide](docs/oleo-strut.md)
 
