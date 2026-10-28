@@ -1,0 +1,49 @@
+{
+  "kind": "planar-assembly",
+  "name": "Authored rigid pendulum",
+  "parameters": {
+    "gravity": 9.81
+  },
+  "simulation": {
+    "duration": 5.0,
+    "step": 0.001
+  },
+  "bodies": [
+    {
+      "id": "upper_link",
+      "name": "Upper Link",
+      "mass": 1.2,
+      "inertia": {
+        "xx": 0.10009,
+        "yy": 0.10009,
+        "zz": 0.00018
+      },
+      "pose": {
+        "x": 0.06958655048003272,
+        "z": -0.4951340343707852,
+        "angleDeg": -8.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vz": 0.0,
+        "omega": 0.0
+      }
+    }
+  ],
+  "joints": [
+    {
+      "id": "ground_pin",
+      "type": "revolute",
+      "parent": "ground",
+      "child": "upper_link",
+      "parentAnchor": {
+        "x": 0.0,
+        "z": 0.0
+      },
+      "childAnchor": {
+        "x": 0.0,
+        "z": 0.5
+      }
+    }
+  ]
+}

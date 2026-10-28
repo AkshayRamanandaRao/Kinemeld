@@ -1,0 +1,40 @@
+warning, ifndef variable real "OMEGA_100" not yet defined; set to "1.8879" at line 48, file <GR_rotor.mbd>
+warning, null stiffness, using linear viscous generic constitutive law instead
+warning, null stiffness, using linear viscous generic constitutive law instead
+NaiveSolver: ENOPIV(133)
+Initial assembly failed because no pivot element could be found for column 134 (TotalJoint(10000): dof(6) Mz); aborting...
+An error occurred during the execution of MBDyn; aborting... 
+
+There is absolutely no warranty for MBDyn.  Use "mbdyn --warranty"
+for details.
+
+reading from file "GR_rotor.mbd"
+Creating scalar solver with Naive linear solver
+Reading Structural(0)
+Reading Structural(100)
+Reading Structural(200)
+Reading Structural(10000)
+Reading Structural(11000)
+Reading Structural(12000)
+Reading Structural(13000)
+Reading Structural(14000)
+Reading Body(100)
+Reading Body(200)
+Reading Joint(0)
+Reading Joint(100)
+Reading Joint(200)
+Reading Joint(101)
+Reading Joint(201)
+Reading Joint(10000)
+Reading Body(11000)
+Reading Joint(11030)
+Reading Joint(11031)
+Reading Body(12000)
+Reading Joint(12030)
+Reading Joint(12031)
+Reading Body(13000)
+Reading Joint(13030)
+Reading Joint(13031)
+Reading Body(14000)
+Reading Joint(14030)
+Reading Joint(14031)

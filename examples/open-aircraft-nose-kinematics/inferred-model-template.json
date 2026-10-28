@@ -1,0 +1,300 @@
+{
+  "kind": "spatial-assembly",
+  "name": "Inferred geometry template; generated project supplies mass and inertia",
+  "parameters": {
+    "gravity": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    }
+  },
+  "simulation": {
+    "duration": 0.2,
+    "step": 0.001
+  },
+  "bodies": [
+    {
+      "id": "strut",
+      "name": "strut",
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.6161949961214991,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "vz": 0.0,
+        "wx": 0.0,
+        "wy": 0.0,
+        "wz": 0.0
+      }
+    },
+    {
+      "id": "slider",
+      "name": "slider",
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.35,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "vz": 0.0,
+        "wx": 0.0,
+        "wy": 0.0,
+        "wz": 0.0
+      }
+    },
+    {
+      "id": "upper_link",
+      "name": "upper_link",
+      "pose": {
+        "x": 0.0,
+        "y": -0.069999999972523,
+        "z": 0.6161949961214991,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "vz": 0.0,
+        "wx": 0.0,
+        "wy": 0.0,
+        "wz": 0.0
+      }
+    },
+    {
+      "id": "lower_link",
+      "name": "lower_link",
+      "pose": {
+        "x": 0.0,
+        "y": -0.056640506629672,
+        "z": 0.4,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "vz": 0.0,
+        "wx": 0.0,
+        "wy": 0.0,
+        "wz": 0.0
+      }
+    },
+    {
+      "id": "left_wheel",
+      "name": "left_wheel",
+      "pose": {
+        "x": -0.20666666651526988,
+        "y": 0.0,
+        "z": 0.35,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "vz": 0.0,
+        "wx": 0.0,
+        "wy": 0.0,
+        "wz": 0.0
+      }
+    },
+    {
+      "id": "right_wheel",
+      "name": "right_wheel",
+      "pose": {
+        "x": 0.206666666818063,
+        "y": 0.0,
+        "z": 0.35,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "vz": 0.0,
+        "wx": 0.0,
+        "wy": 0.0,
+        "wz": 0.0
+      }
+    }
+  ],
+  "joints": [
+    {
+      "id": "mount",
+      "type": "weld",
+      "a": "ground",
+      "b": "strut",
+      "anchorA": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.6161949961214991
+      },
+      "anchorB": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    {
+      "id": "oleo",
+      "type": "prismatic",
+      "a": "strut",
+      "b": "slider",
+      "anchorA": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "anchorB": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.2661949961214991
+      },
+      "axisA": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "motion": {
+        "amplitude": 0.005,
+        "frequencyHz": 1
+      }
+    },
+    {
+      "id": "upper_pin",
+      "type": "revolute",
+      "a": "strut",
+      "b": "upper_link",
+      "anchorA": {
+        "x": 0.0,
+        "y": -0.069999999972523,
+        "z": 0.0
+      },
+      "anchorB": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "axisA": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "axisB": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      }
+    },
+    {
+      "id": "scissor_pin",
+      "type": "spherical",
+      "a": "upper_link",
+      "b": "lower_link",
+      "anchorA": {
+        "x": 0.0,
+        "y": -0.112979883870304,
+        "z": -0.13364335132142502
+      },
+      "anchorB": {
+        "x": 0.0,
+        "y": -0.126339377213155,
+        "z": 0.08255164480007404
+      }
+    },
+    {
+      "id": "lower_pin",
+      "type": "universal",
+      "a": "slider",
+      "b": "lower_link",
+      "anchorA": {
+        "x": 0.0,
+        "y": -0.056640506629672,
+        "z": 0.050000000000000044
+      },
+      "anchorB": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "axisA": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "axisB": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      }
+    },
+    {
+      "id": "left_bearing",
+      "type": "revolute",
+      "a": "slider",
+      "b": "left_wheel",
+      "anchorA": {
+        "x": -0.20666666651526988,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "anchorB": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "axisA": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "axisB": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      }
+    },
+    {
+      "id": "right_bearing",
+      "type": "revolute",
+      "a": "slider",
+      "b": "right_wheel",
+      "anchorA": {
+        "x": 0.206666666818063,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "anchorB": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "axisA": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "axisB": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      }
+    }
+  ]
+}

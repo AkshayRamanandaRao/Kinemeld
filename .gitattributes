@@ -1,0 +1,4 @@
+*.step -text
+*.stp -text
+*.mbdyn-studio -text
+examples/open-source/** -text

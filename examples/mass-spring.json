@@ -1,0 +1,14 @@
+{
+  "kind": "mass-spring",
+  "name": "Damped oscillator",
+  "parameters": {
+    "mass": 1.0,
+    "stiffness": 100.0,
+    "damping": 0.5,
+    "displacement": 0.1
+  },
+  "simulation": {
+    "duration": 5.0,
+    "step": 0.0025
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "title": "Double-wishbone STEP parts",
+  "revision": "d822c401ad51aae76cfd4fbbe80d13b42800f339",
+  "license": "MIT",
+  "files": [
+    {
+      "name": "Assembly 1 - Ball_Default-As Machined- (1).step",
+      "sha256": "e2a24a8d26e3b35621d307aeab6d0aad9f2364d32ec5e2fd2f8095d052616a7a",
+      "size": 6180
+    },
+    {
+      "name": "Assembly 1 - Ball_Default-As Machined-.step",
+      "sha256": "83e0c25d6df64fa661e6d2f3586c448267999b5c2598d2f4b533c8d262321e0f",
+      "size": 6176
+    },
+    {
+      "name": "Assembly 1 - Front Rim.step",
+      "sha256": "d8d05362b485e0b48ea0baf3cb33d0d5df6faf817e2f49222ad066308e9f6553",
+      "size": 1198074
+    },
+    {
+      "name": "Assembly 1 - Front Tyre.step",
+      "sha256": "a0b7e75748354b03547decf398d0257d79442c051c330956d208136fac7255d0",
+      "size": 942460
+    },
+    {
+      "name": "Assembly 1 - Hub.step",
+      "sha256": "5a035846fcd27121ac5337484b4f5e791b5deb3349030faff4768eed0c0ffbdb",
+      "size": 5447
+    },
+    {
+      "name": "Assembly 1 - Knuckle_Left Knuckle.step",
+      "sha256": "670681b02f1923520f49d46eb6fe0166040eb43869283566f04fba7f2a4313b9",
+      "size": 47660
+    },
+    {
+      "name": "Assembly 1 - Lower Control Arm_Default-As Machined- (1).step",
+      "sha256": "a03c6855ecd36e54d72937b94540fa469689d4782a31c21ad61f5bcd43a98d63",
+      "size": 35306
+    },
+    {
+      "name": "Assembly 1 - Lower Control Arm_Default-As Machined-.step",
+      "sha256": "b2e09857d05a62b8e657c333da30d7cf65881601f64b22ea5478b033dc826b9e",
+      "size": 510359
+    },
+    {
+      "name": "Assembly 1 - M18 Nut.step",
+      "sha256": "c5b09ef2f419797d5850deefa3bc1d045b70e7ea4f37e693d171bfe4a0e9bf56",
+      "size": 18952
+    },
+    {
+      "name": "Assembly 1 - Upper Control Arm_Default-As Machined-.step",
+      "sha256": "0eb1a5b7fd865bfd6b74d8772abf8963841e9d916ad40964e716a65fdf8d7416",
+      "size": 358725
+    },
+    {
+      "name": "Assembly 1 - radial ball bearing_68_iso_ISO 15 RBB - 4930 - 18,DE,AC,18_68 (1).step",
+      "sha256": "1586a544a5e215dbe4eb5dee76cdc90f81102ef071750772d29d12f35adab3cd",
+      "size": 403882
+    },
+    {
+      "name": "Assembly 1 - radial ball bearing_68_iso_ISO 15 RBB - 4930 - 18,DE,AC,18_68.step",
+      "sha256": "22a4a978b1862069cc6274d35b61884e77053b0e827a497a2924a1f47144ea17",
+      "size": 403878
+    }
+  ]
+}

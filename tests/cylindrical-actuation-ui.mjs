@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright';
+import {readFile} from 'node:fs/promises';
+const base=process.env.MBDYN_STUDIO_URL||'http://127.0.0.1:8768',browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader']});
+const page=await browser.newPage({viewport:{width:1440,height:960},acceptDownloads:true}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.route('**/api/tour-preference',route=>route.fulfill({json:{enabled:false}}));
+const change=async(id,value)=>{await page.locator(id).fill(String(value));await page.locator(id).dispatchEvent('change');};
+try{
+ await page.goto(base);await page.waitForFunction(()=>document.querySelector('#solverStatus')?.textContent.includes('MBDyn ready'));
+ await page.locator('#examplesButton').click();await page.locator('.example-card').filter({has:page.getByRole('heading',{name:'3D cylindrical slider',exact:true})}).getByRole('button',{name:/Open example/}).click();
+ await change('#spatial-gravity-x',0);await change('#spatial-gravity-y',0);
+ await page.getByRole('button',{name:'Add rotational spring / damper'}).click();await change('#spatial-rotary-rotary1-stiffness',1);await change('#spatial-rotary-rotary1-damping',.1);await change('#spatial-rotary-rotary1-restAngleDeg',15);
+ await page.getByRole('button',{name:'Add sinusoidal joint torque'}).click();await change('#spatial-torque-torque1-amplitude',.2);await change('#spatial-torque-torque1-frequencyHz',2);await change('#spatial-torque-torque1-offset',.1);
+ await page.locator('#stepButton').click();await page.locator('#stepFile').setInputFiles('examples/step-pendulum/pendulum.step');await page.waitForFunction(()=>document.querySelector('#stepDetail')?.textContent.includes('1 STEP files'),null,{timeout:180000});await page.locator('#stepBody').selectOption('block');await page.locator('#stepBind').click();await page.locator('#stepClose').click();
+ await page.waitForFunction(()=>document.querySelector('#validationBadge')?.textContent==='Ready');const ev=page.waitForResponse(r=>r.url().endsWith('/api/run')&&r.request().method()==='POST',{timeout:120000});await page.locator('#runButton').click();const result=await (await ev).json();assert(result.ok,JSON.stringify(result));assert.equal(result.model.joints[0].type,'cylindrical');assert.equal(result.model.rotationalElements[0].joint,'guide');assert.equal(result.model.jointTorques[0].joint,'guide');assert(result.samples.every(s=>Number.isFinite(s.rotationalStates[0].torque)&&Number.isFinite(s.actuationStates[0].torque)));
+ await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('MBDyn completed successfully'));for(const label of ['Cylindrical position','Rotational spring torque','Actuation torque'])await page.locator('#signalSelect').selectOption({label});
+ const event=page.waitForEvent('download');await page.locator('#saveButton').click();const saved=await event;const project=JSON.parse(await readFile(await saved.path(),'utf8'));assert(project.assets.step);assert(project.result.samples[0].rotationalStates);await page.locator('#projectFile').setInputFiles(await saved.path());await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('Project imported and validated'),null,{timeout:120000});assert.match(await page.locator('#stepStatus').textContent(),/1 attached/);assert.deepEqual(errors,[]);console.log('Cylindrical rotational spring and torque with STEP and MBDyn passed');
+}finally{await browser.close();}

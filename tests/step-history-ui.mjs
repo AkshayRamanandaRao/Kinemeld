@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright';
+import {mkdir,writeFile} from 'node:fs/promises';
+const base=process.env.MBDYN_STUDIO_URL || 'http://127.0.0.1:8768';
+const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader']});
+const page=await browser.newPage({viewport:{width:1440,height:960}}), errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+const report={checks:[],started:new Date().toISOString()};
+const waitReady=()=>page.waitForFunction(()=>document.querySelector('#validationBadge')?.textContent==='Ready');
+const readMatrix=()=>page.evaluate(()=>window.__stepHistoryPose?.matrix);
+try {
+ await page.goto(base); await page.waitForFunction(()=>document.querySelector('#solverStatus')?.textContent.includes('MBDyn ready'));
+ await page.evaluate(async()=>{const {MechanismView}=await import('/viewport.js'); for(const name of ['renderStep','setSample']) {const original=MechanismView.prototype[name];MechanismView.prototype[name]=function(...args){original.apply(this,args);if(this.stepView){this.stepView.group.updateMatrixWorld(true);const [id,mesh]=this.stepView.partMeshes.entries().next().value;window.__stepHistoryPose={id,matrix:mesh.matrixWorld.toArray()};}};}});
+ await page.locator('#examplesButton').click();
+ await page.locator('.example-card').filter({has:page.getByRole('heading',{name:'Authored two-link chain',exact:true})}).getByRole('button',{name:/Open example/}).click();await waitReady();
+ await page.locator('#stepButton').click();
+ await page.locator('#stepFile').setInputFiles('examples/step-pendulum/pendulum.step');
+ await page.waitForFunction(()=>document.querySelector('#stepDetail')?.textContent.includes('1 STEP files'),null,{timeout:120000});
+ await page.locator('#stepBody').selectOption('lower_link'); await page.locator('#stepBind').click();
+ assert.match(await page.locator('#stepDetail').textContent(),/1 attached/);await page.locator('#stepClose').click();
+ await page.locator('#undoButton').click();assert.match(await page.locator('#stepStatus').textContent(),/0 attached/);
+ await page.locator('#redoButton').click();assert.match(await page.locator('#stepStatus').textContent(),/1 attached/);
+ await page.locator('#stepButton').click();assert.equal(await page.locator('#stepBody').inputValue(),'lower_link');await page.locator('#stepClose').click();
+ report.checks.push('Attachment Undo and Redo preserve the bound body');
+ await page.locator('[data-entity="node-lower_link"]').click();await page.getByRole('button',{name:'Remove selected body'}).click();
+ assert.equal(await page.locator('[data-entity="node-lower_link"]').count(),0);assert.match(await page.locator('#stepStatus').textContent(),/0 attached/);
+ await page.locator('#undoButton').click();assert.equal(await page.locator('[data-entity="node-lower_link"]').count(),1);assert.match(await page.locator('#stepStatus').textContent(),/1 attached/);
+ await page.locator('#stepButton').click();assert.equal(await page.locator('#stepBody').inputValue(),'lower_link');await page.locator('#stepClose').click();
+ report.checks.push('Deleting bound leaf and undoing restores both body and attachment');
+ const response=page.waitForResponse(r=>r.url().endsWith('/api/run')&&r.request().method()==='POST',{timeout:120000});
+ await page.locator('#runButton').click(); const result=await (await response).json();assert(result.ok,JSON.stringify(result));
+ await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('MBDyn completed successfully'));
+ const last=String(result.samples.length-1);await page.locator('#timeSlider').fill(last);await page.locator('#timeSlider').dispatchEvent('input');
+ assert(result.samples.at(-1).time>0);
+ await page.locator('#stepButton').click();await page.locator('#stepBody').selectOption('upper_link');await page.locator('#stepBind').click();await page.locator('#stepClose').click();
+ const immediate=await readMatrix(); assert(Array.isArray(immediate));
+ await page.locator('#timeSlider').dispatchEvent('input');const reapplied=await readMatrix();assert.deepEqual(immediate,reapplied,'Rebinding must immediately render the selected solver frame');
+ await page.locator('#timeSlider').fill('0');await page.locator('#timeSlider').dispatchEvent('input');const start=await readMatrix();assert.notDeepEqual(start,immediate,'The attached solid must move with the real solver body');
+ report.checks.push('Rebinding while paused at a nonzero MBDyn frame immediately applies that frame');
+ assert.deepEqual(errors,[]);report.ok=true;
+} catch(e) {report.ok=false;report.failure=e.stack;process.exitCode=1;console.error(e);await page.screenshot({path:'tests/evidence/step-history-failure.png',fullPage:true}).catch(()=>{});}
+finally {report.errors=errors;report.completed=new Date().toISOString();await mkdir('tests/evidence',{recursive:true});await writeFile('tests/evidence/step-history-verification.json',JSON.stringify(report,null,2));await browser.close();}

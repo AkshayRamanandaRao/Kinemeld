@@ -1,0 +1,56 @@
+{
+  "id": "rotor-ground-resonance",
+  "title": "Four-blade helicopter rotor ground resonance",
+  "repository": "https://github.com/alexal00/MBDynmodels",
+  "revision": "3b8c753a497be98efe4f49b5d44f5b0608cdd78b",
+  "upstreamPath": "GR_MBDyn/cassoni_model",
+  "modelLicense": "GPL-2.0-only",
+  "licenseBasis": "Explicit GPL version 2 redistribution notice in each original input file. The repository has no blanket root LICENSE; no license is inferred for its other files.",
+  "copyright": "Copyright (C) 1996-2017 Pierangelo Masarati and Paolo Mantegazza, Politecnico di Milano",
+  "author": "Gianni Cassoni; based on a generic rotor model by Pierangelo Masarati",
+  "reference": "Hammond, C. E. (1974), An application of Floquet theory to prediction of mechanical instability, Journal of the American Helicopter Society 19(4), 14-23, doi:10.4050/JAHS.19.14",
+  "retrievedAt": "2026-10-27",
+  "originalEntryPoint": "original/GR_rotor.mbd",
+  "runnableEntryPoint": "runnable/GR_rotor.mbd",
+  "dependencies": [
+    "rotor_blade.ref",
+    "rotor_blade.nod",
+    "rotor_blade.elm"
+  ],
+  "files": [
+    {
+      "path": "original/GR_rotor.mbd",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/GR_rotor.mbd",
+      "gitBlobSha1": "7d4780b147593187050af170144445da793110e1",
+      "sha256": "b2bb2059815b7f970fdc37caca74dc2d318bcf26f84474e1830ef104a434ff1b",
+      "bytes": 11864
+    },
+    {
+      "path": "original/rotor_blade.elm",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.elm",
+      "gitBlobSha1": "cfcfabadcd0ad89f878a5e54644224f99f10c305",
+      "sha256": "cffe9c56d90fafade6657440e01cf6b7a0c8851bdea6673622a7863fd1610ba6",
+      "bytes": 2529
+    },
+    {
+      "path": "original/rotor_blade.nod",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.nod",
+      "gitBlobSha1": "5d5692dbda3e4d597bcbba6282cfd69c38a0cc0b",
+      "sha256": "195083ad5260480d36aa18118151017b94dffb682b08c650543de6f11d9c1bcf",
+      "bytes": 1731
+    },
+    {
+      "path": "original/rotor_blade.ref",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.ref",
+      "gitBlobSha1": "cd556f16b53f26cd8571cd409d616b1c4fc7abd5",
+      "sha256": "ae795a8bf86a170d1826778b1baf514ce2ba726f26635788f60856e00a32b191",
+      "bytes": 2171
+    }
+  ],
+  "licenseFile": {
+    "path": "COPYING",
+    "source": "COPYING from installed official MBDyn 1.7.3 source archive",
+    "sourceUrl": "https://www.mbdyn.org/userfiles/downloads/mbdyn-1.7.3.tar.gz",
+    "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"
+  }
+}

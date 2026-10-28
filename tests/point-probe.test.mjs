@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {pointState,pointHistory,pointCsv} from '../frontend/point-probe.js';
+const close=(a,b)=>assert(Math.abs(a-b)<1e-10,`${a} != ${b}`);
+const node={id:'arm',x:1,y:2,z:3,rx:90,ry:90,rz:0,vx:1,vy:0,vz:0,wx:0,wy:0,wz:2};
+const sample={time:0,nodes:[node]},arm={body:'arm',point:{x:1,y:0,z:0}},ground={body:'ground',point:{x:1,y:1,z:3}};
+test('Euler123 rotates local point and world angular velocity supplies transport',()=>{const v=pointState(sample,arm);v.position.forEach((n,i)=>close(n,[1,3,3][i]));v.velocity.forEach((n,i)=>close(n,[-1,0,0][i]));});
+test('ground is fixed; two moving points produce distance and signed relative rate',()=>{const b={body:'arm',point:{x:0,y:0,z:0}},h=pointHistory([sample],ground,b)[0];close(h.distance,1);close(h.rate,0);const moving={...sample,nodes:[{...node,vy:2}]},result=pointHistory([moving],ground,b)[0];close(result.rate,2);assert.equal(result.pointA.velocity[0],0);});
+test('coincident points have undefined separation rate, and CSV records local offsets and blanks',()=>{const a={body:'ground',point:{x:1,y:2,z:3}},b={body:'arm',point:{x:0,y:0,z:0}},h=pointHistory([sample],a,b);assert.equal(h[0].distance,0);assert.equal(h[0].rate,null);const csv=pointCsv(h,a,b);assert.match(csv,/a_local_x_m/);assert.match(csv,/separation_rate_m_s/);assert(csv.trimEnd().endsWith(','));});
+test('reject missing nodes, invalid coordinates, unordered samples and invalid CSV identity',()=>{assert.throws(()=>pointState(sample,{body:'missing',point:{x:0,y:0,z:0}}));assert.throws(()=>pointState(sample,{body:'ground',point:{x:NaN,y:0,z:0}}));assert.throws(()=>pointHistory([sample,sample],arm,ground));assert.throws(()=>pointCsv([{time:0,pointA:{position:[],velocity:[]},pointB:{position:[],velocity:[]},distance:0,rate:null}],{body:'=x',point:{x:0,y:0,z:0}},ground));});

@@ -1,0 +1,2254 @@
+import { MechanismView } from "./viewport.js";
+import { industry, signalsFor, industryCsvUnits } from "./industry.js";
+import { restoreReferenceGeometry } from "./reference-geometry.js";
+import { setupAgent } from "./agent.js";
+import { assemblyInfo, renderAssemblyEditor } from "./assembly-editor.js";
+import { spatialInfo, renderSpatialEditor } from "./spatial-editor.js";
+import { loadStepAsset, restoreStepAsset, stepPartLabel } from "./step-asset.js";
+import { createStepView } from "./step-view.js";
+import { setupTour } from "./tour.js";
+import { setupStepMass } from "./step-mass.js";
+import { setupKinematics } from "./kinematics.js";
+import { setupPointProbe } from "./point-probe.js";
+import { setupWheelKinematics } from "./wheel-kinematics.js";
+
+const $ = (id) => document.getElementById(id);
+const paths = {
+  file: "M6 3h8l4 4v14H6z M14 3v5h5",
+  save: "M4 3h14l3 3v15H3V3z M7 3v6h10V3 M7 21v-8h10v8",
+  play: "M7 4l13 8-13 8z",
+  pause: "M7 4v16 M17 4v16",
+  rewind: "M5 4v16 M19 4L7 12l12 8z",
+  cube: "M12 3l9 5v10l-9 5-9-5V8z M3 8l9 5 9-5 M12 13v10",
+  folder: "M3 7V4h7l2 3h9v13H3z",
+  grid: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
+  book: "M12 5C8 2 4 3 2 4v15c4-2 7-1 10 1 3-2 6-3 10-1V4c-2-1-6-2-10 1z M12 5v15",
+  sun: "M12 2v2 M12 20v2 M2 12h2 M20 12h2 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2 M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
+  undo: "M4 5v6h6 M4 11a8 8 0 1 1 2 8",
+  redo: "M20 5v6h-6 M20 11a8 8 0 1 0-2 8",
+  check: "M4 12l5 5L20 6",
+  code: "M8 5l-6 7 6 7 M16 5l6 7-6 7 M14 3l-4 18",
+  network: "M8 4H3v5h5z M21 4h-5v5h5z M14 16H9v5h5z M5 9v3h14V9 M12 12v4",
+  fit: "M3 9V3h6 M15 3h6v6 M21 15v6h-6 M9 21H3v-6",
+  wave: "M2 12c4-16 6 16 10 0s6 16 10 0",
+  download: "M12 2v13 M6 10l6 6 6-6 M3 17v5h18v-5",
+  sliders: "M5 3v18 M12 3v18 M19 3v18 M2 8h6 M9 16h6 M16 7h6",
+  clock: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M12 6v6l4 2",
+  info: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M12 11v6 M12 7v1",
+  chat: "M4 4h16v12H9l-5 4z M8 8h8 M8 12h6",
+  close: "M5 5l14 14 M19 5L5 19",
+  ground: "M3 9h18 M5 9l-3 5 M11 9l-4 7 M17 9l-4 7 M22 10l-5 6",
+  joint: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0 M3 12h6 M15 12h6 M12 3v6 M12 15v6",
+  gravity: "M12 2v16 M6 12l6 6 6-6 M4 22h16",
+  chart: "M3 3v18h18 M5 15l5-5 4 3 6-8",
+};
+function icon(name) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.cube}"/></svg>`;
+}
+function hydrateIcons(root = document) {
+  root.querySelectorAll("[data-icon]").forEach((el) => {
+    el.innerHTML = icon(el.dataset.icon);
+  });
+}
+hydrateIcons();
+
+const defaults = {
+  kind: "pendulum",
+  name: "Gravity pendulum",
+  parameters: { mass: 1, length: 1, angle: 30, gravity: 9.81 },
+  simulation: { duration: 5, step: 0.005 },
+};
+const fields = {
+  "source-example": [],
+  "planar-assembly": [["gravity", "Gravity", "m/s²", 0, 0.01]],
+  "spatial-assembly": [],
+  ...Object.fromEntries(
+    Object.entries(industry).map(([kind, info]) => [kind, info.fields]),
+  ),
+  pendulum: [
+    ["mass", "Point mass", "kg", 0.0001, 0.1],
+    ["length", "Link length", "m", 0.01, 0.1],
+    ["angle", "Release angle", "°", -170, 1],
+    ["gravity", "Gravity", "m/s²", 0.01, 0.01],
+  ],
+  "double-pendulum": [
+    ["mass1", "Mass 1", "kg", 0.01, 0.1],
+    ["mass2", "Mass 2", "kg", 0.01, 0.1],
+    ["length1", "Link 1 length", "m", 0.01, 0.1],
+    ["length2", "Link 2 length", "m", 0.01, 0.1],
+    ["angle1", "Link 1 release angle", "°", -170, 1],
+    ["angle2", "Link 2 release angle", "°", -170, 1],
+    ["gravity", "Gravity", "m/s²", 0.01, 0.01],
+  ],
+  "mass-spring": [
+    ["mass", "Translating mass", "kg", 0.0001, 0.1],
+    ["stiffness", "Spring stiffness", "N/m", 0.01, 10],
+    ["damping", "Viscous damping", "N·s/m", 0, 0.1],
+    ["displacement", "Initial displacement", "m", -10, 0.01],
+  ],
+};
+const state = {
+  model: structuredClone(defaults),
+  selection: "body",
+  history: [],
+  future: [],
+  result: null,
+  resultSignature: null,
+  validation: null,
+  solver: null,
+  examples: [],
+  sourceExamples: [],
+  selectedNode: null,
+  selectedForce: null,
+  selectedJoint: null,
+  measureNode: null,
+  reference: null,
+  step: null,
+  playing: false,
+  frame: 0,
+  speed: 1,
+  busy: false,
+  saving: false,
+  signal: 0,
+};
+let view,
+  savedTheme,
+  validationTimer,
+  lastFrame = 0,
+  playTime = 0,
+  pendingDownload,
+  referenceLoad = 0, stepLoad = 0;
+let applyingNativeProject = false, projectRevision = 0, browserDirty = false, activeRunToken = null;
+const nativeDesktop = window.mbdynNative;
+const stepMass = setupStepMass({
+  getState:()=>({asset:state.step,model:state.model,partId:$("stepPart").value,busy:state.busy || state.saving || state.opening}),
+  validateModel:checkModel,
+  applyCandidate:candidate=>{pushHistory();applyModel(candidate,false);},
+  notify:notice,
+});
+function markNativeDirty() {
+  if (!applyingNativeProject) { projectRevision++; browserDirty = true; }
+  if (nativeDesktop && !applyingNativeProject) nativeDesktop.notify("dirty");
+}
+const signature = () => JSON.stringify(state.model);
+const sourceInfo = (model = state.model) =>
+  state.sourceExamples.find((example) => example.id === model.sourceExampleId);
+const visualInfo = (model = state.model) => model.kind === "planar-assembly" ? assemblyInfo(model) : model.kind === "spatial-assembly" ? spatialInfo(model) : sourceInfo(model);
+const assemblyKind = model => ["planar-assembly","spatial-assembly"].includes(model?.kind);
+const sourceModel = (source) => ({
+  kind: "source-example",
+  name: source.title,
+  sourceExampleId: source.id,
+  sourceRevision: source.source.revision,
+  sourceHashes: source.files.map((file) => file.sha256),
+  parameters: {},
+  simulation: structuredClone(source.simulation),
+});
+const escapeHtml = (value) =>
+  String(value).replace(
+    /[&<>"']/g,
+    (char) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        char
+      ],
+  );
+const stale = () => state.result && state.resultSignature !== signature();
+const format = (n, d = 3) => (Number.isFinite(n) ? n.toFixed(d) : "—");
+function notice(message, type = "") {
+  $("notice").textContent = message;
+  $("notice").className = `notice ${type}`;
+  $("notice").hidden = !message;
+}
+function status(message) {
+  $("statusText").textContent = message;
+}
+function replaceReference(reference, dirty = true, disposePrevious = true) {
+  const previous = state.reference;
+  state.reference = reference;
+  view?.setReference(reference);
+  if (disposePrevious && previous && previous !== reference) previous.dispose();
+  $("referenceStatus").hidden = !reference;
+  $("referenceRemoveButton").hidden = !reference;
+  $("referenceIsolateButton").hidden = !reference;
+  $("referenceIsolateButton").textContent = "Isolate STL";
+  $("referenceStatus").textContent = reference ? `Saved STL reference: ${reference.metadata.name} (${reference.metadata.unit}) · visual only` : "";
+  if (dirty) markNativeDirty();
+}
+function validateStepForModel(asset, model) {
+  if (!asset) return;
+  const nodes = assemblyKind(model) ? visualInfo(model).initialNodes.filter(n => model.bodies.some(b => b.id === n.id)) : [];
+  const test = createStepView(asset, {initialNodes:nodes, bindings:asset.metadata.bindings});
+  test.dispose();
+}
+function renderStepReview() {
+  const asset=state.step, pending=asset?.metadata.unverifiedBindings || {};
+  const candidate=$('stepReviewCandidate').value;
+  const entries=Object.entries(pending);
+  $('stepReview').hidden=!entries.length;
+  $('stepReviewCandidate').replaceChildren(...entries.map(([id,binding])=>{const option=document.createElement('option');option.value=id;option.textContent=`Saved slot ${id} · body ${binding.body}`;return option;}));
+  if (Object.hasOwn(pending,candidate)) $('stepReviewCandidate').value=candidate;
+  const id=$('stepReviewCandidate').value, binding=pending[id], index=Number(id.split(':',1)[0]);
+  $('stepReviewDetail').textContent=binding ? `Source: ${asset.metadata.files[index]?.name || 'unknown'} · body: ${binding.body} · original registration pose: ${JSON.stringify(binding.pose)}` : '';
+  const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choose a current part after inspection';
+  $('stepReviewTarget').replaceChildren(placeholder,...(asset?.parts || []).filter(part=>part.id.startsWith(`${index}:`)).map(part=>{const option=document.createElement('option');option.value=part.id;option.textContent=stepPartLabel(part);return option;}));
+}
+function renderStepControls() {
+  const asset=state.step;
+  $("stepRemove").hidden=!asset;
+  $("stepBindings").hidden=!asset;
+  $("stepMass").hidden=!asset;
+  stepMass.clear();
+  $("stepBodyLabel").hidden=!assemblyKind(state.model);
+  $("stepBind").hidden=!assemblyKind(state.model);
+  const pending=Object.keys(asset?.metadata.unverifiedBindings || {}).length;
+  $("stepDetail").textContent=asset ? `${asset.metadata.files.length} STEP files · ${asset.parts.length} solid parts · ${Object.keys(asset.metadata.bindings).length} attached${pending ? ` · ${pending} awaiting review` : ''}. Source units converted to metres. Define mass, inertia and joints in the physical model.` : "No STEP geometry loaded. Import .step or .stp solids; define mass, inertia and joints separately.";
+  renderStepReview();
+  $("stepStatus").hidden=!asset;
+  $("stepStatus").textContent=asset ? `STEP solids · ${Object.keys(asset.metadata.bindings).length} attached · visual geometry` : "";
+  if (!asset) return;
+  const selected=$("stepPart").value;
+  $("stepPart").replaceChildren(...asset.parts.map(part=>{const option=document.createElement("option");option.value=part.id;option.textContent=stepPartLabel(part);return option;}));
+  if (asset.parts.some(p=>p.id===selected)) $("stepPart").value=selected;
+  $("stepBody").replaceChildren(...[{id:"",name:"Unattached (static)"},...(assemblyKind(state.model) ? state.model.bodies : [])].map(body=>{const option=document.createElement("option");option.value=body.id;option.textContent=body.name;return option;}));
+  $("stepBody").value=asset.metadata.bindings[$("stepPart").value]?.body || "";
+}
+function replaceStep(asset, dirty=true) {
+  validateStepForModel(asset,state.model);
+  if (dirty) pushHistory();
+  state.step=asset;
+  view?.setStepAsset(asset);
+  if (state.result && !stale()) setFrame(state.frame);
+  renderStepControls();
+  if (dirty) {markNativeDirty();updateHistoryButtons();}
+}
+async function createPrimitiveSolid(bodyId, spec) {
+  if(state.busy || state.opening || state.saving)throw Error("Wait for the current operation before creating a solid.");
+  const before=signature(), previous=state.step, token=++stepLoad, body=state.model.bodies.find(item=>item.id===bodyId);
+  if(!body)throw Error("Select a valid assembly body first.");
+  const pose=structuredClone(body.pose);
+  const response=await fetch("/api/step/primitive",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shape:spec.shape,dimensions:spec.dimensions,pose})});
+  if(!response.ok){let detail;try{detail=await response.json();}catch{}throw Error(detail?.error || "STEP solid generation failed.");}
+  const generated=await loadStepAsset([{name:`${bodyId}-${spec.shape}.step`,bytes:new Uint8Array(await response.arrayBuffer())}]);
+  if(signature()!==before || state.step!==previous || state.busy || state.opening || state.saving || token!==stepLoad)throw Error("The model or CAD geometry changed during generation; nothing was applied.");
+  if(generated.parts.length!==1)throw Error("The generated solid did not contain exactly one part.");
+  const existing=previous?.metadata.files || [], sourceBytes=existing.reduce((sum,file)=>sum+file.byteLength,0)+generated.metadata.files[0].byteLength;
+  const triangles=(previous?.parts || []).reduce((sum,part)=>sum+part.indices.length/3,0)+generated.parts[0].indices.length/3;
+  if(existing.length>=24 || sourceBytes>12*1024*1024 || triangles>200000)throw Error("Adding this solid would exceed STEP file, size or triangle limits.");
+  const part={...generated.parts[0],id:`${existing.length}:${generated.parts[0].id.split(":").slice(1).join(":")}`};
+  const binding={body:bodyId,pose:state.model.kind === "spatial-assembly" ? {...pose} : {x:pose.x,y:0,z:pose.z,ry:pose.angleDeg}};
+  const witness=generated.metadata.occurrenceWitnesses?.[generated.parts[0].id];
+  const asset={units:"m",parts:[...(previous?.parts || []),part],metadata:{schemaVersion:1,format:"step",files:[...existing,...generated.metadata.files],bindings:{...(previous?.metadata.bindings || {}),[part.id]:binding},occurrenceWitnesses:{...(previous?.metadata.occurrenceWitnesses || {}),...(witness ? {[part.id]:witness} : {})},unverifiedBindings:{...(previous?.metadata.unverifiedBindings || {})}}};
+  const draft=structuredClone(state.model), target=draft.bodies.find(item=>item.id===bodyId);
+  target.mass=spec.properties.mass;target.inertia=structuredClone(spec.properties.inertia);
+  if(draft.kind === 'spatial-assembly') target.centerOfMass={x:0,y:0,z:0};
+  const validation=await checkModel(draft);
+  if(signature()!==before || state.step!==previous || state.busy || state.opening || state.saving || token!==stepLoad)throw Error("The model or CAD geometry changed during generation; nothing was applied.");
+  if(!validation.valid)throw Error((validation.issues || []).map(issue=>issue.message).join(" ") || "The updated physical model is invalid.");
+  validateStepForModel(asset,draft);
+  pushHistory();state.model=draft;state.step=asset;if(view)view.stepAsset=asset;
+  changed();renderTree();renderProperties();renderStepControls();view?.setSelection(state.selection);
+  if(!previous && state.model.kind==='spatial-assembly' && state.model.joints.length===0)view?.reset();
+  notice(`Created and attached ${spec.shape} STEP solid with mass ${spec.properties.mass.toPrecision(6)} kg. Other attached geometry is not included in these physical properties.`,"");
+}
+function download(name, text, type = "text/plain") {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function saveLocal() {
+  try {
+    localStorage.setItem(
+      "mbdyn-studio-project",
+      JSON.stringify({ format: "mbdyn-studio/1", model: state.model }),
+    );
+  } catch {
+    status(
+      "Browser storage unavailable. Use Save project to retain your work.",
+    );
+  }
+}
+async function api(path, model, runToken = null) {
+  const response = await fetch(
+    `/api/${path}`,
+    model
+      ? {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(runToken ? { model, runToken } : { model }),
+        }
+      : undefined,
+  );
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(
+      "The local backend returned an unreadable response. Check the server log.",
+    );
+  }
+  if (!response.ok) {
+    const error = new Error(
+      data.error || data.message || `Request failed (${response.status})`,
+    );
+    error.issues = data.issues;
+    error.details = data;
+    throw error;
+  }
+  return data;
+}
+async function checkModel(model) {
+  if (model.kind !== "source-example") return api("validate", model);
+  const source = sourceInfo(model);
+  const valid = Boolean(
+    source?.enabled &&
+    model.name === source.title &&
+    model.sourceRevision === source.source.revision &&
+    JSON.stringify(model.sourceHashes) ===
+      JSON.stringify(source.files.map((file) => file.sha256)) &&
+    JSON.stringify(model.parameters) === "{}" &&
+    model.simulation?.duration === source.simulation.duration &&
+    model.simulation?.step === source.simulation.step,
+  );
+  return valid
+    ? api("validate", model)
+    : {
+        valid: false,
+        issues: [
+          {
+            level: "error",
+            field: "model",
+            message:
+              "This source model is unavailable or its preserved study settings were changed.",
+          },
+        ],
+      };
+}
+async function runSource(id, runToken = null) {
+  const response = await fetch("/api/source-run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(runToken ? { id, runToken } : { id }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const error = new Error(
+      data.error || `Source run failed (${response.status})`,
+    );
+    error.details = data;
+    throw error;
+  }
+  return data;
+}
+function snapshot() { return {model:structuredClone(state.model),step:state.step}; }
+function pushHistory() {
+  state.history.push(snapshot());
+  if (state.history.length > 50) state.history.shift();
+  state.future = [];
+}
+function updateHistoryButtons() {
+  $("undoButton").disabled = !state.history.length || state.busy;
+  $("redoButton").disabled = !state.future.length || state.busy;
+}
+function changed() {
+  markNativeDirty();
+  if (state.step && assemblyKind(state.model)) {
+    const ids = new Set(state.model.bodies.map(body => body.id));
+    if (Object.values(state.step.metadata.bindings).some(binding => !ids.has(binding.body))) {
+      state.step = {...state.step,metadata:{...state.step.metadata,bindings:Object.fromEntries(Object.entries(state.step.metadata.bindings).filter(([,binding]) => ids.has(binding.body)))}};
+      if (view) view.stepAsset=state.step;
+      notice("A STEP attachment was removed with its body; check the remaining part bindings.", "warn");
+      renderStepControls();
+    }
+  }
+  state.playing = false;
+  state.validation = null;
+  saveLocal();
+  updateHistoryButtons();
+  renderMetadata();
+  $("validationBadge").textContent = "Needs check";
+  $("validationBadge").className = "badge";
+  if (state.result) {
+    renderResult();
+    if (stale())
+      notice(
+        "Parameters changed. The plot belongs to the previous model; the 3D view shows the edited initial configuration. Run again to update the response.",
+        "warn",
+      );
+    else
+      notice(
+        "Model restored. The displayed response matches these parameters.",
+      );
+  }
+  const p = state.model.parameters;
+  if (
+    (state.model.kind === "spatial-assembly" ? Object.values(p.gravity || {}).every(Number.isFinite) : Object.values(p).every(Number.isFinite)) &&
+    (["source-example", "planar-assembly", "spatial-assembly"].includes(state.model.kind)
+      ? Boolean(visualInfo()) && (!assemblyKind(state.model) || (state.model.bodies.length > 0 && state.model.bodies.every(body => Object.values(body.pose).every(Number.isFinite) && Object.values(body.velocity).every(Number.isFinite)) && state.model.joints.every(joint => Object.values(joint.parentAnchor || joint.anchorA).every(Number.isFinite) && Object.values(joint.childAnchor || joint.anchorB).every(Number.isFinite)) && (state.model.forces || []).every(force => Object.values(force.anchorA).every(Number.isFinite) && Object.values(force.anchorB).every(Number.isFinite))))
+      : industry[state.model.kind]
+        ? Object.entries(p).every(
+            ([key, value]) => !/mass|length|stiffness/i.test(key) || value > 0,
+          )
+        : state.model.kind === "double-pendulum"
+          ? p.mass1 > 0 && p.mass2 > 0 && p.length1 > 0 && p.length2 > 0
+          : p.mass > 0 && (state.model.kind !== "pendulum" || p.length > 0))
+  )
+    view?.setModel(state.model, false, visualInfo());
+  if (state.result && !stale()) setFrame(state.frame);
+  else {
+    $("viewTime").textContent = "t = 0.000 s";
+    $("viewSource").textContent = "Initial configuration";
+  }
+  clearTimeout(validationTimer);
+  validationTimer = setTimeout(() => validate(false), 300);
+}
+function setNumber(section, key, raw) {
+  pushHistory();
+  state.model[section][key] = raw.trim() === "" ? null : Number(raw);
+  changed();
+}
+function renderMetadata() {
+  $("kinematicsButton").hidden = state.model.kind !== "spatial-assembly";
+  const m = state.model;
+  const source = sourceInfo(m);
+  const industrial = industry[m.kind];
+  const pendulum = m.kind !== "mass-spring";
+  const double = m.kind === "double-pendulum";
+  $("documentName").textContent = m.name;
+  $("treeProjectName").textContent = m.name;
+  $("viewportName").textContent = m.name;
+  $("mechanismType").textContent = double
+    ? "DOUBLE PENDULUM"
+    : pendulum
+      ? "PENDULUM"
+      : "MASS–SPRING";
+  $("viewportDescription").textContent = double
+    ? "Two connected bodies. Coupled, nonlinear motion."
+    : pendulum
+      ? "Gravity, inertia and one rotational degree of freedom."
+      : "A guided mass, an elastic spring and viscous damping.";
+  $("signalTitle").textContent = double
+    ? "Link angles · 1 / 2"
+    : pendulum
+      ? "Angular displacement"
+      : "Linear displacement";
+  $("durationMetric").innerHTML =
+    `${format(m.simulation.duration, 2)} <span>s</span>`;
+  $("stepMetric").innerHTML =
+    `${Number.isFinite(m.simulation.step) ? String(m.simulation.step) : "—"} <span>s</span>`;
+  $("endTime").textContent = `${format(m.simulation.duration)} s`;
+  $("modelKindBadge").textContent = double
+    ? "2 moving bodies · 2 joints"
+    : pendulum
+      ? "1 moving body · 1 joint"
+      : "1 moving body · 1 translation";
+  $("assumptions").textContent = double
+    ? "Two point masses on massless rigid links with planar revolute constraints. Both input angles are absolute from vertical down. Zero initial angular velocity; no damping. The visible geometry is illustrative."
+    : pendulum
+      ? "Ideal point mass on a massless rigid link, constrained to a vertical plane. No friction or aerodynamic drag. The visible sphere and support are illustrative."
+      : "A mass constrained to horizontal translation with a linear spring and viscous damper. No gravity along the travel axis. The visible block and rail are illustrative.";
+  if (industrial) {
+    $("mechanismType").textContent = industrial.title;
+    $("viewportDescription").textContent = industrial.description;
+    $("modelKindBadge").textContent = industrial.badge;
+    $("assumptions").textContent = industrial.assumptions;
+    $("signalTitle").textContent = industrial.signals[0].title;
+  }
+  if (source) {
+    $("mechanismType").textContent = `${source.category} · UPSTREAM MODEL`;
+    $("viewportDescription").textContent = source.description;
+    $("modelKindBadge").textContent =
+      `${source.nodes.length} recorded nodes · ${source.license.spdx}`;
+    $("assumptions").textContent =
+      `${source.visualizationNote} Original upstream input is read-only in this viewer. Source: ${source.source.url}. ${source.license.evidence}`;
+    $("signalTitle").textContent = "Node position · X / Y / Z";
+  }
+  if (m.kind === "planar-assembly") {
+    $("mechanismType").textContent = "PLANAR RIGID-BODY ASSEMBLY";
+    $("viewportDescription").textContent = "Author planar bodies, revolute hinges, sliders and loads in the X–Z plane.";
+    $("modelKindBadge").textContent = `${m.bodies.length} bodies · ${m.joints.length} joints`;
+    $("assumptions").textContent = "Planar rigid bodies in a rooted tree of revolute and prismatic joints, with optional axial spring-dampers and constant COM loads. Node-origin links are schematic. Closed loops, contact, flexible bodies and prescribed drives are not yet supported in this editor.";
+    $("signalTitle").textContent = "Body position · X / Y / Z";
+  }
+  if (m.kind === "spatial-assembly") {
+    $("mechanismType").textContent = "3D RIGID-BODY ASSEMBLY";
+    $("viewportDescription").textContent = "Edit 3D bodies and local-frame joints; loop constraints are solved by MBDyn.";
+    $("modelKindBadge").textContent = `${m.bodies.length} bodies · ${m.joints.length} joints`;
+    $("assumptions").textContent = "3D rigid bodies may be free or joined with revolute, prismatic, cylindrical, universal, spherical or weld joints, with optional 3D spring-dampers. Loop solvability and nonredundant constraints must be verified by the solver. STEP mass properties can be calculated at an explicit density and applied when body-frame requirements are met.";
+    $("signalTitle").textContent = "Body position · X / Y / Z";
+  }
+}
+function renderTree() {
+  const pendulum = state.model.kind !== "mass-spring";
+  const double = state.model.kind === "double-pendulum";
+  const entries = [
+    [
+      "BODIES",
+      "2",
+      [
+        ["ground", "ground", "Ground", "Fixed"],
+        ["body", "cube", pendulum ? "Point mass" : "Translating mass", ""],
+      ],
+    ],
+    [
+      "CONNECTIONS",
+      "1",
+      [
+        [
+          "joint",
+          "joint",
+          pendulum ? "Revolute joint" : "Prismatic guide",
+          "1 DOF",
+        ],
+      ],
+    ],
+    [
+      "EXCITATION",
+      "1",
+      [
+        [
+          pendulum ? "load" : "spring",
+          pendulum ? "gravity" : "wave",
+          pendulum ? "Gravity" : "Spring + damper",
+          "",
+        ],
+      ],
+    ],
+    ["STUDIES", "1", [["study", "clock", "Transient response", ""]]],
+  ];
+  if (double) {
+    entries[0][1] = "3";
+    entries[0][2][1][2] = "Mass 1";
+    entries[0][2].push(["body2", "cube", "Mass 2", ""]);
+    entries[1][1] = "2";
+    entries[1][2][0][2] = "Ground revolute";
+    entries[1][2].push(["joint2", "joint", "Link revolute", "1 DOF"]);
+  }
+  const industrial = industry[state.model.kind];
+  if (industrial) {
+    entries[0] = [
+      "BODIES",
+      String(industrial.bodies.length),
+      industrial.bodies,
+    ];
+    entries[1] = [
+      "CONNECTIONS",
+      String(industrial.connections.length),
+      industrial.connections,
+    ];
+    entries[2] = [
+      "EXCITATION",
+      String(industrial.excitation.length),
+      industrial.excitation,
+    ];
+  }
+  const source = sourceInfo();
+  if (source) {
+    entries[0] = [
+      "NODES",
+      String(source.nodes.length),
+      source.nodes.map((node, index) => [
+        index ? `node-${node.id}` : "body",
+        "cube",
+        node.label,
+        String(node.id),
+      ]),
+    ];
+    entries[1] = [
+      "CONNECTIONS",
+      String(source.connections.length),
+      source.connections.map((connection) => [
+        "joint",
+        "joint",
+        connection.label,
+        `${connection.from} ↔ ${connection.to}`,
+      ]),
+    ];
+    entries[2] = [
+      "PROVENANCE",
+      "1",
+      [["source", "book", "Upstream model", source.license.spdx]],
+    ];
+  }
+  if (state.model.kind === "planar-assembly") {
+    entries[0] = ["BODIES", String(state.model.bodies.length), state.model.bodies.map((body,index) => [index ? `node-${body.id}` : "body", "cube", body.name, body.id])];
+    entries[1] = ["JOINTS", String(state.model.joints.length), state.model.joints.map(joint => [`joint-${joint.id}`, "joint", joint.id, `${joint.parent} ↔ ${joint.child}`])];
+    entries[2] = ["FORCES", String(1+(state.model.forces || []).length+(state.model.loads || []).length+(state.model.rotationalElements || []).length+(state.model.jointTorques || []).length), [["load", "gravity", "Gravity", ""],...(state.model.forces || []).map(force=>[`force-${force.id}`,"spring",force.id,`${force.a} ↔ ${force.b}`]),...(state.model.loads || []).map(load=>[`applied-${load.id}`,"gravity",load.id,load.body]),...(state.model.rotationalElements || []).map(item=>[`rotary-${item.id}`,"spring",item.id,item.joint]),...(state.model.jointTorques || []).map(item=>[`torque-${item.id}`,"joint",item.id,item.joint])]];
+  }
+  if (state.model.kind === "spatial-assembly") {
+    entries[0] = ["BODIES", String(state.model.bodies.length), state.model.bodies.map((body,index)=>[index?`node-${body.id}`:"body","cube",body.name,body.id])];
+    entries[1] = ["JOINTS", String(state.model.joints.length), state.model.joints.map(joint=>[`joint-${joint.id}`,"joint",joint.id,`${joint.a} ↔ ${joint.b}`])];
+    entries[2] = ["FORCES", String(1+(state.model.forces || []).length+(state.model.loads || []).length+(state.model.rotationalElements || []).length+(state.model.jointTorques || []).length+(state.model.jointForces || []).length+(state.model.contacts || []).length), [["load","gravity","Gravity",""],...(state.model.forces || []).map(item=>[`force-${item.id}`,"spring",item.id,`${item.a} ↔ ${item.b}`]),...(state.model.loads || []).map(item=>[`applied-${item.id}`,"gravity",item.id,item.body]),...(state.model.rotationalElements || []).map(item=>[`rotary-${item.id}`,"spring",item.id,item.joint]),...(state.model.jointTorques || []).map(item=>[`torque-${item.id}`,"joint",item.id,item.joint]),...(state.model.jointForces || []).map(item=>[`joint-force-${item.id}`,"joint",item.id,item.joint]),...(state.model.contacts || []).map(item=>[`contact-${item.id}`,"force",item.id,item.body])]];
+  }
+  const root = $("modelTree");
+  root.replaceChildren();
+  for (const [name, count, rows] of entries) {
+    const group = document.createElement("div");
+    group.className = "tree-group";
+    group.innerHTML = `<span>${name}</span><span>${count}</span>`;
+    root.append(group);
+    for (const [id, symbol, label, badge] of rows) {
+      const button = document.createElement("button");
+      button.className = `tree-item ${state.selection === id ? "active" : ""}`;
+      button.dataset.entity = id;
+      button.setAttribute("aria-pressed", String(state.selection === id));
+      button.innerHTML = `${icon(symbol)}<span>${escapeHtml(label)}</span><span class="tree-state">${escapeHtml(badge)}</span>`;
+      button.onclick = () => select(id);
+      root.append(button);
+    }
+  }
+  renderTopology();
+}
+function select(entity) {
+  state.selection = entity;
+  const source = visualInfo();
+  if (source && (entity === "body" || entity.startsWith("node-"))) {
+    state.selectedNode =
+      entity === "body"
+        ? source.nodes[0]?.id
+        : source.nodes.find((node) => `node-${node.id}` === entity)?.id;
+    if (["source-example", "planar-assembly", "spatial-assembly"].includes(state.result?.model?.kind)) renderResult();
+  }
+  renderTree();
+  renderProperties();
+  view?.setSelection(entity);
+  if (entity === "study") $("durationInput").focus();
+}
+function renderProperties() {
+  const pendulum = state.model.kind !== "mass-spring";
+  const double = state.model.kind === "double-pendulum";
+  const titles = {
+    body: double ? "Mass 1" : pendulum ? "Point mass" : "Translating mass",
+    body2: "Mass 2",
+    ground: "Ground reference",
+    joint: pendulum ? "Revolute joint" : "Prismatic guide",
+    joint2: "Link revolute joint",
+    load: "Gravity field",
+    spring: "Spring + damper",
+    study: "Transient study",
+  };
+  const industrial = industry[state.model.kind];
+  const source = sourceInfo();
+  const assembly = state.model.kind === "planar-assembly";
+  const spatial = state.model.kind === "spatial-assembly";
+  const graph = assembly || spatial ? visualInfo() : source;
+  if (industrial)
+    for (const row of [
+      ...industrial.bodies,
+      ...industrial.connections,
+      ...industrial.excitation,
+    ])
+      titles[row[0]] = row[2];
+  if (source) {
+    titles.body = source.nodes[0]?.label || "Source node";
+    for (const node of source.nodes) titles[`node-${node.id}`] = node.label;
+    titles.joint = "Schematic joint graph";
+    titles.source = "Source and license";
+  }
+  if (assembly || spatial) {
+    titles.body = graph.nodes[0]?.label || "Body";
+    for (const node of graph.nodes) titles[`node-${node.id}`] = node.label;
+    for (const joint of state.model.joints) titles[`joint-${joint.id}`] = `${spatial ? joint.type : joint.type === "prismatic" ? "Slider" : "Hinge"} · ${joint.id}`;
+    for (const force of state.model.forces || []) titles[`force-${force.id}`] = `${force.type === "oleo-strut" ? "Oleo strut" : "Spring / damper"} · ${force.id}`;
+    for (const load of state.model.loads || []) titles[`applied-${load.id}`] = `External load · ${load.id}`;
+    for (const item of state.model.rotationalElements || []) titles[`rotary-${item.id}`] = `Rotational spring / damper · ${item.id}`;
+    for (const item of state.model.jointTorques || []) titles[`torque-${item.id}`] = `Time-varying torque · ${item.id}`;
+    for (const item of state.model.jointForces || []) titles[`joint-force-${item.id}`] = `Axial joint force · ${item.id}`;
+    for (const item of state.model.contacts || []) titles[`contact-${item.id}`] = `Sphere-plane contact · ${item.id}`;
+  }
+  $("propertyMode").textContent = source ? "Read-only deck" : "Editable";
+  $("selectionTitle").textContent = titles[state.selection] || "Mechanism";
+  $("selectionSubtitle").textContent = source
+    ? "Recorded upstream node / connection"
+    : spatial ? "Editable 3D rigid body / joint" : assembly ? "Editable planar body / joint / load"
+    : state.selection === "ground"
+      ? state.model.kind === "suspension"
+        ? "Prescribed vertical road motion"
+        : "Fixed in the global frame"
+      : state.selection === "joint"
+        ? "Template-defined constraint"
+        : "Physical parameters";
+  const group = document.createElement("div");
+  group.className = "property-group";
+  const heading = document.createElement("h3");
+  heading.textContent = source
+    ? "Upstream model · read-only"
+    : "Mechanism parameters";
+  group.append(heading);
+  if (source) {
+    const detail = document.createElement("p");
+    detail.textContent = `${source.description} ${source.visualizationNote} License: ${source.license.spdx}. Revision: ${source.source.revision}.`;
+    group.append(detail);
+  }
+  if (graph) {
+    const label = document.createElement("label");
+    label.textContent = "Measure distance to node";
+    const select = document.createElement("select");
+    select.id = "measureNode";
+    for (const node of graph.nodes) {
+      const option = document.createElement("option");
+      option.value = String(node.id);
+      option.textContent = `${node.label} · ${node.id}`;
+      select.append(option);
+    }
+    if (
+      !graph.nodes.some(
+        (node) => String(node.id) === String(state.measureNode),
+      )
+    )
+      state.measureNode = graph.nodes.at(-1)?.id;
+    select.value = String(state.measureNode);
+    select.onchange = () => {
+      state.measureNode = select.value;
+      updateSourceProbe();
+    };
+    label.append(select);
+    group.append(label);
+    const probe = document.createElement("output");
+    probe.id = "sourceProbe";
+    probe.className = "source-probe";
+    group.append(probe);
+  }
+  for (const [key, title, unit, min, step] of fields[state.model.kind]) {
+    const label = document.createElement("label");
+    label.textContent = title;
+    const wrapper = document.createElement("span");
+    wrapper.className = "number-field";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.id = `field-${key}`;
+    input.value = state.model.parameters[key] ?? "";
+    input.step = String(step);
+    input.setAttribute("aria-label", title);
+    input.dataset.field = `parameters.${key}`;
+    if (min !== null) input.min = String(min);
+    input.onchange = () => setNumber("parameters", key, input.value);
+    const units = document.createElement("span");
+    units.textContent = unit;
+    wrapper.append(input, units);
+    label.append(wrapper);
+    group.append(label);
+  }
+  $("properties").replaceChildren(group);
+  if (assembly) renderAssemblyEditor({
+    container: $("properties"), model: state.model, selection: state.selection,
+    notify: (message,type="warn") => notice(message, type),
+    createSolid: createPrimitiveSolid,
+    mutate: (change, selection) => {
+      if (state.busy) {notice("Wait for the active simulation before editing the assembly.", "warn");return false;}
+      pushHistory(); change(state.model);
+      if (selection) state.selection = selection;
+      changed(); renderTree(); renderProperties(); view?.setSelection(state.selection);
+      return true;
+    },
+  });
+  if (spatial) renderSpatialEditor({container:$("properties"),model:state.model,selection:state.selection,createSolid:createPrimitiveSolid,notify:(message,type="warn")=>notice(message,type),mutate:(change,selection)=>{
+    if(state.busy){notice("Wait for the active simulation before editing the assembly.","warn");return false;}
+    pushHistory();change(state.model);if(selection)state.selection=selection;
+    changed();renderTree();renderProperties();view?.setSelection(state.selection);return true;
+  }});
+  $("durationInput").value = state.model.simulation.duration ?? "";
+  $("stepInput").value = state.model.simulation.step ?? "";
+  $("inspectorNote").textContent = source
+    ? "The upstream deck and its original study settings are preserved. The node graph is schematic; open the deck to inspect actual elements."
+    : spatial ? "Edit 3D poses, velocities and local joint frames in SI units. Lines show body origins, not solid geometry." : assembly ? "Edit bodies, joint anchors and loads in SI units. Lines show body origins, not solid geometry."
+    : industrial
+      ? "Edit this engineering template in SI units. Open the example guide for its equations, parameter studies and modelling limits."
+      : state.selection === "ground"
+        ? `The ground is fixed. This template has ${double ? "two" : "one"} independent motion coordinate${double ? "s" : ""}; support geometry is illustrative.`
+        : state.selection.startsWith("joint")
+          ? "This template has fixed connections. Use a planar assembly example to add and edit revolute hinges."
+          : "The visible mechanism is generated from these parameters. This release edits verified templates; the exported deck remains inspectable.";
+  for (const input of document.querySelectorAll(".inspector input"))
+    input.disabled = state.busy || Boolean(source);
+  $("previewButton").disabled = state.busy || Boolean(graph);
+  if (graph) updateSourceProbe();
+}
+function updateSourceProbe() {
+  const source = visualInfo(),
+    output = $("sourceProbe");
+  if (!source || !output) return;
+  const frame =
+    ["source-example", "planar-assembly", "spatial-assembly"].includes(state.result?.model?.kind) && !stale()
+      ? state.result.samples[state.frame]
+      : { nodes: source.initialNodes };
+  const node = frame?.nodes?.find(
+    (item) => String(item.id) === String(state.selectedNode),
+  );
+  const other = frame?.nodes?.find(
+    (item) => String(item.id) === String(state.measureNode),
+  );
+  if (!node) {
+    output.textContent = "No coordinates for this node in the selected frame.";
+    return;
+  }
+  const distance = other
+    ? Math.hypot(node.x - other.x, node.y - other.y, node.z - other.z)
+    : NaN;
+  output.textContent = `Node ${node.id}: X ${format(node.x, 5)} m · Y ${format(node.y, 5)} m · Z ${format(node.z, 5)} m\nDistance ${format(distance, 5)} m`;
+}
+function renderTopology() {
+  const source = visualInfo();
+  if (source) {
+    $("topology").innerHTML =
+      `<span class="eyebrow">${state.model.kind === "planar-assembly" ? "PLANAR ASSEMBLY" : state.model.kind === "spatial-assembly" ? "3D ASSEMBLY" : "UPSTREAM SCHEMATIC"} · NODE ORIGINS</span><div class="industry-topology">${source.connections.map((connection) => `<div class="topology-node"><b>${escapeHtml(connection.from)} ↔ ${escapeHtml(connection.to)}</b><small>${escapeHtml(connection.label)}</small></div>`).join("")}</div><p class="topology-note">${escapeHtml(source.visualizationNote)}</p>`;
+    return;
+  }
+  const industrial = industry[state.model.kind];
+  if (industrial) {
+    $("topology").innerHTML =
+      `<span class="eyebrow">${industrial.badge}</span><div class="industry-topology">${industrial.topology.map(([name, role], index) => `${index ? '<span class="topology-arrow">↕</span>' : ""}<div class="topology-node"><b>${name}</b><small>${role}</small></div>`).join("")}</div><p class="topology-note">${industrial.assumptions}</p>`;
+    return;
+  }
+  const p = state.model.kind !== "mass-spring",
+    double = state.model.kind === "double-pendulum";
+  $("topology").innerHTML =
+    `<span class="eyebrow">${double ? "TWO INDEPENDENT MOTION COORDINATES" : "ONE INDEPENDENT MOTION COORDINATE"}</span><div class="topology-row"><div class="topology-node"><b>Ground</b><small>Fixed reference</small></div><span class="topology-arrow">↔</span><div class="topology-node selected"><b>${p ? "Revolute joint" : "Prismatic guide"}</b><small>${p ? "Rotation about Y" : "Translation along X"}</small></div></div><span class="topology-arrow">↕</span><div class="topology-row"><div class="topology-node"><b>${double ? "Mass 1" : p ? "Point mass" : "Translating mass"}</b><small>${p ? "Gravity force" : "Spring + viscous damper"}</small></div>${double ? '<span class="topology-arrow">↔</span><div class="topology-node selected"><b>Mass 2</b><small>Second revolute joint</small></div>' : ""}</div><p class="topology-note">Template topology. Select an entity in the model browser to inspect its role; edit physical parameters in the properties panel.</p>`;
+}
+function showIssues(issues) {
+  const list = $("issuesList");
+  list.replaceChildren();
+  $("issuesSection").hidden = !issues.length;
+  for (const issue of issues) {
+    const li = document.createElement("li");
+    li.className = issue.level;
+    const button = document.createElement("button");
+    const key = issue.field?.split(".").at(-1);
+    const label =
+      fields[state.model.kind].find((f) => f[0] === key)?.[1] ||
+      { duration: "Duration", step: "Time step", name: "Project name" }[key] ||
+      issue.field ||
+      "Model";
+    button.textContent = `${label}: ${issue.message}`;
+    button.onclick = () => {
+      if (state.model.kind === "spatial-assembly") {
+        const parts=(issue.field || "").split(".");
+        if(parts[0] === "bodies" && state.model.bodies[Number(parts[1])]){const body=state.model.bodies[Number(parts[1])];select(Number(parts[1])===0?"body":`node-${body.id}`);$(`spatial-body-${body.id}-${parts.slice(2).join("-")}`)?.focus();return;}
+        if(parts[0] === "joints" && state.model.joints[Number(parts[1])]){const joint=state.model.joints[Number(parts[1])];select(`joint-${joint.id}`);$(`spatial-joint-${joint.id}-${parts.slice(2).join("-")}`)?.focus();return;}
+        if(parts[0] === "forces" && state.model.forces?.[Number(parts[1])]){const force=state.model.forces[Number(parts[1])];select(`force-${force.id}`);$(`spatial-force-${force.id}-${parts.slice(2).join("-")}`)?.focus();return;}
+        if(["rotationalElements","jointTorques"].includes(parts[0]) && state.model[parts[0]]?.[Number(parts[1])]){const item=state.model[parts[0]][Number(parts[1])],prefix=parts[0] === "rotationalElements" ? "rotary" : "torque";select(`${prefix}-${item.id}`);$(`spatial-${prefix}-${item.id}-${parts.slice(2).join("-")}`)?.focus();return;}
+        if(parts[0] === "jointForces" && state.model.jointForces?.[Number(parts[1])]){const item=state.model.jointForces[Number(parts[1])];select(`joint-force-${item.id}`);$(`spatial-joint-force-${item.id}-${parts.slice(2).join("-")}`)?.focus();return;}
+        if(parts[0] === "contacts" && state.model.contacts?.[Number(parts[1])]){const item=state.model.contacts[Number(parts[1])];select(`contact-${item.id}`);$(`spatial-contact-${item.id}-${parts.slice(2).join("-")}`)?.focus();return;}
+        if(parts[0] === "loads" && state.model.loads?.[Number(parts[1])]){const item=state.model.loads[Number(parts[1])];select(`applied-${item.id}`);$(`spatial-load-${item.id}-${parts.slice(2).join("-")}`)?.focus();return;}
+        if(parts[0] === "parameters" && parts[1] === "gravity"){$(`spatial-gravity-${parts[2]}`)?.focus();return;}
+      }
+      if (state.model.kind === "planar-assembly") {
+        const parts = (issue.field || "").split(".");
+        if (parts[0] === "bodies" && state.model.bodies[Number(parts[1])]) {
+          const body = state.model.bodies[Number(parts[1])];
+          select(Number(parts[1]) === 0 ? "body" : `node-${body.id}`);
+          $(`graph-body-${body.id}-${parts.slice(2).join("-")}`)?.focus();
+          return;
+        }
+        if (parts[0] === "joints" && state.model.joints[Number(parts[1])]) {
+          const joint = state.model.joints[Number(parts[1])];
+          select(`joint-${joint.id}`);
+          $(`graph-joint-${joint.id}-${parts.slice(2).join("-")}`)?.focus();
+          return;
+        }
+        if (parts[0] === "forces" && state.model.forces?.[Number(parts[1])]) {
+          const force=state.model.forces[Number(parts[1])];
+          select(`force-${force.id}`);
+          $(`graph-force-${force.id}-${parts.slice(2).join("-")}`)?.focus();
+          return;
+        }
+        if (["rotationalElements", "jointTorques"].includes(parts[0]) && state.model[parts[0]]?.[Number(parts[1])]) {
+          const item=state.model[parts[0]][Number(parts[1])], prefix=parts[0] === "rotationalElements" ? "rotary" : "torque";
+          select(`${prefix}-${item.id}`);
+          $(`graph-${prefix}-${item.id}-${parts.slice(2).join("-")}`)?.focus();
+          return;
+        }
+        if (parts[0] === "loads" && state.model.loads?.[Number(parts[1])]) {
+          const load=state.model.loads[Number(parts[1])];
+          select(`applied-${load.id}`);
+          $(`graph-load-${load.id}-${parts.slice(2).join("-")}`)?.focus();
+          return;
+        }
+      }
+      (
+        $(`field-${key}`) ||
+        $(
+          key === "duration"
+            ? "durationInput"
+            : key === "step"
+              ? "stepInput"
+              : "properties",
+        )
+      )?.focus();
+    };
+    li.append(button);
+    list.append(li);
+  }
+}
+async function validate(show = true) {
+  const request = signature();
+  try {
+    const result = await checkModel(state.model);
+    if (request !== signature()) return result;
+    state.validation = result;
+    showIssues(result.issues || []);
+    $("validationBadge").textContent = result.valid
+      ? "Ready"
+      : "Needs attention";
+    $("validationBadge").className = `badge ${result.valid ? "green" : "red"}`;
+    $("readinessText").textContent = result.valid
+      ? sourceInfo()
+        ? "Upstream deck selected; source hashes are checked before execution."
+        : "Physical inputs and study settings passed the model checks."
+      : "Resolve the highlighted inputs before running the solver.";
+    if (show)
+      notice(
+        result.valid
+          ? "Model checks passed. You can run the MBDyn simulation."
+          : "Model validation found issues. Select an issue to find its field.",
+        result.valid ? "" : "error",
+      );
+    return result;
+  } catch (error) {
+    if (show) notice(error.message, "error");
+    return { valid: false, issues: [] };
+  }
+}
+function applyModel(model, remember = true) {
+  if (remember) pushHistory();
+  state.model = structuredClone(model);
+  if (state.step && Object.keys(state.step.metadata.bindings).length) {
+    const allowed=new Set(assemblyKind(model) ? model.bodies.map(body=>body.id) : []);
+    if (Object.values(state.step.metadata.bindings).some(binding=>!allowed.has(binding.body) || ((model.kind === "spatial-assembly") !== (Object.hasOwn(binding.pose,"rx") && Object.hasOwn(binding.pose,"rz"))))) {
+      state.step={...state.step,metadata:{...state.step.metadata,bindings:{}}};
+      if (view) view.stepAsset=state.step;
+    }
+  }
+  state.selection = "body";
+  state.selectedNode = visualInfo()?.nodes[0]?.id ?? null;
+  state.measureNode = visualInfo()?.nodes.at(-1)?.id ?? null;
+  state.signal = 0;
+  state.playing = false;
+  state.validation = null;
+  renderMetadata();
+  renderTree();
+  renderProperties();
+  view?.setModel(state.model, true, visualInfo());
+  saveLocal();
+  updateHistoryButtons();
+  changed();
+  renderStepControls();
+}
+function switchStep(step) {
+  document
+    .querySelectorAll("[data-step]")
+    .forEach((b) => b.classList.toggle("active", b.dataset.step === step));
+  if (step === "validate") validate();
+  if (step === "simulate") {
+    if (sourceInfo())
+      notice(
+        "The source deck controls duration and time step. Run the preserved upstream model or inspect its input.",
+      );
+    else {
+      $("durationInput").focus();
+      notice(
+        "Set the study duration and time step, then choose Run simulation.",
+      );
+    }
+  }
+  if (step === "results" && !state.result)
+    notice(
+      "No result is loaded. Run MBDyn or choose Reference preview to generate a response.",
+    );
+  if (step === "model" && !stale()) notice("");
+}
+function setBusy(busy) {
+  state.busy = busy;
+  $("cancelRunButton").hidden = !busy || !activeRunToken;
+  $("cancelRunButton").disabled = false;
+  document.body.classList.toggle("busy", busy);
+  for (const id of [
+    "runButton",
+    "previewButton",
+    "examplesButton",
+    "importButton",
+    "saveButton",
+    "saveAsButton",
+    "validateButton",
+    "deckButton",
+  ])
+    $(id).disabled = busy || (id === "previewButton" && Boolean(visualInfo())) || (state.saving && ["saveButton", "saveAsButton"].includes(id));
+  document
+    .querySelectorAll(".inspector input")
+    .forEach((i) => (i.disabled = busy || Boolean(sourceInfo())));
+  if (nativeDesktop) nativeDesktop.notify(busy ? "busy" : "idle");
+  updateHistoryButtons();
+  $("runButton").querySelector("span:last-child").textContent = busy
+    ? "Solving…"
+    : "Run simulation";
+}
+async function run(preview = false) {
+  if (state.busy || state.saving || state.opening) return;
+  setBusy(true);
+  const checked = await validate(false);
+  if (!checked.valid) {
+    setBusy(false);
+    notice(
+      "The model needs attention before it can run. Review the highlighted fields.",
+      "error",
+    );
+    switchStep("validate");
+    return;
+  }
+  const snapshot = structuredClone(state.model);
+  const key = signature();
+  activeRunToken = preview ? null : [...crypto.getRandomValues(new Uint8Array(16))].map(value=>value.toString(16).padStart(2,"0")).join("");
+  setBusy(true);
+  state.playing = false;
+  notice(
+    preview
+      ? "Computing an independent reference response…"
+      : "MBDyn is solving the model. The log and response will appear when the process finishes.",
+  );
+  status(preview ? "Reference calculation in progress" : "Solver job running");
+  try {
+    const result =
+      snapshot.kind === "source-example"
+        ? await runSource(snapshot.sourceExampleId, activeRunToken)
+        : await api(preview ? "preview" : "run", snapshot, activeRunToken);
+    if (result.ok === false)
+      throw new Error(
+        result.error || "The solver did not finish successfully.",
+      );
+    if (!Array.isArray(result.samples) || !result.samples.length)
+      throw new Error("No response samples were returned.");
+    if (["source-example", "planar-assembly", "spatial-assembly"].includes(snapshot.kind)) result.model = snapshot;
+    state.result = result;
+    state.lastFailure = null;
+    state.resultSignature = key;
+    markNativeDirty();
+    state.frame = 0;
+    playTime = 0;
+    state.playing = false;
+    renderResult();
+    setFrame(0);
+    switchStep("results");
+    notice(
+      result.metrics?.contactAssumptionViolated
+        ? "Tire load became negative. The continuous-contact suspension assumption is invalid for this run; this model does not simulate wheel lift-off. Reduce the excitation or use a contact model before interpreting the response."
+        : preview
+          ? "Reference preview. This response is computed independently and is not MBDyn solver output."
+          : `MBDyn completed successfully · ${result.samples.length.toLocaleString()} samples.`,
+      preview || result.metrics?.contactAssumptionViolated ? "warn" : "",
+    );
+    status(
+      preview ? "Reference preview · not MBDyn output" : "MBDyn run completed",
+    );
+    $("runId").textContent = result.runId || "Reference calculation";
+  } catch (error) {
+    notice(error.message, "error");
+    showIssues(error.issues || []);
+    state.lastFailure = error.details;
+    const cancelled=error.details?.cancelled === true;
+    status(cancelled ? "Run cancelled · partial log retained" : "Run failed · inspect the reported error");
+    if (error.details?.runId)
+      $("runId").textContent = `${cancelled ? "Cancelled" : "Failed"} · ${error.details.runId}`;
+  } finally {
+    activeRunToken = null;
+    setBusy(false);
+  }
+}
+function elementSignals(model, result) {
+  return [
+    ...((model?.forces || []).length ? [
+      {type:"force",title:"Spring length / extension",unit:"m",channels:[["length","Length"],["extension","Extension"]]},
+      {type:"force",title:(model.forces || []).some(force=>force.type==="oleo-strut") ? "Axial tension (native / reconstructed)" : "Spring tension (reconstructed)",unit:"N",channels:[["force","Tension"]]},
+      {type:"force",title:"Spring length rate",unit:"m/s",channels:[["rate","Rate"]]},
+    ] : []),
+    ...((model?.joints || []).some(joint=>joint.type==="prismatic") ? [
+      {type:"slider",title:"Slider position (reconstructed)",unit:"m",channels:[["position","Position"]]},
+      {type:"slider",title:"Slider velocity (reconstructed)",unit:"m/s",channels:[["velocity","Velocity"]]},
+    ] : []),
+    ...((model?.joints || []).some(joint=>joint.type==="cylindrical") ? [
+      {type:"cylinder",title:"Cylindrical position",unit:"m",channels:[["position","Position"]]},
+      {type:"cylinder",title:"Cylindrical velocity",unit:"m/s",channels:[["velocity","Velocity"]]},
+      {type:"cylinder",title:"Cylindrical rotation",unit:"rad",channels:[["angle","Angle"]]},
+      {type:"cylinder",title:"Cylindrical angular velocity",unit:"rad/s",channels:[["angularVelocity","Angular velocity"]]},
+    ] : []),
+    ...((model?.rotationalElements || []).length ? [
+      {type:"rotary",title:"Rotational deflection",unit:"rad",channels:[["angle","Deflection"]]},
+      {type:"rotary",title:"Rotational velocity",unit:"rad/s",channels:[["velocity","Velocity"]]},
+      {type:"rotary",title:"Rotational spring torque",unit:"N·m",channels:[["torque","Torque"]]},
+    ] : []),
+    ...((model?.jointTorques || []).length ? [
+      {type:"torque",title:"Actuation torque",unit:"N·m",channels:[["torque","Torque"]]},
+      {type:"torque",title:"Actuation power",unit:"W",channels:[["power","Power"]]},
+      {type:"system",title:"Actuation work (reconstructed)",unit:"J",channels:[["actuationWork","Work"]]},
+    ] : []),
+    ...((model?.contacts || []).length ? [
+      {type:"contact",title:"Contact gap / penetration",unit:"m",channels:[["gap","Gap"],["penetration","Penetration"]]},
+      {type:"contact",title:"Contact normal force (reconstructed)",unit:"N",channels:[["force","Force"]]},
+      {type:"contact",title:"Contact elastic energy",unit:"J",channels:[["energy","Energy"]]},
+      ...((model?.contacts || []).some(contact=>contact.damping>0) ? [
+        {type:"contact",title:"Contact damping power (reconstructed)",unit:"W",channels:[["dampingPower","Power"]]},
+        {type:"contact",title:"Contact dissipated energy (reconstructed)",unit:"J",channels:[["dissipatedEnergy","Energy"]]},
+      ] : []),
+    ] : []),
+    ...((model?.jointForces || []).length ? [
+      {type:"joint-force",title:"Axial joint force",unit:"N",channels:[["force","Force"]]},
+      {type:"joint-force",title:"Axial joint force power",unit:"W",channels:[["power","Power"]]},
+      {type:"system",title:"Axial joint force work (reconstructed)",unit:"J",channels:[["jointForceWork","Work"]]},
+    ] : []),
+    ...(model?.kind === "spatial-assembly" && result?.source === "MBDyn" && result.samples?.[0]?.jointReactions?.length ? [
+      {type:"reaction",title:"Joint reaction force on B · world X / Y / Z",unit:"N",channels:[["force.x","X"],["force.y","Y"],["force.z","Z"]]},
+      {type:"reaction",title:"Joint reaction moment at B anchor · world X / Y / Z",unit:"N·m",channels:[["moment.x","X"],["moment.y","Y"],["moment.z","Z"]]},
+    ] : []),
+    ...(model?.kind === "spatial-assembly" && (model.loads || []).length ? [
+      {type:"load",title:"Applied force · X / Y / Z",unit:"N",channels:[["force.x","X"],["force.y","Y"],["force.z","Z"]]},
+      {type:"load",title:"Applied torque · X / Y / Z",unit:"N·m",channels:[["torque.x","X"],["torque.y","Y"],["torque.z","Z"]]},
+      {type:"load",title:"Applied moment about COM · X / Y / Z",unit:"N·m",channels:[["moment.x","X"],["moment.y","Y"],["moment.z","Z"]]},
+      {type:"load",title:"Load power",unit:"W",channels:[["power","Power"]]},
+    ] : []),
+    ...((model?.loads || []).length ? [
+      {type:"system",title:"Applied power (reconstructed)",unit:"W",channels:[["loadPower","Power"]]},
+      {type:"system",title:"Applied work (reconstructed)",unit:"J",channels:[["appliedWork","Work"]]},
+    ] : []),
+    ...((model?.forces || []).some(force=>force.type==="oleo-strut") ? [
+      {type:"oleo",title:"Oleo gas pressure (native)",unit:"Pa",channels:[["gasPressure","Pressure"]]},
+      {type:"oleo",title:"Oleo force components (native / derived)",unit:"N",channels:[["gasForce","Gas"],["hydraulicForce","Hydraulic"],["stopForce","Stop"]]},
+    ] : []),
+  ];
+}
+function resultSignal() {
+  if (["source-example", "planar-assembly", "spatial-assembly"].includes(state.result?.model?.kind)) {
+    const extra=elementSignals(state.result.model,state.result)[state.signal-4];
+    if (extra) {
+      if(extra.type==="system")return extra;
+      const selected=["slider","cylinder","reaction"].includes(extra.type) ? state.selectedJoint : state.selectedForce;
+      return {...extra,channels:extra.channels.map(([key,label])=>[`${extra.type}:${selected}:${key}`,label])};
+    }
+    const node =
+      state.selectedNode ?? visualInfo(state.result.model)?.nodes[0]?.id;
+    const axes = ["x", "y", "z"];
+    const signals = [
+      { title: "Node position · X / Y / Z", unit: "m", prefix: "" },
+      { title: "Node velocity · X / Y / Z", unit: "m/s", prefix: "v" },
+      { title: "Node Euler 1–2–3 · X / Y / Z", unit: "deg", prefix: "r" },
+      {
+        title: "Node angular velocity · X / Y / Z",
+        unit: "rad/s",
+        prefix: "w",
+      },
+    ];
+    const signal = signals[state.signal] || signals[0];
+    return {
+      ...signal,
+      channels: axes.map((axis) => [
+        `node:${node}:${signal.prefix}${axis}`,
+        axis.toUpperCase(),
+      ]),
+    };
+  }
+  const signals = signalsFor(state.result?.model?.kind || state.model.kind);
+  return signals[state.signal] || signals[0];
+}
+function channelValue(sample, key) {
+  if (key.startsWith("force:")) {const [,id,field]=key.split(":");return sample.forces?.find(item=>item.id===id)?.[field];}
+  if (key.startsWith("oleo:")) {const [,id,field]=key.split(":");return sample.forces?.find(item=>item.id===id)?.[field];}
+  if (key.startsWith("rotary:")) {const [,id,field]=key.split(":");return sample.rotationalStates?.find(item=>item.id===id)?.[field];}
+  if (key.startsWith("torque:")) {const [,id,field]=key.split(":");return sample.actuationStates?.find(item=>item.id===id)?.[field];}
+  if (key.startsWith("contact:")) {const [,id,field]=key.split(":");return sample.contactStates?.find(item=>item.id===id)?.[field];}
+  if (key.startsWith("joint-force:")) {const [,id,field]=key.split(":");return sample.jointForceStates?.find(item=>item.id===id)?.[field];}
+  if (key.startsWith("reaction:")) {const [,id,path]=key.split(":");const [field,axis]=path.split(".");return sample.jointReactions?.find(item=>item.id===id)?.[field]?.[axis];}
+  if (key.startsWith("load:")) {const [,id,path]=key.split(":");const item=sample.loadStates?.find(entry=>entry.id===id);const [field,axis]=path.split(".");return axis ? item?.[field]?.[axis] : item?.[field];}
+  if (key.startsWith("cylinder:")) {const [,id,field]=key.split(":");return sample.cylinders?.find(item=>item.id===id)?.[field];}
+  if (key.startsWith("slider:")) {const [,id,field]=key.split(":");return sample.sliders?.find(item=>item.id===id)?.[field];}
+  if (!key.startsWith("node:")) return sample[key];
+  const [, node, field] = key.split(":");
+  return sample.nodes?.find((item) => String(item.id) === node)?.[field];
+}
+function renderResult() {
+  const result = state.result;
+  if (!result) return;
+  const isStale = stale();
+  const real = result.source === "MBDyn";
+  $("resultSource").textContent =
+    `${isStale ? "Stale · " : ""}${result.restored ? `Saved result · recorded ${real ? "MBDyn" : "reference"}` : real ? "MBDyn solver" : "Reference preview"}`;
+  $("resultSource").className =
+    `source-badge ${isStale ? "stale" : real ? "real" : ""}`;
+  $("viewSource").textContent = isStale
+    ? "Initial configuration · edited model"
+    : result.restored
+      ? "Saved result · recorded source"
+      : real
+        ? "MBDyn solver response"
+        : "Reference preview";
+  $("samplesMetric").textContent = result.samples.length.toLocaleString();
+  const kind = result.model?.kind || state.model.kind;
+  const source = visualInfo(result.model);
+  const forces=assemblyKind(result.model) ? result.model.forces || [] : [];
+  const joints=assemblyKind(result.model) ? result.model.joints : [];
+  const extraSignals=elementSignals(result.model,result);
+  const signals = source
+    ? [
+        "Node position · X / Y / Z",
+        "Node velocity · X / Y / Z",
+        "Node Euler 1–2–3 · X / Y / Z",
+        "Node angular velocity · X / Y / Z",
+      ].concat(extraSignals.map(signal=>signal.title)).map((title) => ({ title }))
+    : signalsFor(kind);
+  if (
+    source &&
+    !source.nodes.some((node) => String(node.id) === String(state.selectedNode))
+  )
+    state.selectedNode = source.nodes[0]?.id;
+  if (state.signal >= signals.length) state.signal = 0;
+  const selectedExtra=extraSignals[state.signal-4];
+  const selectedElements=selectedExtra?.type === "rotary" ? result.model.rotationalElements || [] : selectedExtra?.type === "torque" ? result.model.jointTorques || [] : selectedExtra?.type === "joint-force" ? result.model.jointForces || [] : selectedExtra?.type === "contact" ? result.model.contacts || [] : selectedExtra?.type === "load" ? result.model.loads || [] : selectedExtra?.type === "oleo" ? forces.filter(force=>force.type==="oleo-strut") : forces;
+  if (!selectedElements.some(item=>item.id===state.selectedForce)) state.selectedForce=selectedElements[0]?.id ?? null;
+  const availableReactions=new Set((result.samples[0]?.jointReactions || []).map(item=>item.id));
+  const selectedJoints=selectedExtra?.type === "reaction" ? joints.filter(joint=>availableReactions.has(joint.id)) : joints.filter(joint=>joint.type===(selectedExtra?.type === "cylinder" ? "cylindrical" : "prismatic"));
+  if (!selectedJoints.some(joint=>joint.id===state.selectedJoint)) state.selectedJoint=selectedJoints[0]?.id ?? null;
+  $("signalTitle").textContent = resultSignal().title;
+  $("signalSelect").replaceChildren(
+    ...signals.map((signal, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = signal.title;
+      return option;
+    }),
+  );
+  $("signalSelect").value = String(state.signal);
+  $("signalSelect").hidden = signals.length < 2;
+  $("nodeSelect").hidden = !source || Boolean(selectedExtra);
+  $("forceSelect").hidden = !["force","rotary","torque","joint-force","load","contact","oleo"].includes(selectedExtra?.type);
+  $("forceSelect").setAttribute("aria-label",selectedExtra?.type === "load" ? "Result external load" : selectedExtra?.type === "rotary" ? "Result rotational spring" : selectedExtra?.type === "torque" ? "Result joint torque" : selectedExtra?.type === "joint-force" ? "Result axial joint force" : selectedExtra?.type === "contact" ? "Result contact" : selectedExtra?.type === "oleo" ? "Result oleo strut" : "Result spring or damper");
+  $("jointSelect").hidden = !["slider","cylinder","reaction"].includes(selectedExtra?.type);
+  if(selectedElements.length){$("forceSelect").replaceChildren(...selectedElements.map(item=>{const option=document.createElement("option");option.value=item.id;option.textContent=item.id;return option;}));$("forceSelect").value=state.selectedForce;}
+  if(selectedJoints.length){$("jointSelect").replaceChildren(...selectedJoints.map(joint=>{const option=document.createElement("option");option.value=joint.id;option.textContent=joint.id;return option;}));$("jointSelect").value=state.selectedJoint;}
+  if (source) {
+    $("nodeSelect").replaceChildren(
+      ...source.nodes.map((node) => {
+        const option = document.createElement("option");
+        option.value = String(node.id);
+        option.textContent = `${node.label} · ${node.id}`;
+        return option;
+      }),
+    );
+    $("nodeSelect").value = String(state.selectedNode);
+  }
+  for (const id of ["playButton", "rewindButton", "timeSlider", "csvButton", "clearResultsButton"])
+    $(id).disabled = false;
+  $("playButton").disabled = Boolean(isStale);
+  $("timeSlider").max = String(result.samples.length - 1);
+  $("endTime").textContent = `${format(result.samples.at(-1).time)} s`;
+  drawPlot();
+}
+const PLOT_LEFT = 80;
+function drawPlot() {
+  const samples = state.result?.samples;
+  if (!samples?.length) return;
+  const w = Math.max($("plot").clientWidth, 300),
+    h = Math.max($("plot").clientHeight, 110),
+    left = PLOT_LEFT,
+    right = 12,
+    top = 12,
+    bottom = 25;
+  const signal = resultSignal();
+  const values = samples
+    .flatMap((s) => signal.channels.map(([key]) => channelValue(s, key)))
+    .filter(Number.isFinite);
+  if (!values.length) return;
+  let min = Math.min(...values),
+    max = Math.max(...values);
+  const padding = (max - min) * 0.13 || 0.1;
+  min -= padding;
+  max += padding;
+  const last = samples.at(-1).time || 1;
+  const px = (t) => left + (t / last) * (w - left - right),
+    py = (y) => top + ((max - y) / (max - min)) * (h - top - bottom);
+  const stride = Math.max(1, Math.floor(samples.length / 1500));
+  const colors = ["var(--accent)", "#159aa4", "#c58318"];
+  const curves = signal.channels
+    .map(([key], index) => {
+      const points = samples
+        .filter(
+          (s, i) =>
+            Number.isFinite(channelValue(s, key)) &&
+            (i % stride === 0 || i === samples.length - 1),
+        )
+        .map(
+          (s) =>
+            `${px(s.time).toFixed(2)},${py(channelValue(s, key)).toFixed(2)}`,
+        )
+        .join(" ");
+      return `<polyline points="${points}" fill="none" stroke="${colors[index]}" stroke-width="1.8" ${index ? 'stroke-dasharray="5 3"' : ""} stroke-linecap="round"/>`;
+    })
+    .join("");
+  let grid = "";
+  for (let i = 0; i < 4; i++) {
+    const val = min + ((max - min) * i) / 3;
+    const y = py(val);
+    const tick =
+      Math.abs(val) > 0 && (Math.abs(val) < 0.0001 || Math.abs(val) >= 1000000)
+        ? val.toExponential(4)
+        : format(val, Math.abs(val) < 1 ? 3 : 1);
+    grid += `<line x1="${left}" x2="${w - right}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 4"/><text x="${left - 7}" y="${y + 3}" text-anchor="end">${tick}</text>`;
+  }
+  for (let i = 0; i < 6; i++)
+    grid += `<text x="${px((last * i) / 5)}" y="${h - 5}" text-anchor="${i === 5 ? "end" : "middle"}">${format((last * i) / 5, 1)}${i === 5 ? " s" : ""}</text>`;
+  const legend = signal.channels
+    .map(
+      ([, label], i) =>
+        `<text x="${w - signal.channels.length * 65 + i * 65}" y="10" fill="${colors[i]}">${escapeHtml(label)} ${i ? "--" : "—"}</text>`,
+    )
+    .join("");
+  $("plot").innerHTML =
+    `<svg viewBox="0 0 ${w} ${h}" role="presentation"><g fill="var(--dim)" font-family="PlexMono" font-size="9">${grid}<text x="${left}" y="9">${signal.unit}</text>${legend}</g>${curves}<line id="plotCursor" x1="${px(samples[state.frame]?.time || 0)}" x2="${px(samples[state.frame]?.time || 0)}" y1="${top}" y2="${h - bottom}" stroke="var(--dim)" stroke-width="1" stroke-dasharray="2 3"/></svg>`;
+  $("plot").setAttribute(
+    "aria-label",
+    `${signal.title} in ${signal.unit} versus time. ${signal.channels.map(([, label], i) => `${label} ${["solid blue", "dashed teal", "dashed gold"][i]}`).join("; ")}. ${state.result.source}. ${samples.length} samples. Range ${format(Math.min(...values), 3)} to ${format(Math.max(...values), 3)}.`,
+  );
+}
+function setFrame(index) {
+  const samples = state.result?.samples;
+  if (!samples?.length) return;
+  state.frame = Math.max(0, Math.min(index, samples.length - 1));
+  const sample = samples[state.frame];
+  $("timeSlider").value = String(state.frame);
+  $("timeOutput").textContent = `${format(sample.time)} s`;
+  $("viewTime").textContent = `t = ${format(sample.time)} s`;
+  if (!stale()) view?.setSample(sample);
+  updateSourceProbe();
+  const cursor = $("plotCursor");
+  if (cursor) {
+    const width = Math.max($("plot").clientWidth, 300);
+    const x = PLOT_LEFT + (sample.time / (samples.at(-1).time || 1)) * (width - PLOT_LEFT - 12);
+    cursor.setAttribute("x1", String(x));
+    cursor.setAttribute("x2", String(x));
+  }
+}
+function animate(time) {
+  if (state.playing && state.result && !stale()) {
+    playTime += ((time - lastFrame) / 1000) * state.speed;
+    const samples = state.result.samples;
+    const end = samples.at(-1).time;
+    if (playTime > end) playTime = 0;
+    let index = state.frame;
+    if (samples[index].time > playTime) index = 0;
+    while (index < samples.length - 1 && samples[index + 1].time <= playTime)
+      index++;
+    setFrame(index);
+  }
+  lastFrame = time;
+  $("playButton").innerHTML = icon(state.playing ? "pause" : "play");
+  $("playButton").setAttribute(
+    "aria-label",
+    state.playing ? "Pause result animation" : "Play result animation",
+  );
+  requestAnimationFrame(animate);
+}
+function showDocument(title, text, filename) {
+  $("documentTitle").textContent = title;
+  $("documentEyebrow").textContent = "INSPECTABLE BY DESIGN";
+  const pre = document.createElement("pre");
+  pre.textContent = text;
+  $("documentBody").replaceChildren(pre);
+  pendingDownload = filename ? { name: filename, text } : null;
+  $("documentDownload").hidden = !pendingDownload;
+  $("documentDialog").showModal();
+}
+function showGuide() {
+  $("documentTitle").textContent = "From a mechanism to a result";
+  $("documentEyebrow").textContent = "QUICK START";
+  $("documentBody").innerHTML = `<article>
+    <p><strong>Kinemeld</strong> is an independent, open-source multibody workbench. Choose <strong>Tour</strong> for the interactive walkthrough or open <strong>docs/first-study.md</strong> in the application folder.</p>
+    <h3>1. Start with a mechanism or STEP geometry</h3>
+    <p>Choose <strong>STEP parts → Load moving STEP pendulum</strong> for a solid with a matching physical model. New geometry imports accept <strong>.step</strong> and <strong>.stp</strong> files. Imported solids are display geometry: define mass, inertia, body frames and connections separately, then attach each solid to an assembly body to follow its motion. Older saved projects may still contain visual STL references.</p>
+    <p><strong>Examples</strong> includes editable planar and spatial assemblies, six parameterized mechanism families and verified upstream MBDyn studies. Upstream inputs retain their original definitions and source provenance.</p>
+    <h3>2. Build a planar body and hinge graph</h3>
+    <p>In a planar assembly, add a body with a revolute hinge or prismatic slider. Edit its mass, principal inertia, pose and velocity; assign linear axial spring-dampers or constant global force and torque. Select a joint to edit its frame and anchors, and validate the initial constraints. Undo and Redo retain edits and STEP attachments.</p>
+    <p>The planar editor supports rooted trees. The spatial editor supports free bodies and disconnected graphs as well as closed loops, with revolute, prismatic, cylindrical, universal, spherical and weld joints. Constraints must have compatible initial states and non-redundant degrees of freedom; MBDyn decides whether a model is solvable. Frictionless elastic sphere-plane contact is available; general surface contact and flexible bodies are not. Units are metres, kilograms and seconds; body angles are entered in degrees.</p>
+    <h3>3. Validate and run</h3>
+    <p><strong>Validate model</strong> checks supported topology, physical inputs and time resolution. <strong>Inspect MBDyn deck</strong> shows the solver input. <strong>Run simulation</strong> uses the configured local MBDyn solver and retains errors and partial logs when a run fails. Validation alone is not engineering certification.</p>
+    <h3>4. Explore the response</h3>
+    <p>Play or scrub the timeline, select nodes and response quantities, and export CSV. Attached STEP solids follow the corresponding solver body. Existing templates also offer a separately labelled <strong>Reference preview</strong>; this is not available for authored graphs or pinned upstream studies. Editing physical inputs makes older results stale.</p>
+    <h3>5. Save and reopen</h3>
+    <p>The Windows desktop uses native <strong>Save project</strong>, <strong>Save as</strong> and <strong>Open project</strong> dialogs. Projects retain the physical model, available results and full CSV, viewing state, original STEP bytes and part bindings. Conflicting disk changes are reported before overwrite. The browser version exports and imports portable project files; browser recovery retains only the current physical model.</p>
+    <p>See <a href="/docs/tutorials.md" target="_blank" rel="noreferrer">tutorials</a> for model assumptions and <a href="/docs/roadmap.md" target="_blank" rel="noreferrer">the roadmap</a> for remaining scope. Static, modal and buckling FEA belong to the separate Enigmiq CAD workflow. Official reference: <a href="https://www.mbdyn.org/Documentation.html" target="_blank" rel="noreferrer">MBDyn documentation</a>.</p>
+  </article>`;
+  pendingDownload = null;
+  $("documentDownload").hidden = true;
+  $("documentDialog").showModal();
+}
+function exampleArt(kind) {
+  if (["source-example", "planar-assembly", "spatial-assembly"].includes(kind))
+    return '<svg viewBox="0 0 180 100" fill="none"><path d="M28 68L65 26l47 10 35 38H28M65 26l13 54m34-44-34 44" stroke="currentColor" stroke-width="3"/><circle cx="28" cy="68" r="6" fill="currentColor"/><circle cx="65" cy="26" r="6" fill="currentColor"/><circle cx="112" cy="36" r="6" fill="currentColor"/><circle cx="147" cy="74" r="6" fill="currentColor"/><circle cx="78" cy="80" r="6" fill="#159aa4"/></svg>';
+  if (kind === "suspension")
+    return '<svg viewBox="0 0 180 100" fill="none"><path d="M24 24h132v16H24zM58 40v7l-9 4 18 7-18 7 9 4v9M117 40v32M20 92h140" stroke="currentColor" stroke-width="3"/><circle cx="87" cy="76" r="15" fill="currentColor"/><circle cx="87" cy="76" r="7" fill="#b5c7dc"/></svg>';
+  if (kind === "landing-gear-drop")
+    return '<svg viewBox="0 0 180 100" fill="none"><path d="M51 12h78M90 13v23M80 36h20v28H80zM90 64v16M28 96h125M38 30v31m-5-5 5 5 5-5" stroke="currentColor" stroke-width="4"/><circle cx="78" cy="82" r="11" fill="currentColor"/><circle cx="103" cy="82" r="11" fill="currentColor"/></svg>';
+  if (kind === "gear-deployment")
+    return '<svg viewBox="0 0 180 100" fill="none"><path d="M23 15h130M46 15l62 60M76 45l-8 29 71-59" stroke="currentColor" stroke-width="4"/><circle cx="112" cy="80" r="13" fill="currentColor"/><circle cx="68" cy="74" r="5" fill="#159aa4"/></svg>';
+  if (kind === "double-pendulum")
+    return '<svg viewBox="0 0 180 100" fill="none"><path d="M35 9h90M76 9l23 36 34 34" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="99" cy="45" r="10" fill="currentColor"/><circle cx="133" cy="79" r="12" fill="#1ba9b1"/></svg>';
+  return kind === "pendulum"
+    ? '<svg viewBox="0 0 180 100" fill="none"><path d="M35 14h90M80 14l44 63" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><circle cx="124" cy="77" r="13" fill="currentColor"/><path d="M38 76Q77 105 132 82" stroke="currentColor" stroke-dasharray="3 5" opacity=".3"/></svg>'
+    : '<svg viewBox="0 0 180 100" fill="none"><path d="M23 25v55M23 52h12l6-14 12 28 12-28 12 28 12-28 6 14h12M20 83h145" stroke="currentColor" stroke-width="3"/><rect x="107" y="32" width="40" height="40" rx="5" fill="currentColor"/></svg>';
+}
+function renderExamples() {
+  const root = $("exampleCards");
+  root.replaceChildren();
+  for (const ex of [
+    ...state.examples,
+    ...state.sourceExamples.map((source) => ({
+      ...source,
+      model: sourceModel(source),
+    })),
+  ]) {
+    const card = document.createElement("article");
+    card.className = "example-card";
+    const category =
+      assemblyKind(ex.model) ? "RIGID BODY · EDITABLE GRAPH" : ex.model.kind === "source-example"
+        ? `${ex.category} · ${ex.license.spdx} · UPSTREAM`
+        : industry[ex.model.kind]?.category ||
+          (ex.model.kind === "double-pendulum"
+            ? "COUPLED · TWO BODIES"
+            : ex.model.kind === "pendulum"
+              ? "RIGID BODY · GRAVITY"
+              : "ELASTICITY · DAMPING");
+    card.innerHTML = `<div class="example-art">${exampleArt(ex.model.kind)}</div><div class="example-card-body"><span class="eyebrow">${escapeHtml(category)}</span><h3></h3><p></p><button class="secondary">Open example →</button></div>`;
+    card.querySelector("h3").textContent = ex.title;
+    card.querySelector("p").textContent = ex.description;
+    const button = card.querySelector("button");
+    if (ex.model.kind === "source-example" && !ex.enabled) {
+      button.textContent = "Why unavailable?";
+      button.onclick = () =>
+        showDocument(
+          ex.title,
+          `${ex.description}\n\n${ex.validation.error}\n\n${ex.validation.remediation}\n\nSource: ${ex.source.url}\nLicense: ${ex.license.spdx}`,
+        );
+      root.append(card);
+      continue;
+    }
+    button.onclick = () => {
+      applyModel(ex.model);
+      $("examplesDialog").close();
+      switchStep("model");
+      notice(
+        ex.model.kind === "source-example"
+          ? "Original upstream example loaded. Its input is read-only; inspect the deck, run it, and explore native node trajectories."
+          : "Example loaded. Edit its parameters, validate, and run. Undo restores your previous model.",
+      );
+    };
+    root.append(card);
+  }
+}
+
+$("referenceRemoveButton").onclick = () => {
+  referenceLoad++;
+  replaceReference(null);
+  notice("Visual STL reference removed. Solver model and results are unchanged.");
+};
+$("referenceIsolateButton").onclick = () => {
+  const next = !view?.isolatedReference;
+  view?.isolateReference(next);
+  $("referenceIsolateButton").textContent = next ? "Show model" : "Isolate STL";
+};
+$("stepButton").onclick = () => {renderStepControls(); $("stepDialog").showModal();};
+$("stepClose").onclick = () => $("stepDialog").close();
+$("stepImport").onclick = () => $("stepFile").click();
+$("stepPart").onchange = () => { $("stepBody").value = state.step?.metadata.bindings[$("stepPart").value]?.body || ""; };
+$("stepReviewCandidate").onchange = renderStepReview;
+$("stepReviewApply").onclick = () => {
+  const asset=state.step, oldId=$("stepReviewCandidate").value, target=$("stepReviewTarget").value;
+  const pending=asset?.metadata.unverifiedBindings || {}, binding=pending[oldId];
+  if (!binding || !target || !asset.parts.some(part=>part.id===target && part.id.split(':',1)[0]===oldId.split(':',1)[0])) return notice("Choose a saved attachment and a current part from its original STEP file.","error");
+  if (!asset.metadata.occurrenceWitnesses?.[target]) return notice("This STEP occurrence has no verifiable identity. Keep the saved attachment for review or use a STEP source with identifiable occurrences.","error");
+  if (Object.hasOwn(asset.metadata.bindings,target)) return notice("The selected STEP part already has an attachment.","error");
+  if (!assemblyKind(state.model) || !state.model.bodies.some(body=>body.id===binding.body)) return notice("The saved attachment's simulation body is missing. Restore that body before confirming the attachment.","error");
+  if (Object.hasOwn(binding.pose,'rx') !== (state.model.kind==='spatial-assembly')) return notice("The saved registration pose is incompatible with the current assembly type.","error");
+  const unverifiedBindings={...pending};delete unverifiedBindings[oldId];
+  try {
+    replaceStep({...asset,metadata:{...asset.metadata,bindings:{...asset.metadata.bindings,[target]:structuredClone(binding)},unverifiedBindings}});
+    notice("Saved STEP attachment confirmed with its original registration pose. Check the geometry alignment before solving.");
+  } catch(error) {notice(error.message,"error");}
+};
+$("stepReviewDiscard").onclick = () => {
+  const asset=state.step, id=$("stepReviewCandidate").value, pending=asset?.metadata.unverifiedBindings || {};
+  if (!Object.hasOwn(pending,id) || !confirm(`Discard the saved attachment ${id} for body ${pending[id].body}? You can undo this change.`)) return;
+  const unverifiedBindings={...pending};delete unverifiedBindings[id];
+  try {replaceStep({...asset,metadata:{...asset.metadata,unverifiedBindings}});notice("Saved STEP attachment discarded. Undo restores it.");} catch(error) {notice(error.message,"error");}
+};
+$("stepExport").onclick = () => {
+  const index=Number($("stepPart").value.split(":",1)[0]), file=state.step?.metadata.files[index];
+  if(!file)return notice("Select a STEP part to export its original source.","warn");
+  const raw=atob(file.data), bytes=Uint8Array.from(raw,character=>character.charCodeAt(0));
+  download(file.name,bytes,"application/step");
+};
+$("stepBind").onclick = () => {
+  if (!state.step || !assemblyKind(state.model)) return;
+  const part=$("stepPart").value, body=$("stepBody").value;
+  const bindings={...state.step.metadata.bindings};
+  if (body) {
+    const node=visualInfo(state.model).initialNodes.find(n=>n.id===body);
+    if (!node) return notice("The selected body no longer exists.", "error");
+    const pose={x:node.x,y:node.y,z:node.z,ry:node.ry};
+    if (state.model.kind === "spatial-assembly") Object.assign(pose,{rx:node.rx,rz:node.rz});
+    bindings[part]={body,pose};
+  } else delete bindings[part];
+  const asset={...state.step,metadata:{...state.step.metadata,bindings}};
+  try {replaceStep(asset); notice(body ? "STEP part attached to the selected body. Check its alignment before solving." : "STEP part is unattached and remains static.");}
+  catch(error){notice(error.message,"error");}
+};
+$("stepRemove").onclick = () => {stepLoad++;replaceStep(null);notice("STEP geometry removed; the physical model is unchanged.");};
+$("stepPendulum").onclick = async () => {
+  const token=++stepLoad, before=signature();
+  try {
+    $("stepDetail").textContent="Preparing a STEP solid and matching MBDyn pendulum…";
+    const example=state.examples.find(item=>item.id==="assembly-single");
+    if(!example)throw Error("The matching planar pendulum example is unavailable.");
+    const response=await fetch("/api/step/pendulum");
+    if(!response.ok)throw Error("STEP service is unavailable. Restart Kinemeld to load the updated backend.");
+    const asset=await loadStepAsset([{name:"pendulum.step",bytes:new Uint8Array(await response.arrayBuffer()),sha256:"21d27f30d5cc9459f70d7d3cc66f61a6e7c6b1a7e4f69b4fd72e2837090d96ac"}]);
+    if(token!==stepLoad)return;
+    if(signature()!==before || state.busy)throw Error("The current project changed while the example loaded; no changes were applied.");
+    if(asset.parts.length!==1)throw Error("The pendulum STEP source must contain one solid.");
+    const model=structuredClone(example.model), node=assemblyInfo(model).initialNodes.find(n=>n.id==="upper_link");
+    asset.metadata.bindings={[asset.parts[0].id]:{body:node.id,pose:{x:node.x,y:node.y,z:node.z,ry:node.ry}}};
+    const validation=await checkModel(model);
+    if(token!==stepLoad)return;
+    if(!validation.valid || signature()!==before || state.busy)throw Error("The model changed or could not be validated; the example was not applied.");
+    validateStepForModel(asset,model);
+    pushHistory();applyModel(model,false);replaceStep(asset,false);markNativeDirty();updateHistoryButtons();
+    $("stepDialog").close();notice("Matching STEP solid and rigid pendulum loaded. Run MBDyn to see the solid move.");
+  } catch(error) {if(token===stepLoad){renderStepControls();notice(`STEP pendulum could not be loaded: ${error.message}`,"error");}}
+};
+$("stepFile").onchange = async event => {
+  const files=[...event.target.files], token=++stepLoad;
+  try {
+    if (!files.length) return;
+    if (files.some(file => !/\.(step|stp)$/i.test(file.name))) throw Error("Choose STEP geometry files (.step or .stp). Saved projects may retain older visual references.");
+    if (files.length>24 || files.reduce((n,file)=>n+file.size,0)>12*1024*1024) throw Error("Select up to 24 STEP files totalling at most 12 MiB.");
+    $("stepDetail").textContent="Converting STEP solids locally…";
+    const inputs=[];for(const file of files) inputs.push({name:file.name,bytes:new Uint8Array(await file.arrayBuffer())});
+    const asset=await loadStepAsset(inputs);
+    if(token!==stepLoad)return;
+    replaceStep(asset);notice("STEP solids loaded. Attach them to assembly bodies to follow motion; define mass, inertia and joints in the physical model.");
+  } catch(error) {if(token===stepLoad){renderStepControls();notice(`STEP import failed: ${error.message}`,"error");}}
+  finally {event.target.value="";}
+};
+$("stepExample").onclick = async () => {
+  const token=++stepLoad;
+  try {
+    $("stepDetail").textContent="Loading and converting the original suspension STEP parts…";
+    const responseCatalog=await fetch("/api/step/suspension");
+    if(!responseCatalog.ok)throw Error("STEP service is unavailable. Restart Kinemeld to load the updated backend.");
+    const catalog=await responseCatalog.json(), inputs=[];
+    for (const [i,file] of catalog.files.entries()) {
+      const response=await fetch(`/api/step/suspension/${i}`);if(!response.ok)throw Error(`Cannot load ${file.name}.`);
+      inputs.push({name:file.name,bytes:new Uint8Array(await response.arrayBuffer()),sha256:file.sha256});
+    }
+    const asset=await loadStepAsset(inputs);if(token!==stepLoad)return;
+    replaceStep(asset);notice("Original double-wishbone STEP parts loaded. Source alignment and all physical body attachments require verification.");
+  } catch(error) {if(token===stepLoad){renderStepControls();notice(`Suspension STEP import failed: ${error.message}`,"error");}}
+};
+
+$("durationInput").onchange = (e) =>
+  setNumber("simulation", "duration", e.target.value);
+$("stepInput").onchange = (e) =>
+  setNumber("simulation", "step", e.target.value);
+async function cancelActiveRun() {
+  const token=activeRunToken;
+  if(!token || !state.busy)return;
+  $("cancelRunButton").disabled=true;
+  try {
+    const response=await fetch("/api/run/cancel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({runToken:token})});
+    const result=await response.json();
+    if(!response.ok || !result.ok)throw Error(result.error || "Could not cancel the solver run.");
+    if(activeRunToken===token){notice("Stopping the solver; partial output will be retained.","warn");status("Stopping simulation…");}
+  } catch(error){if(activeRunToken===token){$("cancelRunButton").disabled=false;notice(error.message,"error");}}
+}
+$("cancelRunButton").onclick=cancelActiveRun;
+window.addEventListener("pagehide",()=>{
+  if(activeRunToken)navigator.sendBeacon("/api/run/cancel",new Blob([JSON.stringify({runToken:activeRunToken})],{type:"application/json"}));
+});
+$("runButton").onclick = () => run();
+$("previewButton").onclick = () => run(true);
+$("validateButton").onclick = () => {
+  switchStep("validate");
+};
+$("undoButton").onclick = () => {
+  if (!state.history.length) return;
+  state.future.push(snapshot());
+  const previous=state.history.pop();
+  state.step=previous.step;if(view)view.stepAsset=previous.step;
+  applyModel(previous.model, false);replaceStep(previous.step,false);
+};
+$("redoButton").onclick = () => {
+  if (!state.future.length) return;
+  state.history.push(snapshot());
+  const next=state.future.pop();
+  state.step=next.step;if(view)view.stepAsset=next.step;
+  applyModel(next.model, false);replaceStep(next.step,false);
+};
+async function nativeSave(saveAs) {
+  if (state.saving || state.busy || state.opening) return;
+  state.saving = true;
+  $("saveButton").disabled = true;
+  $("saveAsButton").disabled = true;
+  try {
+    const model = structuredClone(state.model);
+    const modelSignature = signature();
+    const originalResult = state.result;
+    const originalReference = state.reference;
+    const originalStep = state.step, stepMetadata = state.step ? structuredClone(state.step.metadata) : null;
+    let result = state.result ? structuredClone(state.result) : null;
+    if (result?.source === "MBDyn" && !result.csvText && result.files?.csv) {
+      if (!/^\/api\/runs\/[0-9a-f]{32}\/results\.csv$/.test(result.files.csv))
+        throw new Error(
+          "The saved result contains an unsupported CSV location.",
+        );
+      const response = await fetch(result.files.csv);
+      if (!response.ok)
+        throw new Error(
+          "The full solver CSV is unavailable. The project was not saved; preserve the run folder and retry.",
+        );
+      result.csvText = await response.text();
+    }
+    const viewState = {
+      selection: state.selection,
+      selectedNode: state.selectedNode,
+      selectedForce: state.selectedForce,
+      selectedJoint: state.selectedJoint,
+      measureNode: state.measureNode,
+      signal: state.signal,
+      frame: state.frame,
+      camera: view?.camera.position.toArray(),
+      target: view?.controls.target.toArray(),
+    };
+    const payload = {
+      model,
+      result,
+      view: viewState,
+      assets: originalReference || stepMetadata ? {...(originalReference ? {reference:originalReference.metadata} : {}), ...(stepMetadata ? {step:stepMetadata} : {})} : null,
+      saveAs,
+    };
+    if (new Blob([JSON.stringify(payload)]).size > 32 * 1024 * 1024)
+      throw new Error("Project exceeds 32 MiB. Export the CSV, clear the loaded result, then save the model and geometry.");
+    const saved = await nativeDesktop.call("save", payload);
+    if (saved.cancelled) return;
+    if (signature() !== modelSignature || state.result !== originalResult || state.reference !== originalReference || state.step !== originalStep || JSON.stringify(state.step?.metadata) !== JSON.stringify(stepMetadata)) {
+      markNativeDirty();
+      notice(`Saved a snapshot to ${saved.path}; newer edits remain unsaved.`, "warn");
+      return;
+    }
+    $("dirtyMark").title = "Saved project";
+    status(`Project saved · ${saved.path}`);
+    notice(
+      `Project saved to ${saved.path}${saved.backup ? `. Previous version retained at ${saved.backup}.` : "."}`,
+    );
+  } catch (error) {
+    notice(`Project was not saved: ${error.message}`, "error");
+  } finally {
+    state.saving = false;
+    $("saveButton").disabled = state.busy;
+    $("saveAsButton").disabled = state.busy;
+  }
+}
+function validSavedResult(result) {
+  if (
+    !result ||
+    !["MBDyn", "Reference preview"].includes(result.source) ||
+    !fields[result.model?.kind] ||
+    !Array.isArray(result.samples) ||
+    !result.samples.length ||
+    result.samples.length > 2001
+  )
+    return false;
+  const source = ["source-example", "planar-assembly", "spatial-assembly"].includes(result.model.kind) ? visualInfo(result.model) : null;
+  if (["source-example", "planar-assembly", "spatial-assembly"].includes(result.model.kind) && !source) return false;
+  const firstReactions=result.samples[0]?.jointReactions;
+  if(firstReactions!==undefined && (result.source!=="MBDyn" || result.model.kind!=="spatial-assembly" || !Array.isArray(firstReactions) || firstReactions.length>result.model.joints.length || new Set(firstReactions.map(item=>item?.id)).size!==firstReactions.length || !firstReactions.every(item=>result.model.joints.some(joint=>joint.id===item?.id)))) return false;
+  let previous = -Infinity;
+  return result.samples.every((sample) => {
+    if (!Number.isFinite(sample.time) || sample.time <= previous) return false;
+    previous = sample.time;
+    if(firstReactions===undefined ? sample.jointReactions!==undefined : !Array.isArray(sample.jointReactions) || sample.jointReactions.length!==firstReactions.length || !firstReactions.every(expected=>{const matches=sample.jointReactions.filter(item=>item?.id===expected.id);return matches.length===1 && ["force","moment"].every(key=>matches[0][key] && ["x","y","z"].every(axis=>Number.isFinite(matches[0][key][axis])));} )) return false;
+    if (source)
+      return (
+        Array.isArray(sample.nodes) &&
+        sample.nodes.length === source.nodes.length &&
+        source.nodes.every((expected) => {
+          const node = sample.nodes.find((item) => item.id === expected.id);
+          return (
+            node &&
+            [
+              "x",
+              "y",
+              "z",
+              "rx",
+              "ry",
+              "rz",
+              "vx",
+              "vy",
+              "vz",
+              "wx",
+              "wy",
+              "wz",
+            ].every((key) => Number.isFinite(node[key])) &&
+            (result.model.kind !== "planar-assembly" || Number.isFinite(node.angleDeg))
+          );
+        }) &&
+        (!(result.model.forces || []).length || (
+          Array.isArray(sample.forces) && sample.forces.length === result.model.forces.length &&
+          result.model.forces.every(expected => {
+            const force=sample.forces.find(item=>item.id===expected.id);
+            return force && ["length","extension","rate","force",...(expected.type==="oleo-strut"?["gasPressure","gasForce","hydraulicForce","stopForce"]:[])].every(key=>Number.isFinite(force[key]));
+          }) && ["elasticEnergy","dampingPower","dissipatedEnergy"].every(key=>Number.isFinite(sample[key]))
+        )) &&
+        (!(result.model.joints || []).some(joint=>joint.type==="prismatic") || (
+          Array.isArray(sample.sliders) && sample.sliders.length === result.model.joints.filter(joint=>joint.type==="prismatic").length &&
+          result.model.joints.filter(joint=>joint.type==="prismatic").every(expected=>{
+            const slider=sample.sliders.find(item=>item.id===expected.id);
+            return slider && ["position","velocity","transverse","transverseVelocity","angle","angularVelocity"].every(key=>Number.isFinite(slider[key]));
+          }) && ["jointAngularError","jointAngularVelocityError"].every(key=>Number.isFinite(sample[key]))
+        )) && (!(result.model.joints || []).some(joint=>joint.type==="cylindrical") || (
+          Array.isArray(sample.cylinders) && sample.cylinders.length === result.model.joints.filter(joint=>joint.type==="cylindrical").length &&
+          result.model.joints.filter(joint=>joint.type==="cylindrical").every(expected=>{const cylinder=sample.cylinders.find(item=>item.id===expected.id);return cylinder && ["position","velocity","angle","angularVelocity","transverse","transverseVelocity","angularError","angularVelocityError"].every(key=>Number.isFinite(cylinder[key]));})
+        )) && (!(result.model.loads || []).length || (["loadPower","appliedWork"].every(key=>Number.isFinite(sample[key])) && (result.model.kind !== "spatial-assembly" || (Array.isArray(sample.loadStates) && sample.loadStates.length === result.model.loads.length && result.model.loads.every(expected=>{const item=sample.loadStates.find(item=>item.id===expected.id);return item && Number.isFinite(item.power) && ["force","torque","moment"].every(key=>item[key] && ["x","y","z"].every(axis=>Number.isFinite(item[key][axis])));}))))) &&
+        (!(result.model.rotationalElements || []).length || (Array.isArray(sample.rotationalStates) && sample.rotationalStates.length === result.model.rotationalElements.length && result.model.rotationalElements.every(expected=>{const item=sample.rotationalStates.find(item=>item.id===expected.id);return item && ["angle","velocity","torque"].every(key=>Number.isFinite(item[key]));}))) &&
+        (!(result.model.jointTorques || []).length || (Array.isArray(sample.actuationStates) && sample.actuationStates.length === result.model.jointTorques.length && result.model.jointTorques.every(expected=>{const item=sample.actuationStates.find(item=>item.id===expected.id);return item && ["torque","power"].every(key=>Number.isFinite(item[key]));}) && ["actuationPower","actuationWork"].every(key=>Number.isFinite(sample[key])))) &&
+        (!(result.model.contacts || []).length || (Array.isArray(sample.contactStates) && sample.contactStates.length === result.model.contacts.length && result.model.contacts.every(expected=>{const item=sample.contactStates.find(item=>item.id===expected.id);return item && ["gap","penetration","force","power","energy",...(expected.damping>0?["dampingPower","dissipatedEnergy"]:[])].every(key=>Number.isFinite(item[key]));}))) &&
+        (!(result.model.jointForces || []).length || (Array.isArray(sample.jointForceStates) && sample.jointForceStates.length === result.model.jointForces.length && result.model.jointForces.every(expected=>{const item=sample.jointForceStates.find(item=>item.id===expected.id);return item && ["force","power"].every(key=>Number.isFinite(item[key]));}) && ["jointForcePower","jointForceWork"].every(key=>Number.isFinite(sample[key]))))
+      );
+    const keys = ["x", "y", "z", "angle", "velocity", "value"];
+    if (result.model.kind === "double-pendulum")
+      keys.push("x2", "y2", "z2", "angle2", "velocity2", "value2");
+    return keys.every((key) => Number.isFinite(sample[key]));
+  });
+}
+function clearResult() {
+  state.result = null;
+  state.resultSignature = null;
+  state.playing = false;
+  state.frame = 0;
+  for (const id of ["playButton", "rewindButton", "timeSlider", "csvButton", "clearResultsButton"])
+    $(id).disabled = true;
+  $("nodeSelect").hidden = true;
+  $("forceSelect").hidden = true;
+  $("jointSelect").hidden = true;
+  $("signalSelect").hidden = true;
+  $("resultSource").textContent = "No run yet";
+  $("resultSource").className = "source-badge";
+  $("samplesMetric").textContent = "—";
+  $("timeOutput").textContent = "0.000 s";
+  $("plot").innerHTML =
+    `<div class="empty-plot">${icon("wave")}<strong>Let the model tell its story.</strong><span>Run MBDyn to generate a response.</span></div>`;
+}
+$("clearResultsButton").onclick = () => {
+  clearResult(); markNativeDirty();
+  notice("Loaded result cleared. Generated run files remain in the runs folder.");
+};
+// Keep the previous document and its live reference geometry until the new view is complete.
+function commitOpenedProject(project, reference, step) {
+  const keys = ["model","selection","history","future","result","resultSignature","validation","selectedNode","selectedForce","selectedJoint","measureNode","reference","step","playing","frame","signal"];
+  const previous = Object.fromEntries(keys.map(key=>[key,state[key]]));
+  const previousRevision=projectRevision, previousDirty=browserDirty, previousApplying=applyingNativeProject;
+  const camera=view ? {position:view.camera.position.clone(),target:view.controls.target.clone(),isolated:view.isolatedReference} : null;
+  let stored, storageAvailable=false;
+  try {stored=localStorage.getItem("mbdyn-studio-project");storageAvailable=true;} catch {}
+  applyingNativeProject=true;
+  try {
+    // A binding from the old document may be invalid in the new body graph.
+    state.step=null;
+    state.result=null;
+    if(view)view.stepAsset=null;
+    applyModel(project.model,false);
+    replaceReference(reference,false,false);
+    replaceStep(step,false);
+    if (project.result) {
+      state.result={...project.result,restored:true};
+      state.resultSignature=project.result.model ? JSON.stringify(project.result.model) : null;
+      state.selectedNode=project.view?.selectedNode ?? state.selectedNode;
+      state.selectedForce=project.view?.selectedForce ?? state.selectedForce;
+      state.selectedJoint=project.view?.selectedJoint ?? state.selectedJoint;
+      state.measureNode=project.view?.measureNode ?? state.measureNode;
+      state.signal=Number.isInteger(project.view?.signal) ? Math.max(0,project.view.signal) : 0;
+      state.frame=Number.isInteger(project.view?.frame) ? Math.max(0,Math.min(project.view.frame,project.result.samples.length-1)) : 0;
+      renderResult();setFrame(state.frame);
+    } else clearResult();
+    if(typeof project.view?.selection === "string" && document.querySelector(`[data-entity="${CSS.escape(project.view.selection)}"]`)) select(project.view.selection);
+    if(view && [project.view?.camera,project.view?.target].every(point=>Array.isArray(point) && point.length===3 && point.every(value=>Number.isFinite(value) && Math.abs(value)<1e6))) {
+      view.camera.position.fromArray(project.view.camera);view.controls.target.fromArray(project.view.target);view.controls.update();
+    }
+    state.history=[];state.future=[];updateHistoryButtons();
+    projectRevision++;
+    browserDirty=false;
+  } catch (error) {
+    clearTimeout(validationTimer);
+    Object.assign(state,previous);
+    projectRevision=previousRevision;browserDirty=previousDirty;
+    if(storageAvailable)try {if(stored===null)localStorage.removeItem("mbdyn-studio-project");else localStorage.setItem("mbdyn-studio-project",stored);} catch {}
+    let restoreError;
+    try {
+      if(view){view.stepAsset=previous.step;view.setModel(previous.model,false,visualInfo(previous.model));}
+      replaceReference(previous.reference,false,false);
+      if(view)view.isolateReference(camera.isolated);
+      renderMetadata();renderTree();renderProperties();renderStepControls();updateHistoryButtons();
+      if(previous.result){renderResult();setFrame(previous.frame);}else clearResult();
+      if(view && camera){view.camera.position.copy(camera.position);view.controls.target.copy(camera.target);view.controls.update();view.setSelection(previous.selection);}
+    } catch (failure) {restoreError=failure;}
+    if(restoreError)throw new Error(`${error.message} The previous document is retained, but its view could not be fully restored: ${restoreError.message}`);
+    throw error;
+  } finally {applyingNativeProject=previousApplying;}
+  if(previous.reference && previous.reference !== reference) {try {previous.reference.dispose();} catch(error) {console.error("Could not release the previous reference geometry:",error);}}
+}
+async function confirmNativeOpen(token) {
+  for (;;) {
+    try {
+      const confirmation=await nativeDesktop.call("finalize-open",{token},2000);
+      if (confirmation.token !== token || typeof confirmation.dirtyRevision !== "string" || !/^[0-9]+$/.test(confirmation.dirtyRevision)) throw new Error("The desktop returned an invalid project confirmation.");
+      return confirmation.dirtyRevision;
+    } catch (error) {
+      notice(`The opened project is visible, but its save identity is not confirmed: ${error.message} Retrying; your edits are kept.`,"warn");
+      status("Confirming project open · saving and running are paused");
+      await new Promise(resolve=>setTimeout(resolve,1000));
+    }
+  }
+}
+async function confirmNativeClean(token, dirtyRevision, openedRevision) {
+  for (;;) {
+    if (projectRevision !== openedRevision) return false;
+    const focus=document.activeElement;
+    if (focus && (focus.matches("input, textarea, select") || focus.isContentEditable)) {
+      notice("Finish editing the active field to confirm the opened project; your input is kept.","warn");
+      await new Promise(resolve=>setTimeout(resolve,250));
+      continue;
+    }
+    // Prevent a pending STEP conversion from applying while the clean request is in flight.
+    stepLoad++;referenceLoad++;
+    const elements=[...document.body.children].filter(element=>element.id!=="notice" && element.tagName!=="SCRIPT");
+    const previous=elements.map(element=>element.inert);
+    elements.forEach(element=>{element.inert=true;});
+    try {
+      if (projectRevision !== openedRevision) return false;
+      for (;;) {
+        try {
+          const response=await nativeDesktop.call("clean-open",{token,dirtyRevision},2000);
+          if (response.token !== token || response.dirtyRevision !== dirtyRevision || typeof response.clean !== "boolean") throw new Error("The desktop returned an invalid clean confirmation.");
+          return response.clean;
+        } catch(error) {
+          notice(`The project is open, but its clean state is not confirmed: ${error.message} Retrying without discarding input.`,"warn");
+          status("Confirming project open · editing and saving are paused");
+          await new Promise(resolve=>setTimeout(resolve,1000));
+        }
+      }
+    } finally {
+      elements.forEach((element,index)=>{element.inert=previous[index];});
+      if(focus?.isConnected && typeof focus.focus === "function")focus.focus({preventScroll:true});
+    }
+  }
+}
+async function nativeOpen() {
+  if (state.opening || state.saving || state.busy) return;
+  state.opening = true;
+  const revision = projectRevision;
+  let accepted = false;
+  let acceptedToken;
+  let candidate;
+  let nextReference;
+  let nextStep;
+  try {
+    candidate = await nativeDesktop.call("open");
+    if (candidate.cancelled) return;
+    const project = candidate.project;
+    if (!project?.model || !fields[project.model.kind])
+      throw new Error("This project uses a model family this app cannot open.");
+    const check = await checkModel(project.model);
+    if (!check.valid)
+      throw new Error((check.issues || []).map((i) => i.message).join(" "));
+    const result = project.result;
+    if (result && !validSavedResult(result))
+      throw new Error(
+        "The saved result samples are incomplete, malformed or unsupported.",
+      );
+    if (project.assets && (typeof project.assets !== "object" || Object.keys(project.assets).some(key => !["reference","step"].includes(key)))) throw new Error("The project contains unsupported visual assets.");
+    const token = ++referenceLoad;
+    const stepToken = ++stepLoad;
+    nextReference = project.assets?.reference ? await restoreReferenceGeometry(project.assets.reference) : null;
+    nextStep = project.assets?.step ? await restoreStepAsset(project.assets.step) : null;
+    validateStepForModel(nextStep,project.model);
+    if (token !== referenceLoad || stepToken !== stepLoad) throw new Error("A newer geometry operation started; reopen the project to retry.");
+    if (revision !== projectRevision) throw new Error("The current project changed while the file was loading; your edits were kept. Open it again to retry.");
+    const acceptance=await nativeDesktop.call("accept-open");
+    acceptedToken=acceptance.token;
+    if (typeof acceptedToken !== "string" || !/^[1-9][0-9]*$/.test(acceptedToken)) throw new Error("The desktop did not return a valid project transaction identity.");
+    accepted = true;
+    if (revision !== projectRevision) {
+      await nativeDesktop.call("rollback-open",{token:acceptedToken});
+      accepted = false;
+      throw new Error("The current project changed while the file was opening; your edits were kept. Open it again to retry.");
+    }
+    commitOpenedProject(project,nextReference,nextStep);
+    nextReference = null;
+    accepted = false;
+    const openedRevision=projectRevision;
+    status("Confirming project open · saving and running are paused");
+    const dirtyRevision=await confirmNativeOpen(acceptedToken);
+    const clean=projectRevision === openedRevision ? await confirmNativeClean(acceptedToken,dirtyRevision,openedRevision) : false;
+    const edited=projectRevision !== openedRevision || !clean;
+    $("dirtyMark").title = edited ? "Unsaved changes" : "Saved project";
+    notice((edited
+      ? "Project opened. Edits made while confirmation was pending remain unsaved."
+      : result ? "Project opened. The saved response is labelled with its recorded source." : "Project opened and validated.") + (Object.keys(state.step?.metadata.unverifiedBindings || {}).length ? " Review saved STEP attachments before using them." : ""));
+    status(`Project opened · ${candidate.path}${edited ? " · unsaved edits" : ""}`);
+  } catch (error) {
+    applyingNativeProject = false;
+    nextReference?.dispose();
+    if (accepted) {
+      try { await nativeDesktop.call("rollback-open",{token:acceptedToken}); } catch { nativeDesktop.notify("dirty"); }
+    } else if (candidate && !candidate.cancelled) nativeDesktop.notify("discard-open");
+    notice(`Project was not opened: ${error.message}`, "error");
+  } finally {
+    state.opening = false;
+  }
+}
+if (nativeDesktop) $("saveAsButton").hidden = false;
+$("saveAsButton").onclick = () => nativeSave(true);
+$("saveButton").onclick = async () => {
+  if (nativeDesktop) return nativeSave(false);
+  try {
+  const revision = projectRevision;
+  const model = structuredClone(state.model), result = state.result ? structuredClone(state.result) : null, reference = state.reference, step = state.step ? structuredClone(state.step.metadata) : null;
+  if (result?.source === "MBDyn" && !result.csvText && result.files?.csv) {
+    if (!/^\/api\/runs\/[0-9a-f]{32}\/results\.csv$/.test(result.files.csv)) throw new Error("The result contains an unsupported CSV location.");
+    const response = await fetch(result.files.csv);
+    if (!response.ok) throw new Error("The full solver CSV is unavailable; the project was not exported.");
+    result.csvText = await response.text();
+  }
+  const contents = JSON.stringify({ format: "mbdyn-studio/1", model, result, assets:reference || step ? {...(reference ? {reference:reference.metadata} : {}), ...(step ? {step} : {})} : null }, null, 2);
+  if (new Blob([contents]).size > 32 * 1024 * 1024) throw new Error("Project exceeds 32 MiB; export large results or reference geometry separately.");
+  download(`${model.kind}.mbdyn-studio`, contents, "application/json");
+  if (revision === projectRevision) browserDirty = false;
+  status("Project JSON exported");
+  } catch(error) {notice(`Project was not exported: ${error.message}`,"error");}
+};
+$("importButton").onclick = () =>
+  nativeDesktop ? nativeOpen() : $("projectFile").click();
+$("projectFile").onchange = async (e) => {
+  const file = e.target.files[0];
+  const revision = projectRevision;
+  let nextReference;
+  let nextStep;
+  try {
+    if (!file) return;
+    if (browserDirty && !window.confirm("Opening this project replaces the current unsaved model, geometry and results. Export the current project first if you need to keep them. Continue?")) return;
+    if (file.size > 32 * 1024 * 1024) throw new Error("Project file exceeds 32 MiB.");
+    const project = JSON.parse(await file.text());
+    if (project.format !== "mbdyn-studio/1" || !project.model)
+      throw new Error("Unsupported project format. Expected mbdyn-studio/1.");
+    const check = await checkModel(project.model);
+    if (!check.valid)
+      throw new Error((check.issues || []).map((i) => i.message).join(" "));
+    if (project.result && !validSavedResult(project.result)) throw new Error("The saved result is incomplete or unsupported.");
+    if (project.assets && (typeof project.assets !== "object" || Object.keys(project.assets).some(key => !["reference","step"].includes(key)))) throw new Error("The project contains unsupported visual assets.");
+    const token = ++referenceLoad;
+    const stepToken = ++stepLoad;
+    nextReference = project.assets?.reference ? await restoreReferenceGeometry(project.assets.reference) : null;
+    nextStep = project.assets?.step ? await restoreStepAsset(project.assets.step) : null;
+    validateStepForModel(nextStep,project.model);
+    if (token !== referenceLoad || stepToken !== stepLoad) throw new Error("A newer geometry operation started; reopen the project to retry.");
+    if (revision !== projectRevision) throw new Error("The current project changed while the file was loading; your edits were kept. Open it again to retry.");
+    commitOpenedProject(project,nextReference,nextStep);
+    nextReference = null;
+    notice("Project imported and validated." + (Object.keys(state.step?.metadata.unverifiedBindings || {}).length ? " Review saved STEP attachments before using them." : ""));
+  } catch (error) {
+    nextReference?.dispose();
+    notice(`Project was not opened: ${error.message}`, "error");
+  } finally {
+    e.target.value = "";
+  }
+};
+$("deckButton").onclick = async () => {
+  try {
+    const result = await api("deck", state.model);
+    if (!result.valid) {
+      showIssues(result.issues || []);
+      throw new Error(
+        "Correct model validation errors before exporting a solver deck.",
+      );
+    }
+    showDocument("Generated MBDyn input", result.deck, result.filename);
+  } catch (error) {
+    notice(error.message, "error");
+  }
+};
+$("logButton").onclick = () => {
+  const record = state.lastFailure || state.result;
+  showDocument(
+    record?.source === "MBDyn" ? "MBDyn run log" : "Run information",
+    record?.log ||
+      record?.error ||
+      "No MBDyn run log is loaded. Reference previews are independent calculations and do not launch MBDyn.",
+    record?.log ? "solver.log" : null,
+  );
+};
+$("documentDownload").onclick = () => {
+  if (pendingDownload) download(pendingDownload.name, pendingDownload.text);
+};
+$("helpButton").onclick = async () => {
+  const guide = sourceInfo()
+    ? "open-source-examples.md"
+    : state.model.kind === "spatial-assembly" ? "spatial-assembly.md"
+    : state.model.kind === "planar-assembly" ? "planar-assembly.md"
+    : industry[state.model.kind]?.tutorial;
+  if (!guide) return showGuide();
+  try {
+    const response = await fetch(`/docs/${guide}`);
+    if (!response.ok) throw new Error("The example guide could not be loaded.");
+    showDocument(
+      `${state.model.name} · engineering guide`,
+      await response.text(),
+      guide,
+    );
+  } catch (error) {
+    notice(error.message, "error");
+  }
+};
+$("examplesButton").onclick = () => $("examplesDialog").showModal();
+document
+  .querySelectorAll("[data-close]")
+  .forEach((b) => (b.onclick = () => b.closest("dialog").close()));
+document
+  .querySelectorAll("[data-step]")
+  .forEach((b) => (b.onclick = () => switchStep(b.dataset.step)));
+document.querySelectorAll("[data-view]").forEach(
+  (b) =>
+    (b.onclick = () => {
+      const scene = b.dataset.view === "scene";
+      document
+        .querySelectorAll("[data-view]")
+        .forEach((x) => x.classList.toggle("active", x === b));
+      $("topology").hidden = scene;
+      $("canvasMount").style.visibility = scene ? "visible" : "hidden";
+      view?.showLabels(scene);
+    }),
+);
+$("resetViewButton").onclick = () => view?.reset();
+$("gridButton").onclick = () => {
+  const next = $("gridButton").getAttribute("aria-pressed") !== "true";
+  $("gridButton").setAttribute("aria-pressed", String(next));
+  view?.setGrid(next);
+};
+$("themeButton").onclick = () => {
+  const dark = document.documentElement.dataset.theme !== "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  try {
+    localStorage.setItem("mbdyn-studio-theme", dark ? "dark" : "light");
+  } catch {}
+  view?.setTheme(dark);
+};
+$("playButton").onclick = () => {
+  if (stale()) {
+    notice("Run the edited model again before playing its response.", "warn");
+    return;
+  }
+  state.playing = !state.playing;
+  playTime = state.result.samples[state.frame].time;
+};
+$("rewindButton").onclick = () => {
+  state.playing = false;
+  playTime = 0;
+  setFrame(0);
+};
+$("timeSlider").oninput = (e) => {
+  state.playing = false;
+  setFrame(Number(e.target.value));
+};
+$("speedButton").onclick = () => {
+  const speeds = [0.25, 0.5, 1, 2];
+  state.speed = speeds[(speeds.indexOf(state.speed) + 1) % speeds.length];
+  $("speedButton").textContent = `${state.speed}×`;
+};
+$("signalSelect").onchange = (event) => {
+  state.signal = Number(event.target.value);
+  renderResult();
+};
+$("nodeSelect").onchange = (event) => {
+  state.selectedNode = event.target.value;
+  const source = visualInfo();
+  if (source && !stale()) {
+    const index = source.nodes.findIndex(
+      (node) => String(node.id) === String(state.selectedNode),
+    );
+    if (index >= 0)
+      return select(index ? `node-${source.nodes[index].id}` : "body");
+  }
+  renderResult();
+};
+$("forceSelect").onchange = event => {state.selectedForce=event.target.value;renderResult();};
+$("jointSelect").onchange = event => {state.selectedJoint=event.target.value;renderResult();};
+$("csvButton").onclick = async () => {
+  if (!state.result) return;
+  const r = state.result;
+  const kind = r.model?.kind || state.model.kind;
+  const angular = ["pendulum", "double-pendulum", "gear-deployment"].includes(
+    kind,
+  );
+  const names = {
+    ...industryCsvUnits,
+    time: "time_s",
+    id: "node_id",
+    x: "x_m",
+    y: "y_m",
+    z: "z_m",
+    rx: "euler123_x_deg",
+    ry: "euler123_y_deg",
+    rz: "euler123_z_deg",
+    vx: "velocity_x_m_s",
+    vy: "velocity_y_m_s",
+    vz: "velocity_z_m_s",
+    wx: "angular_velocity_x_rad_s",
+    wy: "angular_velocity_y_rad_s",
+    wz: "angular_velocity_z_rad_s",
+    angle: "angle_deg",
+    velocity: angular ? "angular_velocity_rad_s" : "velocity_m_s",
+    value: angular ? "value_deg" : "value_m",
+    x2: "x2_m",
+    y2: "y2_m",
+    z2: "z2_m",
+    angle2: "angle2_deg",
+    velocity2: "angular_velocity2_rad_s",
+    value2: "value2_deg",
+  };
+  try {
+    let rows, keys;
+    if (r.source === "MBDyn" && (r.csvText || r.files?.csv)) {
+      let text = r.csvText;
+      if (!text) {
+        if (!/^\/api\/runs\/[0-9a-f]{32}\/results\.csv$/.test(r.files.csv))
+          throw new Error(
+            "The saved result contains an unsupported CSV location.",
+          );
+        const response = await fetch(r.files.csv);
+        if (!response.ok)
+          throw new Error("Could not download the full solver CSV.");
+        text = await response.text();
+      }
+      const lines = text.trim().split(/\r?\n/);
+      keys = lines[0].split(",");
+      rows = lines.slice(1);
+    } else {
+      keys = Object.keys(r.samples[0]);
+      rows = r.samples.map((s) =>
+        keys.map((key) => (Number.isFinite(s[key]) ? s[key] : "")).join(","),
+      );
+    }
+    const data = [
+      `# source: ${r.source}`,
+      `# model: ${JSON.stringify(r.model || {})}`,
+      keys.map((key) => names[key] || key).join(","),
+      ...rows,
+    ].join("\n");
+    download(
+      `${kind}-${r.source === "MBDyn" ? "mbdyn" : "reference"}.csv`,
+      data,
+      "text/csv",
+    );
+  } catch (error) {
+    notice(error.message, "error");
+  }
+};
+document.addEventListener("keydown", (e) => {
+  if (
+    e.target.closest("input,textarea") ||
+    document.querySelector("dialog[open]")
+  )
+    return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+    e.preventDefault();
+    $(e.shiftKey ? "redoButton" : "undoButton").click();
+  }
+});
+new ResizeObserver(() => {
+  if (state.result) drawPlot();
+}).observe($("plot"));
+
+async function init() {
+  try {
+    savedTheme = localStorage.getItem("mbdyn-studio-theme");
+    if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+  } catch {}
+  try {
+    view = new MechanismView($("canvasMount"), entity => {
+      if (entity.startsWith("step-part-")) {
+        renderStepControls();
+        $("stepPart").value = entity.slice("step-part-".length);
+        $("stepPart").dispatchEvent(new Event("change"));
+        $("stepDialog").showModal();
+      } else select(entity);
+    });
+  } catch (error) {
+    const box = document.createElement("div");
+    box.className = "error-box";
+    box.textContent = `3D rendering is unavailable: ${error.message}. The model editor, deck export and result charts remain usable.`;
+    $("canvasMount").append(box);
+  }
+  renderMetadata();
+  renderTree();
+  renderProperties();
+  view?.setModel(state.model, true);
+  try {
+    const [solver, examples, sourceExamples] = await Promise.all([
+      api("status"),
+      api("examples"),
+      api("source-examples").catch(() => ({ examples: [] })),
+    ]);
+    state.solver = solver.solver;
+    state.examples = examples.examples;
+    state.sourceExamples = sourceExamples.examples;
+    renderExamples();
+    $("solverStatus").textContent = solver.solver.available
+      ? "MBDyn ready"
+      : "MBDyn not configured";
+    $("solverDot").className =
+      `status-dot ${solver.solver.available ? "green" : ""}`;
+    $("solverDetail").textContent = solver.solver.available
+      ? solver.solver.version || "Local solver"
+      : "Reference previews and deck export available";
+    if (!solver.solver.available)
+      notice(
+        "MBDyn is unavailable. You can edit models, export decks and use Reference preview. Run simulation will report the solver configuration error.",
+        "warn",
+      );
+    let recovered;
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem("mbdyn-studio-project") || "null",
+      );
+      if (saved?.format === "mbdyn-studio/1") {
+        const check = await checkModel(saved.model);
+        if (check.valid) recovered = saved.model;
+      }
+    } catch {}
+    if (recovered) applyModel(recovered, false);
+    else await validate(false);
+  } catch (error) {
+    notice(
+      `Cannot connect to the local workspace: ${error.message}. Start backend/server.py, then reload.`,
+      "error",
+    );
+    $("solverStatus").textContent = "Backend unavailable";
+    $("solverDetail").textContent = "Start the local server";
+  }
+  requestAnimationFrame(animate);
+  try {
+    await setupTour();
+  } catch (error) {
+    notice(`The guided tour could not start: ${error.message}. The model workspace remains available.`, "warn");
+  }
+}
+setupAgent({getModel:()=>state.model, getSignature:signature, getBindings:()=>state.step?.metadata.bindings || {}, checkModel, applyModel, run, isBusy:()=>state.busy || state.saving || state.opening, nativeDesktop});
+const kinematics=setupKinematics({getModel:()=>state.model,getBindings:()=>state.step?.metadata.bindings || {},isBusy:()=>state.busy || state.saving || state.opening,applyModel,notify:notice});
+setupPointProbe({getResult:()=>state.result,getModel:()=>state.model,getBindings:()=>state.step?.metadata.bindings || {},getFrame:()=>state.frame,isStale:()=>Boolean(stale()),notify:notice});
+setupWheelKinematics({getResult:()=>state.result,getModel:()=>state.model,getBindings:()=>state.step?.metadata.bindings || {},getFrame:()=>state.frame,isStale:()=>Boolean(stale()),notify:notice});
+$("kinematicsButton").onclick=kinematics.open;
+init();

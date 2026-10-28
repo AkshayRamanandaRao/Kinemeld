@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Kinemeld · Multibody workbench</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232678da'/%3E%3Cpath d='M8 9h16M16 9l7 15' stroke='white' stroke-width='3'/%3E%3Ccircle cx='23' cy='24' r='4' fill='white'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="importmap">
+      { "imports": { "three": "./vendor/three.module.js" } }
+    </script>
+  </head>
+  <body>
+    <header class="appbar">
+      <a class="brand" href="./" aria-label="Kinemeld home"
+        ><span class="brand-mark">K</span
+        ><strong>Kinemeld</strong
+        ><span class="alpha">0.1</span></a
+      >
+      <div class="document-name">
+        <span data-icon="file"></span
+        ><span id="documentName">Gravity pendulum</span
+        ><span id="dirtyMark" title="Changes saved in this browser">●</span>
+      </div>
+      <div class="appbar-actions">
+        <button
+          class="icon-button"
+          id="themeButton"
+          title="Switch color theme"
+          aria-label="Switch color theme"
+          data-icon="sun"
+        ></button
+        ><button id="tourButton" class="quiet" type="button" aria-controls="guidedTour" aria-expanded="false">Tour</button
+        ><button id="helpButton" class="quiet">
+          <span data-icon="book"></span>Guide</button
+        ><button id="agentButton" class="quiet" aria-expanded="false" aria-controls="agentPanel">
+          <span data-icon="chat"></span>AI agent</button
+        ><button id="saveButton" class="quiet">
+          <span data-icon="save"></span>Save project</button
+        ><button id="saveAsButton" class="quiet" hidden>
+          <span data-icon="save"></span>Save as</button
+        ><button id="cancelRunButton" class="secondary" hidden>Cancel simulation</button><button id="runButton" class="primary">
+          <span data-icon="play"></span><span>Run simulation</span>
+        </button>
+      </div>
+    </header>
+    <nav class="workflow" aria-label="Simulation workflow">
+      <div class="steps">
+        <button data-step="model" class="active"><span>01</span>Model</button
+        ><button data-step="validate"><span>02</span>Validate</button
+        ><button data-step="simulate"><span>03</span>Simulate</button
+        ><button data-step="results"><span>04</span>Results</button>
+      </div>
+      <div class="workflow-right">
+        <span class="unit-chip">SI units <b>m · kg · s</b></span
+        ><button id="importButton" class="text-button">
+          <span data-icon="folder"></span>Open project</button
+        ><button id="examplesButton" class="text-button">
+          <span data-icon="grid"></span>Examples
+        </button>
+      </div>
+    </nav>
+    <div
+      id="notice"
+      class="notice"
+      role="status"
+      aria-live="polite"
+      hidden
+    ></div>
+    <main class="workspace">
+      <aside class="browser" aria-label="Model browser">
+        <div class="panel-heading">
+          <span>MODEL BROWSER</span>
+          <div>
+            <button
+              id="undoButton"
+              class="icon-button"
+              title="Undo model change"
+              aria-label="Undo model change"
+              data-icon="undo"
+              disabled
+            ></button
+            ><button
+              id="redoButton"
+              class="icon-button"
+              title="Redo model change"
+              aria-label="Redo model change"
+              data-icon="redo"
+              disabled
+            ></button>
+          </div>
+        </div>
+        <div class="project-label">
+          <span class="project-symbol" data-icon="cube"></span>
+          <div>
+            <strong id="treeProjectName">Gravity pendulum</strong
+            ><span>Parametric mechanism</span>
+          </div>
+        </div>
+        <div
+          id="modelTree"
+          class="model-tree"
+          role="group"
+          aria-label="Model entities"
+        ></div>
+        <div class="browser-bottom">
+          <div class="readiness">
+            <span class="eyebrow">MODEL READINESS</span
+            ><span id="validationBadge" class="badge">Not checked</span>
+          </div>
+          <p id="readinessText">
+            Check units, physical parameters and study settings before solving.
+          </p>
+          <button id="validateButton" class="secondary full-width">
+            <span data-icon="check"></span>Validate model</button
+          ><button id="kinematicsButton" type="button" class="secondary full-width" hidden>Solve assembly position</button
+          ><button id="deckButton" class="text-button full-width">
+            <span data-icon="code"></span>Inspect MBDyn deck
+          </button>
+        </div>
+        <div class="solver-status">
+          <span id="solverDot" class="status-dot"></span>
+          <div>
+            <strong id="solverStatus">Connecting to solver</strong
+            ><small id="solverDetail">Local workspace</small>
+          </div>
+        </div>
+      </aside>
+      <section class="center" aria-label="Model and results">
+        <div class="view-heading">
+          <div class="view-tabs">
+            <button class="active" data-view="scene">
+              <span data-icon="cube"></span>3D model</button
+            ><button data-view="topology">
+              <span data-icon="network"></span>Connections
+            </button>
+          </div>
+          <div class="view-actions">
+            <span id="modelKindBadge">1 moving body · 1 joint</span
+            ><button id="stepButton" class="text-button" title="Import STEP solid parts">STEP parts</button
+            ><button id="referenceIsolateButton" class="text-button" title="Show only the STL reference" hidden>Isolate STL</button
+            ><button id="referenceRemoveButton" class="text-button" title="Remove visual reference" hidden>Remove STL</button
+            ><button
+              id="resetViewButton"
+              class="icon-button"
+              title="Fit model in view"
+              aria-label="Fit model in view"
+              data-icon="fit"
+            ></button
+            ><button
+              id="gridButton"
+              class="icon-button"
+              title="Toggle grid"
+              aria-label="Toggle grid"
+              aria-pressed="true"
+              data-icon="grid"
+            ></button>
+          </div>
+        </div>
+        <section
+          id="viewport"
+          class="viewport"
+          aria-label="Interactive 3D mechanism. Drag to orbit, scroll to zoom."
+          tabindex="0"
+        >
+          <div class="viewport-title">
+            <span class="eyebrow"
+              >MECHANISM / <span id="mechanismType">PENDULUM</span></span
+            >
+            <h1 id="viewportName">Gravity pendulum</h1>
+            <p id="viewportDescription">
+              A rigid-body motion study, from setup to response.
+            </p>
+          </div>
+          <div id="canvasMount" class="canvas-mount"></div>
+          <div id="topology" class="topology" hidden></div>
+          <div class="viewport-tags">
+            <span class="view-label" id="viewSource">Initial configuration</span
+            ><span class="view-label" id="viewTime">t = 0.000 s</span>
+              <span class="view-label" id="stepStatus" hidden></span>
+            <span class="view-label" id="referenceStatus" hidden></span>
+          </div>
+          <div class="axis-key">
+            <span class="x">X</span><span class="y">Y</span
+            ><span class="z">Z ↑</span>
+          </div>
+          <div class="viewport-hint" id="viewportHint">
+            Drag to orbit <i>·</i> Scroll to zoom <i>·</i> Click a body to
+            inspect
+          </div>
+        </section>
+        <section class="results-panel" aria-label="Simulation results">
+          <div class="results-heading">
+            <div>
+              <span class="eyebrow">RESPONSE</span
+              ><strong id="signalTitle">Angular displacement</strong
+              ><span class="source-badge" id="resultSource">No run yet</span>
+            </div>
+            <div>
+              <select id="nodeSelect" aria-label="Result node" hidden></select>
+              <select id="forceSelect" aria-label="Result spring or damper" hidden></select>
+              <select id="jointSelect" aria-label="Result slider joint" hidden></select>
+              <select
+                id="signalSelect"
+                aria-label="Response quantity"
+                hidden
+              ></select>
+              <button id="previewButton" class="text-button">
+                <span data-icon="wave"></span>Reference preview</button
+              ><button id="csvButton" class="text-button" disabled>
+                <span data-icon="download"></span>CSV
+              </button><button id="clearResultsButton" class="text-button" disabled>
+                Clear result
+              </button>
+            </div>
+          </div>
+          <div class="results-content">
+            <div
+              class="plot"
+              id="plot"
+              role="img"
+              aria-label="Response plot. Run a simulation to generate data."
+            >
+              <div class="empty-plot">
+                <span data-icon="wave"></span
+                ><strong>Let the model tell its story.</strong
+                ><span
+                  >Run MBDyn for solver results, or explore an explicitly
+                  labelled reference preview.</span
+                >
+              </div>
+            </div>
+            <div id="metrics" class="metrics">
+              <div>
+                <small>Simulation time</small
+                ><strong id="durationMetric">5.00 <span>s</span></strong>
+              </div>
+              <div>
+                <small>Time step</small
+                ><strong id="stepMetric">0.010 <span>s</span></strong>
+              </div>
+              <div>
+                <small>Output samples</small
+                ><strong id="samplesMetric">—</strong>
+              </div>
+            </div>
+          </div>
+          <div class="transport">
+            <button
+              id="playButton"
+              class="icon-button"
+              aria-label="Play result animation"
+              title="Play result animation"
+              data-icon="play"
+              disabled
+            ></button
+            ><button
+              id="rewindButton"
+              class="icon-button"
+              aria-label="Rewind animation"
+              title="Rewind animation"
+              data-icon="rewind"
+              disabled
+            ></button
+            ><output id="timeOutput">0.000 s</output
+            ><input
+              id="timeSlider"
+              type="range"
+              min="0"
+              max="1000"
+              value="0"
+              aria-label="Result time"
+              disabled
+            /><span id="endTime">5.000 s</span
+            ><button
+              id="speedButton"
+              class="speed-button"
+              title="Change animation speed"
+            >
+              1×
+            </button>
+          </div>
+        </section>
+      </section>
+      <aside class="inspector" aria-label="Properties inspector">
+        <div class="panel-heading">
+          <span>PROPERTIES</span
+          ><span id="propertyMode" class="badge blue">Editable</span>
+        </div>
+        <div class="inspector-title">
+          <span class="selection-symbol" data-icon="sliders"></span>
+          <div>
+            <h2 id="selectionTitle">Mechanism</h2>
+            <p id="selectionSubtitle">Physical parameters</p>
+          </div>
+        </div>
+        <div id="properties"></div>
+        <details class="advanced">
+          <summary>Model assumptions</summary>
+          <p id="assumptions"></p>
+        </details>
+        <section class="study-fields">
+          <h3><span data-icon="clock"></span>Study settings</h3>
+          <label
+            >Duration<span class="number-field"
+              ><input
+                id="durationInput"
+                type="number"
+                min="0.01"
+                max="30"
+                step="0.5"
+                aria-label="Simulation duration"
+              /><span>s</span></span
+            ></label
+          ><label
+            >Time step<span class="number-field"
+              ><input
+                id="stepInput"
+                type="number"
+                min="0.0001"
+                step="0.001"
+                aria-label="Simulation time step"
+              /><span>s</span></span
+            ></label
+          >
+          <p class="field-help">
+            Smaller steps capture faster motion and increase solve time.
+          </p>
+        </section>
+        <section id="issuesSection" class="issues-section" hidden>
+          <h3>Model check</h3>
+          <ul id="issuesList"></ul>
+        </section>
+        <div class="inspector-note">
+          <span data-icon="info"></span>
+          <p id="inspectorNote">
+            The visible mechanism is generated from these parameters. Advanced
+            assemblies are planned; this release edits verified templates.
+          </p>
+        </div>
+      </aside>
+    </main>
+    <footer class="statusbar">
+      <div>
+        <span class="status-dot blue"></span
+        ><span id="statusText"
+          >Independent, open-source multibody workbench</span
+        >
+      </div>
+      <div>
+        <button id="logButton" class="status-link">Run log</button
+        ><span id="runId">No solver run</span><span>LOCAL</span>
+      </div>
+    </footer>
+    <dialog id="stepDialog">
+      <div class="dialog-heading"><div><span class="eyebrow">CAD PARTS</span><h2>STEP geometry</h2></div><button id="stepClose" class="icon-button" aria-label="Close STEP dialog">×</button></div>
+      <p>Import STEP files with their original units. Parts are visual geometry; mass, joints and contact are defined in the simulation model.</p>
+      <div class="step-actions"><button id="stepImport" class="secondary">Import STEP files</button><button id="stepPendulum" class="secondary">Load moving STEP pendulum</button><button id="stepExample" class="secondary">Load double-wishbone STEP parts</button><button id="stepRemove" class="secondary" hidden>Remove STEP parts</button></div>
+      <p id="stepDetail">No STEP geometry loaded.</p>
+      <div id="stepBindings" hidden><label>STEP part <select id="stepPart"></select></label><label id="stepBodyLabel">Attach to simulation body <select id="stepBody"></select></label><button id="stepBind" class="secondary">Apply attachment</button><button id="stepExport" class="secondary">Export selected STEP source</button></div>
+      <section id="stepReview" aria-labelledby="stepReviewTitle" hidden>
+        <h3 id="stepReviewTitle">Review saved attachments</h3>
+        <p>These older attachments cannot be matched safely to a STEP occurrence. They are saved but are not used for animation or mass calculations. Select the original attachment and explicitly choose its current part after inspecting the geometry.</p>
+        <label>Saved attachment <select id="stepReviewCandidate"></select></label>
+        <p id="stepReviewDetail"></p>
+        <label>Current STEP part <select id="stepReviewTarget"></select></label>
+        <button id="stepReviewApply" type="button" class="secondary">Confirm selected attachment</button>
+        <button id="stepReviewDiscard" type="button" class="secondary">Discard saved attachment</button>
+      </section>
+      <section id="stepMass" aria-labelledby="stepMassTitle" hidden>
+        <h3 id="stepMassTitle">Calculate solid mass properties</h3>
+        <p>Choose a uniform density for the selected occurrence or all parts attached to one body. Multiple closed solids in one occurrence are summed; overlapping volumes are counted more than once. Single-part results use STEP world axes; combined results use body axes. Nothing changes the model until you apply it.</p>
+        <label>Uniform density · kg/m³ <input id="stepMassDensity" type="number" min="0" max="1000000000" step="any" value="7800"></label>
+        <button id="stepMassCalculate" type="button" class="secondary">Calculate STEP mass</button><button id="stepMassCalculateBody" type="button" class="secondary">Calculate all parts on body</button>
+        <button id="stepMassApply" type="button" class="secondary" disabled>Apply to attached body</button>
+        <pre id="stepMassResult" aria-live="polite">No calculation yet.</pre>
+      </section>
+      <p class="dialog-footnote">Attachments use the part's current CAD coordinates and the body's initial pose. Alignment is your responsibility; unattached parts do not move. The provided suspension exports do not include joints or verified assembly placement.</p>
+    </dialog>
+    <dialog id="examplesDialog">
+      <div class="dialog-heading">
+        <div>
+          <span class="eyebrow">LEARN BY DOING</span>
+          <h2>A small model. A real answer.</h2>
+        </div>
+        <button
+          class="icon-button"
+          data-close
+          aria-label="Close examples"
+          data-icon="close"
+        ></button>
+      </div>
+      <p class="dialog-intro">
+        Start with a validated model, change a physical parameter, and see how
+        the response changes.
+      </p>
+      <div id="exampleCards" class="example-cards"></div>
+      <p class="dialog-footnote">
+        Editable templates and pinned upstream models have separate licenses and
+        clearly stated solver compatibility. Planar revolute trees are editable;
+        general 3D assemblies, flexible bodies and co-simulation remain future work.
+      </p>
+    </dialog>
+    <dialog id="documentDialog">
+      <div class="dialog-heading">
+        <div>
+          <span id="documentEyebrow" class="eyebrow">WORKSPACE</span>
+          <h2 id="documentTitle">MBDyn deck</h2>
+        </div>
+        <button
+          class="icon-button"
+          data-close
+          aria-label="Close document"
+          data-icon="close"
+        ></button>
+      </div>
+      <div id="documentBody" class="document-body"></div>
+      <div class="dialog-actions">
+        <button id="documentDownload" class="secondary">
+          <span data-icon="download"></span>Download</button
+        ><button class="primary" data-close>Done</button>
+      </div>
+    </dialog>
+    <input id="projectFile" type="file" accept=".json,.mbdyn-studio" hidden />
+    <input id="stepFile" type="file" accept=".step,.stp" multiple hidden />
+    <aside id="guidedTour" class="guided-tour" aria-labelledby="tourTitle" aria-describedby="tourText" hidden>
+      <div class="tour-heading"><span id="tourProgress" class="eyebrow"></span><button id="tourClose" type="button" class="icon-button" aria-label="Close guided tour">×</button></div>
+      <h2 id="tourTitle" tabindex="-1"></h2>
+      <p id="tourText"></p>
+      <p id="tourHint" class="tour-hint" aria-live="polite"></p>
+      <label class="tour-preference"><input id="tourDisable" type="checkbox" checked /> Don't show this tour automatically again</label>
+      <p id="tourPreferenceStatus" class="tour-hint" role="status" aria-live="polite"></p>
+      <div class="tour-actions"><button id="tourBack" class="secondary" type="button">Back</button><button id="tourNext" class="primary" type="button">Next</button></div>
+    </aside>
+    <aside id="agentPanel" class="agent-panel" aria-label="Simulation AI agent" hidden>
+      <div class="agent-heading"><div><strong>Simulation agent</strong><small>Local Ollama connection</small></div><button id="agentClose" class="icon-button" aria-label="Close AI agent" data-icon="close"></button></div>
+      <label class="agent-model-label">Model <select id="agentModel" aria-label="Local AI model"></select></label>
+      <div class="agent-status-row"><p id="agentStatus" class="agent-status" role="status">Checking local AI service…</p><button id="agentRefresh" class="text-button" type="button">Refresh</button></div>
+      <div id="agentMessages" class="agent-messages" aria-live="polite"></div>
+      <form id="agentForm"><label for="agentInput">Ask the agent to set up a supported simulation</label><textarea id="agentInput" rows="3" maxlength="4000" placeholder="Create a quarter-car bump study with 2000 N·s/m damping and run it"></textarea><div><small>Spatial proposals require review. Applied changes use Undo. Conversation is not saved.</small><button id="agentSend" type="submit" class="primary">Send</button></div></form>
+    </aside>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

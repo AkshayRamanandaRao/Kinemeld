@@ -1,0 +1,87 @@
+# STEP solids and body attachment
+
+The **STEP parts** control imports `.step` / `.stp` solids and assemblies through
+OpenCascade XDE. The original source bytes, SHA-256 and explicit part bindings
+are retained in the project. STEP file units and occurrence placements are read
+by OpenCascade; display vertices are in metres. Tessellation is a derived display
+representation, not a replacement STEP file. Reopening regenerates it from the
+preserved original files.
+
+For a complete moving-solid example, choose **Load moving STEP pendulum**. This
+loads an original rectangular STEP solid and a matching rigid-body model with
+the binding already set. Its dimensions, density, inertia and initial frame are
+documented and checked in [the example guide](../examples/step-pendulum/README.md).
+Select **Run simulation** and scrub the results to see the solid follow MBDyn.
+
+Open **STEP parts** → **Load double-wishbone STEP parts** for 12 unmodified
+MIT-licensed parts from the [pinned source](../examples/step-suspension/README.md).
+Their source files are separate exports with no joint definitions; visual alignment
+has not been independently checked against the original assembly. The
+existing quarter-car study solves vertical motion only, and is not a double-
+wishbone simulation. Source licensing and hashes are retained beside the files.
+
+To create a matching STEP primitive, select a planar or spatial body, expand **Calculate
+mass and inertia from a uniform solid**, enter dimensions and density, then
+choose **Create STEP solid and apply mass**. The operation generates and attaches
+a brick, cylinder, sphere or ellipsoid as a STEP file and assigns the calculated
+mass and principal inertia to that body. It replaces the body's physical
+properties; other attached geometry is not included in the calculation. The
+solid is centered on the body COM and aligned to its principal axes, including
+the spatial body’s authored Euler123 orientation. Use
+**STEP parts → Export selected STEP source** to save the original generated or
+imported STEP file outside the project.
+
+To animate a solid, first open or author a **planar or spatial assembly**, then choose a STEP
+part and an existing body and select **Apply attachment**. The CAD coordinates
+are interpreted in the model's global initial coordinate frame. The original
+binding pose is retained; subsequent solver output moves and rotates the solid
+with its assigned body. Check geometry-to-body alignment manually before relying
+on the display. Unattached parts stay fixed. Binding or importing a solid does
+not create masses, inertia, joints, contact or forces; supply those separately.
+Undo and redo include attachments. Other model families show the solids as static
+CAD only: their results do not animate the STEP geometry.
+
+## Reviewing older assembly attachments
+
+![Reviewing saved STEP attachments in the aircraft gear example](images/step-attachment-review.png)
+
+Multi-part STEP assemblies can be enumerated in a different order by another CAD
+runtime. For supported assemblies, the application records each occurrence's
+source-provided assembly-usage identity and the source file hash. On reopen it
+matches that identity again rather than assuming that the old displayed part
+number still identifies the same component. If an existing identity cannot be
+matched uniquely, the project does not replace the current project. Some STEP
+files do not provide distinct, usable occurrence identities; their attachments
+require review after reopening. Older projects saved before identity tracking,
+including single-part sources, also require review because their old importer
+may have enumerated the file differently.
+
+For example, open an older copy of the aircraft nose-gear kinematic project and
+choose **STEP parts**. Under **Review saved attachments**, select one saved
+attachment. Inspect its source file, body and original registration pose, and
+inspect the visible STEP assembly. Choose the corresponding current part from
+the same file, then select **Confirm selected attachment**. The original pose is
+preserved; verify alignment before running the study. Repeat for each attachment
+and save. The current part must have a verifiable occurrence identity; if it does
+not, retain the unverified attachment and use a STEP source with identifiable
+occurrences. **Discard saved attachment** is explicit and can be undone.
+
+Pending attachments are preserved in project saves but do not animate or count
+as attached geometry. Review all of a body's pending parts before applying STEP
+mass properties. The CAD identity check does not prove correct joints, alignment,
+material properties, or the physical validity of a simulation.
+
+On this machine the separate Python process uses the installed `cadquery-ocp`
+(OpenCascade) package. STEP import on a different machine requires that package
+in the same Python environment as the backend; no kernel is bundled in the
+Windows executable. Conversion accepts up to 24 files / 12 MiB total, and a
+maximum of 150,000 triangles per file and 200,000 per combined import. Each
+conversion is isolated with a 90-second timeout. The original plus results must
+fit the existing 32 MiB project limit. A malformed or exceptionally complex
+file can consume substantial memory during kernel meshing before output limits
+are reached: the converter is not a hardened sandbox for hostile CAD files.
+
+This is a STEP viewing and planar or spatial body-attachment workflow, not an editable CAD
+kernel, automatic joint extraction, or a validated suspension design. Spatial rigid-body
+assembly is separately supported as documented in [spatial assemblies](spatial-assembly.md). The imported CAD does not provide real material properties or
+prove physical accuracy.

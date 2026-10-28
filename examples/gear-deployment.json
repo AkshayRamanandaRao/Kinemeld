@@ -1,0 +1,24 @@
+{
+  "kind": "gear-deployment",
+  "name": "Shuttle-style gear deployment",
+  "parameters": {
+    "mainLength": 1.1,
+    "braceAttachment": 0.45,
+    "upperBraceLength": 0.55,
+    "lowerBraceLength": 0.6,
+    "groundX": 0.65,
+    "groundZ": -0.1,
+    "actuatorAnchorX": -0.35,
+    "actuatorAnchorZ": 0.15,
+    "mainMass": 25.0,
+    "upperBraceMass": 4.0,
+    "lowerBraceMass": 4.0,
+    "initialAngle": -65.0,
+    "finalAngle": 0.0,
+    "gravity": 9.81
+  },
+  "simulation": {
+    "duration": 3.0,
+    "step": 0.01
+  }
+}

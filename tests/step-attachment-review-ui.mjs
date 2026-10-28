@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright';
+import {readFile,writeFile,mkdir,rm} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+
+const base=process.env.MBDYN_STUDIO_URL || 'http://127.0.0.1:18996';
+const temporary=join(tmpdir(),`mbdyn-legacy-attachments-${process.pid}.mbdyn-studio`);
+const project=JSON.parse(await readFile('examples/open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio','utf8'));
+delete project.assets.step.occurrenceWitnesses;delete project.assets.step.unverifiedBindings;
+const original=structuredClone(project.assets.step.bindings);
+await writeFile(temporary,JSON.stringify(project));
+const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader']});
+const page=await browser.newPage({viewport:{width:1440,height:1200},acceptDownloads:true}),errors=[];
+page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.accept());
+await page.route('**/api/tour-preference',route=>route.fulfill({json:{enabled:false}}));
+try {
+  await page.goto(base);await page.waitForFunction(()=>document.querySelector('#solverStatus')?.textContent.includes('MBDyn ready'));
+  await page.locator('#projectFile').setInputFiles(temporary);
+  await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('Review saved STEP attachments'),null,{timeout:180000});
+  assert.match(await page.locator('#stepStatus').textContent(),/0 attached/);
+  await page.locator('#stepButton').click();
+  assert.match(await page.locator('#stepDetail').textContent(),/11 awaiting review/);
+  assert.equal(await page.locator('#stepReviewCandidate option').count(),11);
+  await page.locator('#stepReviewCandidate').selectOption('0:part-1');
+  assert.match(await page.locator('#stepReviewDetail').textContent(),/source-assembly\.step.*body:/);
+  await page.locator('#stepReviewApply').click();
+  assert.match(await page.locator('#notice').textContent(),/Choose a saved attachment/);
+  await page.locator('#stepReviewTarget').selectOption('0:part-1');
+  if(process.env.MBDYN_SKIP_DOC_SCREENSHOTS!=='1'){await mkdir('docs/images',{recursive:true});await page.screenshot({path:'docs/images/step-attachment-review.png'});}
+  await page.locator('#stepReviewApply').click();
+  assert.match(await page.locator('#stepDetail').textContent(),/1 attached.*10 awaiting review/);
+  await page.locator('#stepClose').click();
+  await page.locator('#undoButton').click();await page.locator('#stepButton').click();
+  assert.match(await page.locator('#stepDetail').textContent(),/0 attached.*11 awaiting review/);
+  await page.locator('#stepClose').click();await page.locator('#redoButton').click();
+  const event=page.waitForEvent('download');await page.locator('#saveButton').click();
+  const saved=await event, data=JSON.parse(await readFile(await saved.path(),'utf8'));
+  assert.deepEqual(data.assets.step.bindings['0:part-1'],original['0:part-1']);
+  assert.equal(Object.keys(data.assets.step.unverifiedBindings).length,10);
+  await page.locator('#projectFile').setInputFiles(await saved.path());
+  await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('Review saved STEP attachments'),null,{timeout:180000});
+  await page.locator('#stepButton').click();assert.match(await page.locator('#stepDetail').textContent(),/1 attached.*10 awaiting review/);
+  await page.locator('#stepClose').click();
+  data.assets.step.occurrenceWitnesses['0:part-1'].path=['missing-occurrence'];
+  await writeFile(temporary,JSON.stringify(data));
+  await page.locator('#projectFile').setInputFiles(temporary);
+  await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('no longer matches its saved source identity'),null,{timeout:180000});
+  await page.locator('#stepButton').click();assert.match(await page.locator('#stepDetail').textContent(),/1 attached.*10 awaiting review/);
+  assert.deepEqual(errors,[]);console.log('Legacy aircraft STEP attachments remain pending; explicit review, pose preservation, undo and save/reopen passed.');
+} finally {await browser.close();await rm(temporary,{force:true});}

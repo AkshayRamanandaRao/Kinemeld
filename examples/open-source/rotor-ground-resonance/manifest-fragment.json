@@ -1,0 +1,248 @@
+{
+  "id": "rotor-ground-resonance",
+  "title": "Helicopter rotor ground resonance (compatibility blocked)",
+  "category": "Aerospace",
+  "description": "Upstream four-blade helicopter rotor on a flexible support by Gianni Cassoni, based on Masarati and Hammond (1974). Research model preserved intact; installed MBDyn 1.7.3 fails initial assembly.",
+  "enabled": false,
+  "source": {
+    "repository": "https://github.com/alexal00/MBDynmodels",
+    "revision": "3b8c753a497be98efe4f49b5d44f5b0608cdd78b",
+    "url": "https://github.com/alexal00/MBDynmodels/tree/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model",
+    "mbdynVersion": "1.7.3 (execution failed)"
+  },
+  "license": {
+    "spdx": "GPL-2.0-only",
+    "notice": "rotor-ground-resonance/COPYING",
+    "evidence": "Explicit GPL version 2 redistribution grant in each of the four original model input headers; copyright and authorship notices preserved. The application MIT license does not apply to these files."
+  },
+  "entrypoint": "GR_rotor.mbd",
+  "files": [
+    {
+      "path": "rotor-ground-resonance/original/GR_rotor.mbd",
+      "runPath": "original/GR_rotor.mbd",
+      "sha256": "b2bb2059815b7f970fdc37caca74dc2d318bcf26f84474e1830ef104a434ff1b",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/GR_rotor.mbd"
+    },
+    {
+      "path": "rotor-ground-resonance/runnable/GR_rotor.mbd",
+      "runPath": "GR_rotor.mbd",
+      "sha256": "47f101be4f6d06110febf7e67cf662f478797562010c5a3914396b96f67620e4",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/GR_rotor.mbd"
+    },
+    {
+      "path": "rotor-ground-resonance/original/rotor_blade.elm",
+      "runPath": "original/rotor_blade.elm",
+      "sha256": "cffe9c56d90fafade6657440e01cf6b7a0c8851bdea6673622a7863fd1610ba6",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.elm"
+    },
+    {
+      "path": "rotor-ground-resonance/runnable/rotor_blade.elm",
+      "runPath": "rotor_blade.elm",
+      "sha256": "cffe9c56d90fafade6657440e01cf6b7a0c8851bdea6673622a7863fd1610ba6",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.elm"
+    },
+    {
+      "path": "rotor-ground-resonance/original/rotor_blade.nod",
+      "runPath": "original/rotor_blade.nod",
+      "sha256": "195083ad5260480d36aa18118151017b94dffb682b08c650543de6f11d9c1bcf",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.nod"
+    },
+    {
+      "path": "rotor-ground-resonance/runnable/rotor_blade.nod",
+      "runPath": "rotor_blade.nod",
+      "sha256": "195083ad5260480d36aa18118151017b94dffb682b08c650543de6f11d9c1bcf",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.nod"
+    },
+    {
+      "path": "rotor-ground-resonance/original/rotor_blade.ref",
+      "runPath": "original/rotor_blade.ref",
+      "sha256": "ae795a8bf86a170d1826778b1baf514ce2ba726f26635788f60856e00a32b191",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.ref"
+    },
+    {
+      "path": "rotor-ground-resonance/runnable/rotor_blade.ref",
+      "runPath": "rotor_blade.ref",
+      "sha256": "ae795a8bf86a170d1826778b1baf514ce2ba726f26635788f60856e00a32b191",
+      "sourceUrl": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.ref"
+    }
+  ],
+  "simulation": {
+    "duration": 60.0,
+    "step": 0.001
+  },
+  "units": {
+    "position": "m",
+    "orientation": "deg",
+    "linearVelocity": "m/s",
+    "angularVelocity": "rad/s",
+    "time": "s"
+  },
+  "orientationConvention": "euler123-degrees",
+  "nodes": [
+    {
+      "id": 0,
+      "label": "Ground"
+    },
+    {
+      "id": 100,
+      "label": "Airframe X"
+    },
+    {
+      "id": 200,
+      "label": "Airframe Y"
+    },
+    {
+      "id": 10000,
+      "label": "Rotor hub"
+    },
+    {
+      "id": 11000,
+      "label": "Blade 1"
+    },
+    {
+      "id": 12000,
+      "label": "Blade 2"
+    },
+    {
+      "id": 13000,
+      "label": "Blade 3"
+    },
+    {
+      "id": 14000,
+      "label": "Blade 4"
+    }
+  ],
+  "initialNodes": [
+    {
+      "id": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0,
+      "rx": -0.0,
+      "ry": 0.0,
+      "rz": 0.0
+    },
+    {
+      "id": 100,
+      "x": 0.1,
+      "y": 0.0,
+      "z": 0.0,
+      "rx": -0.0,
+      "ry": 0.0,
+      "rz": 0.0
+    },
+    {
+      "id": 200,
+      "x": 0.1,
+      "y": 0.0,
+      "z": 0.0,
+      "rx": -0.0,
+      "ry": 0.0,
+      "rz": 0.0
+    },
+    {
+      "id": 10000,
+      "x": 0.1,
+      "y": 0.0,
+      "z": 2.0,
+      "rx": -0.0,
+      "ry": 0.0,
+      "rz": 0.0
+    },
+    {
+      "id": 11000,
+      "x": 0.1,
+      "y": 0.3048,
+      "z": 2.0,
+      "rx": -0.0,
+      "ry": 0.0,
+      "rz": 90.0
+    },
+    {
+      "id": 12000,
+      "x": -0.2048,
+      "y": 3.73272e-17,
+      "z": 2.0,
+      "rx": -0.0,
+      "ry": 0.0,
+      "rz": 180.0
+    },
+    {
+      "id": 13000,
+      "x": 0.1,
+      "y": -0.3048,
+      "z": 2.0,
+      "rx": -0.0,
+      "ry": 0.0,
+      "rz": -90.0
+    },
+    {
+      "id": 14000,
+      "x": 0.4048,
+      "y": -7.46545e-17,
+      "z": 2.0,
+      "rx": -0.0,
+      "ry": 0.0,
+      "rz": -1.40334e-14
+    }
+  ],
+  "initialNodesSource": "Parsed initial positions and euler123 orientations from native result.log before initial-assembly failure; no velocities or solved trajectories are supplied. See rotor-ground-resonance/initialization.log.txt.",
+  "connections": [
+    {
+      "from": 0,
+      "to": 100,
+      "label": "X support constraint and spring-damper"
+    },
+    {
+      "from": 100,
+      "to": 200,
+      "label": "Y support constraint and spring-damper"
+    },
+    {
+      "from": 200,
+      "to": 10000,
+      "label": "Rotor hub total joint"
+    },
+    {
+      "from": 10000,
+      "to": 11000,
+      "label": "Blade hinge and damper"
+    },
+    {
+      "from": 10000,
+      "to": 12000,
+      "label": "Blade hinge and damper"
+    },
+    {
+      "from": 10000,
+      "to": 13000,
+      "label": "Blade hinge and damper"
+    },
+    {
+      "from": 10000,
+      "to": 14000,
+      "label": "Blade hinge and damper"
+    }
+  ],
+  "visualizationNote": "Initial native node-origin schematic only. Blade origins are hinge locations; connections are not complete blade geometry, exact joint attachments, CAD solids or solved motion.",
+  "dependencies": [
+    "rotor_blade.ref",
+    "rotor_blade.nod",
+    "rotor_blade.elm"
+  ],
+  "modifications": [
+    "Runnable main comments out output results: netcdf, no text; dated notice added 2026-10-27. Native text output enabled; mechanical and integration definitions unchanged.",
+    "Original four inputs are preserved byte-for-byte; all three runnable includes are identical to originals."
+  ],
+  "validation": {
+    "status": "unsupported",
+    "solverVersion": "1.7.3",
+    "exitCode": 1,
+    "normalTermination": false,
+    "evidence": "rotor-ground-resonance/verification.json",
+    "diagnosticLog": "rotor-ground-resonance/failure.log.txt",
+    "error": "NaiveSolver ENOPIV(133): initial assembly has no pivot at column 134, TotalJoint(10000), dof 6 Mz. No completed timestep or motion result.",
+    "remediation": "Diagnose the initial-assembly rank at joint 10000 with a compatible MBDyn release/configuration and upstream model assumptions; document any changes and rerun verification before enabling. A newer release is not yet tested and is not guaranteed to fix this.",
+    "scope": "Source integrity and eight-node input inventory established; solver dynamics, physical accuracy and completed final time are not established."
+  }
+}

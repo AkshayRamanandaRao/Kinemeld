@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright';
+import {readFile,writeFile} from 'node:fs/promises';
+const base=process.env.MBDYN_STUDIO_URL||'http://127.0.0.1:8768', browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader']}),page=await browser.newPage({viewport:{width:1440,height:960},acceptDownloads:true}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+try{
+ await page.request.post(base+'/api/tour-preference',{data:{enabled:false}});await page.goto(base);await page.waitForFunction(()=>document.querySelector('#solverStatus')?.textContent.includes('MBDyn ready'));
+ await page.locator('#examplesButton').click();await page.locator('.example-card').filter({has:page.getByRole('heading',{name:'Vertical prismatic slider',exact:true})}).getByRole('button',{name:/Open example/}).click();
+ await page.getByRole('button',{name:'Add external force / torque'}).click();assert(await page.locator('[data-entity="applied-load1"]').isVisible());
+ await page.locator('#graph-load-load1-fx').fill('0');await page.locator('#graph-load-load1-fx').press('Tab');await page.locator('#graph-load-load1-fz').fill('2');await page.locator('#graph-load-load1-fz').press('Tab');
+ await page.waitForFunction(()=>document.querySelector('#validationBadge')?.textContent==='Ready');const ev=page.waitForResponse(r=>r.url().endsWith('/api/run')&&r.request().method()==='POST',{timeout:120000});await page.locator('#runButton').click();const result=await (await ev).json();assert(result.ok,JSON.stringify(result));assert.equal(result.model.loads[0].fz,2);assert(result.samples.some(s=>Math.abs(s.appliedWork)>1e-8));
+ await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('MBDyn completed successfully'));await page.locator('#signalSelect').selectOption({label:'Applied work (reconstructed)'});assert.match(await page.locator('#signalTitle').textContent(),/Applied work/);
+ const down=page.waitForEvent('download');await page.locator('#csvButton').click();const file=await down;await file.saveAs('tests/evidence/load-ui.csv');assert.match(await readFile('tests/evidence/load-ui.csv','utf8'),/appliedWork_J/);
+ const save=page.waitForEvent('download');await page.locator('#saveButton').click();const project=await save;await project.saveAs('tests/evidence/load-ui.mbdyn-studio');await page.locator('#projectFile').setInputFiles('tests/evidence/load-ui.mbdyn-studio');await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('Project imported and validated'));assert.deepEqual(errors,[]);
+ await writeFile('tests/evidence/load-ui-verification.json',JSON.stringify({ok:true,runId:result.runId,checks:['assign load','real slider solve','work plot','full CSV','save and reopen']}));console.log('External load UI workflow passed');
+}catch(e){console.error(e);process.exitCode=1;await page.screenshot({path:'tests/evidence/load-ui-failure.png',fullPage:true}).catch(()=>{});}finally{await browser.close();}

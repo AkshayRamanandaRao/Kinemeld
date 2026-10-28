@@ -1,0 +1,13 @@
+[package]
+name = "mbdyn-studio-desktop"
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+mbdyn-studio-core = { path = "../core" }
+rfd = "0.17.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tao = "0.37.2"
+wry = "0.57.1"

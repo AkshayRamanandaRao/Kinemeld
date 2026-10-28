@@ -1,0 +1,17 @@
+{
+  "kind": "double-pendulum",
+  "name": "Coupled double pendulum",
+  "parameters": {
+    "mass1": 1.0,
+    "mass2": 1.0,
+    "length1": 1.0,
+    "length2": 1.0,
+    "angle1": 20.0,
+    "angle2": 45.0,
+    "gravity": 9.81
+  },
+  "simulation": {
+    "duration": 5.0,
+    "step": 0.005
+  }
+}

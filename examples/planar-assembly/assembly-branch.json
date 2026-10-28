@@ -1,0 +1,117 @@
+{
+  "kind": "planar-assembly",
+  "name": "Authored branched assembly",
+  "parameters": {
+    "gravity": 9.81
+  },
+  "simulation": {
+    "duration": 5.0,
+    "step": 0.001
+  },
+  "bodies": [
+    {
+      "id": "upper_link",
+      "name": "Upper Link",
+      "mass": 1.2,
+      "inertia": {
+        "xx": 0.10009,
+        "yy": 0.10009,
+        "zz": 0.00018
+      },
+      "pose": {
+        "x": 0.06958655048003272,
+        "z": -0.4951340343707852,
+        "angleDeg": -8.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vz": 0.0,
+        "omega": 0.0
+      }
+    },
+    {
+      "id": "left_link",
+      "name": "Left Link",
+      "mass": 0.6,
+      "inertia": {
+        "xx": 0.018045,
+        "yy": 0.018045,
+        "zz": 9e-05
+      },
+      "pose": {
+        "x": 0.004474252200876147,
+        "z": -1.1979268732184245,
+        "angleDeg": -25.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vz": 0.0,
+        "omega": 0.0
+      }
+    },
+    {
+      "id": "right_link",
+      "name": "Right Link",
+      "mass": 0.9,
+      "inertia": {
+        "xx": 0.04806750000000001,
+        "yy": 0.04806750000000001,
+        "zz": 0.000135
+      },
+      "pose": {
+        "x": 0.26929519000844315,
+        "z": -1.2428183171430245,
+        "angleDeg": 15.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vz": 0.0,
+        "omega": 0.0
+      }
+    }
+  ],
+  "joints": [
+    {
+      "id": "ground_pin",
+      "type": "revolute",
+      "parent": "ground",
+      "child": "upper_link",
+      "parentAnchor": {
+        "x": 0.0,
+        "z": 0.0
+      },
+      "childAnchor": {
+        "x": 0.0,
+        "z": 0.5
+      }
+    },
+    {
+      "id": "left_hinge",
+      "type": "revolute",
+      "parent": "upper_link",
+      "child": "left_link",
+      "parentAnchor": {
+        "x": -0.25,
+        "z": -0.4
+      },
+      "childAnchor": {
+        "x": 0.0,
+        "z": 0.3
+      }
+    },
+    {
+      "id": "right_hinge",
+      "type": "revolute",
+      "parent": "upper_link",
+      "child": "right_link",
+      "parentAnchor": {
+        "x": 0.25,
+        "z": -0.4
+      },
+      "childAnchor": {
+        "x": 0.0,
+        "z": 0.4
+      }
+    }
+  ]
+}

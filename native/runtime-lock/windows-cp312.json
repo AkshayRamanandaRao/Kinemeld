@@ -1,0 +1,232 @@
+{
+  "format": "mbdyn-python-wheel-lock/1",
+  "licenseReview": "not completed",
+  "packages": {
+    "cadquery-ocp": {
+      "filename": "cadquery_ocp-7.9.3.1.1-cp312-cp312-win_amd64.whl",
+      "requires": [
+        "cadquery-ocp-proxy==7.9.3.1.1",
+        "vtk==9.6.2"
+      ],
+      "sha256": "47cead7f3a7c18bcdd14659c3303e02b6f4537930bc2ff9a8946d1b1400787fe",
+      "source": "https://pypi.org/pypi/cadquery-ocp/7.9.3.1.1/json",
+      "url": "https://files.pythonhosted.org/packages/b6/ab/1a2e7c10179aff37bbdd65ef9df86fa83b5ca91d18e8d88c26d1d667d5d2/cadquery_ocp-7.9.3.1.1-cp312-cp312-win_amd64.whl",
+      "version": "7.9.3.1.1"
+    },
+    "cadquery-ocp-proxy": {
+      "filename": "cadquery_ocp_proxy-7.9.3.1.1-py3-none-any.whl",
+      "requires": [],
+      "sha256": "ca4164ec4b54956d9fc3e68c67d555b5486cb963c2f71e18df005ba16b921c91",
+      "source": "https://pypi.org/pypi/cadquery-ocp-proxy/7.9.3.1.1/json",
+      "url": "https://files.pythonhosted.org/packages/30/c0/04e9363a99fee892de2776820e3dcf04f8825b6edc9580efe3416c9465a7/cadquery_ocp_proxy-7.9.3.1.1-py3-none-any.whl",
+      "version": "7.9.3.1.1"
+    },
+    "contourpy": {
+      "filename": "contourpy-1.3.3-cp312-cp312-win_amd64.whl",
+      "requires": [
+        "numpy>=1.25",
+        "furo; extra == \"docs\"",
+        "sphinx>=7.2; extra == \"docs\"",
+        "sphinx-copybutton; extra == \"docs\"",
+        "bokeh; extra == \"bokeh\"",
+        "selenium; extra == \"bokeh\"",
+        "contourpy[bokeh,docs]; extra == \"mypy\"",
+        "bokeh; extra == \"mypy\"",
+        "docutils-stubs; extra == \"mypy\"",
+        "mypy==1.17.0; extra == \"mypy\"",
+        "types-Pillow; extra == \"mypy\"",
+        "contourpy[test-no-images]; extra == \"test\"",
+        "matplotlib; extra == \"test\"",
+        "Pillow; extra == \"test\"",
+        "pytest; extra == \"test-no-images\"",
+        "pytest-cov; extra == \"test-no-images\"",
+        "pytest-rerunfailures; extra == \"test-no-images\"",
+        "pytest-xdist; extra == \"test-no-images\"",
+        "wurlitzer; extra == \"test-no-images\""
+      ],
+      "sha256": "8153b8bfc11e1e4d75bcb0bff1db232f9e10b274e0929de9d608027e0d34ff8b",
+      "source": "https://pypi.org/pypi/contourpy/1.3.3/json",
+      "url": "https://files.pythonhosted.org/packages/19/e8/6026ed58a64563186a9ee3f29f41261fd1828f527dd93d33b60feca63352/contourpy-1.3.3-cp312-cp312-win_amd64.whl",
+      "version": "1.3.3"
+    },
+    "cycler": {
+      "filename": "cycler-0.12.1-py3-none-any.whl",
+      "requires": [
+        "ipython ; extra == 'docs'",
+        "matplotlib ; extra == 'docs'",
+        "numpydoc ; extra == 'docs'",
+        "sphinx ; extra == 'docs'",
+        "pytest ; extra == 'tests'",
+        "pytest-cov ; extra == 'tests'",
+        "pytest-xdist ; extra == 'tests'"
+      ],
+      "sha256": "85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30",
+      "source": "https://pypi.org/pypi/cycler/0.12.1/json",
+      "url": "https://files.pythonhosted.org/packages/e7/05/c19819d5e3d95294a6f5947fb9b9629efb316b96de511b418c53d245aae6/cycler-0.12.1-py3-none-any.whl",
+      "version": "0.12.1"
+    },
+    "fonttools": {
+      "filename": "fonttools-4.63.0-cp312-cp312-win_amd64.whl",
+      "requires": [
+        "lxml>=4.0; extra == \"lxml\"",
+        "brotli>=1.0.1; platform_python_implementation == \"CPython\" and extra == \"woff\"",
+        "brotlicffi>=0.8.0; platform_python_implementation != \"CPython\" and extra == \"woff\"",
+        "zopfli>=0.1.4; extra == \"woff\"",
+        "unicodedata2>=17.0.0; python_version <= \"3.14\" and extra == \"unicode\"",
+        "lz4>=1.7.4.2; extra == \"graphite\"",
+        "scipy; platform_python_implementation != \"PyPy\" and extra == \"interpolatable\"",
+        "munkres; platform_python_implementation == \"PyPy\" and extra == \"interpolatable\"",
+        "pycairo; extra == \"interpolatable\"",
+        "matplotlib; extra == \"plot\"",
+        "sympy; extra == \"symfont\"",
+        "xattr; sys_platform == \"darwin\" and extra == \"type1\"",
+        "skia-pathops>=0.5.0; extra == \"pathops\"",
+        "uharfbuzz>=0.45.0; extra == \"repacker\"",
+        "lxml>=4.0; extra == \"all\"",
+        "brotli>=1.0.1; platform_python_implementation == \"CPython\" and extra == \"all\"",
+        "brotlicffi>=0.8.0; platform_python_implementation != \"CPython\" and extra == \"all\"",
+        "zopfli>=0.1.4; extra == \"all\"",
+        "unicodedata2>=17.0.0; python_version <= \"3.14\" and extra == \"all\"",
+        "lz4>=1.7.4.2; extra == \"all\"",
+        "scipy; platform_python_implementation != \"PyPy\" and extra == \"all\"",
+        "munkres; platform_python_implementation == \"PyPy\" and extra == \"all\"",
+        "pycairo; extra == \"all\"",
+        "matplotlib; extra == \"all\"",
+        "sympy; extra == \"all\"",
+        "xattr; sys_platform == \"darwin\" and extra == \"all\"",
+        "skia-pathops>=0.5.0; extra == \"all\"",
+        "uharfbuzz>=0.45.0; extra == \"all\""
+      ],
+      "sha256": "59ac449f8cca9b4ffa08d2e7bbadad87ce710d69d1eda5c3c1ce579baa987272",
+      "source": "https://pypi.org/pypi/fonttools/4.63.0/json",
+      "url": "https://files.pythonhosted.org/packages/87/36/cccb9bc2a6ab63d1b2980374f0dca72ce95ae267c9b4cfe77455bb70d0d4/fonttools-4.63.0-cp312-cp312-win_amd64.whl",
+      "version": "4.63.0"
+    },
+    "kiwisolver": {
+      "filename": "kiwisolver-1.5.0-cp312-cp312-win_amd64.whl",
+      "requires": [],
+      "sha256": "f18c2d9782259a6dc132fdc7a63c168cbc74b35284b6d75c673958982a378384",
+      "source": "https://pypi.org/pypi/kiwisolver/1.5.0/json",
+      "url": "https://files.pythonhosted.org/packages/ad/cf/0348374369ca588f8fe9c338fae49fa4e16eeb10ffb3d012f23a54578a9e/kiwisolver-1.5.0-cp312-cp312-win_amd64.whl",
+      "version": "1.5.0"
+    },
+    "matplotlib": {
+      "filename": "matplotlib-3.11.0-cp312-cp312-win_amd64.whl",
+      "requires": [
+        "contourpy>=1.0.1",
+        "cycler>=0.10",
+        "fonttools>=4.22.0",
+        "kiwisolver>=1.3.1",
+        "numpy>=1.25",
+        "packaging>=20.0",
+        "pillow>=9",
+        "pyparsing>=3",
+        "python-dateutil>=2.7"
+      ],
+      "sha256": "ac6f1ef39f3d0f9e2463303013094992cdbe0f85f43bc54155bc472b2042768e",
+      "source": "https://pypi.org/pypi/matplotlib/3.11.0/json",
+      "url": "https://files.pythonhosted.org/packages/e5/2f/a58a4443a4d052a4ea77557478336aefc26c7981f6408d37adba763aa758/matplotlib-3.11.0-cp312-cp312-win_amd64.whl",
+      "version": "3.11.0"
+    },
+    "numpy": {
+      "filename": "numpy-2.4.4-cp312-cp312-win_amd64.whl",
+      "requires": [],
+      "sha256": "b5f0362dc928a6ecd9db58868fca5e48485205e3855957bdedea308f8672ea4a",
+      "source": "https://pypi.org/pypi/numpy/2.4.4/json",
+      "url": "https://files.pythonhosted.org/packages/2d/5b/e1deebf88ff431b01b7406ca3583ab2bbb90972bbe1c568732e49c844f7e/numpy-2.4.4-cp312-cp312-win_amd64.whl",
+      "version": "2.4.4"
+    },
+    "packaging": {
+      "filename": "packaging-26.0-py3-none-any.whl",
+      "requires": [],
+      "sha256": "b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529",
+      "source": "https://pypi.org/pypi/packaging/26.0/json",
+      "url": "https://files.pythonhosted.org/packages/b7/b9/c538f279a4e237a006a2c98387d081e9eb060d203d8ed34467cc0f0b9b53/packaging-26.0-py3-none-any.whl",
+      "version": "26.0"
+    },
+    "pillow": {
+      "filename": "pillow-12.2.0-cp312-cp312-win_amd64.whl",
+      "requires": [
+        "furo; extra == \"docs\"",
+        "olefile; extra == \"docs\"",
+        "sphinx>=8.2; extra == \"docs\"",
+        "sphinx-autobuild; extra == \"docs\"",
+        "sphinx-copybutton; extra == \"docs\"",
+        "sphinx-inline-tabs; extra == \"docs\"",
+        "sphinxext-opengraph; extra == \"docs\"",
+        "olefile; extra == \"fpx\"",
+        "olefile; extra == \"mic\"",
+        "arro3-compute; extra == \"test-arrow\"",
+        "arro3-core; extra == \"test-arrow\"",
+        "nanoarrow; extra == \"test-arrow\"",
+        "pyarrow; extra == \"test-arrow\"",
+        "check-manifest; extra == \"tests\"",
+        "coverage>=7.4.2; extra == \"tests\"",
+        "defusedxml; extra == \"tests\"",
+        "markdown2; extra == \"tests\"",
+        "olefile; extra == \"tests\"",
+        "packaging; extra == \"tests\"",
+        "pyroma>=5; extra == \"tests\"",
+        "pytest; extra == \"tests\"",
+        "pytest-cov; extra == \"tests\"",
+        "pytest-timeout; extra == \"tests\"",
+        "pytest-xdist; extra == \"tests\"",
+        "trove-classifiers>=2024.10.12; extra == \"tests\"",
+        "defusedxml; extra == \"xmp\""
+      ],
+      "sha256": "7f84204dee22a783350679a0333981df803dac21a0190d706a50475e361c93f5",
+      "source": "https://pypi.org/pypi/pillow/12.2.0/json",
+      "url": "https://files.pythonhosted.org/packages/5d/7b/25a221d2c761c6a8ae21bfa3874988ff2583e19cf8a27bf2fee358df7942/pillow-12.2.0-cp312-cp312-win_amd64.whl",
+      "version": "12.2.0"
+    },
+    "pyparsing": {
+      "filename": "pyparsing-3.3.2-py3-none-any.whl",
+      "requires": [
+        "railroad-diagrams; extra == \"diagrams\"",
+        "jinja2; extra == \"diagrams\""
+      ],
+      "sha256": "850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d",
+      "source": "https://pypi.org/pypi/pyparsing/3.3.2/json",
+      "url": "https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl",
+      "version": "3.3.2"
+    },
+    "python-dateutil": {
+      "filename": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "requires": [
+        "six >=1.5"
+      ],
+      "sha256": "a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427",
+      "source": "https://pypi.org/pypi/python-dateutil/2.9.0.post0/json",
+      "url": "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "version": "2.9.0.post0"
+    },
+    "six": {
+      "filename": "six-1.17.0-py2.py3-none-any.whl",
+      "requires": [],
+      "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
+      "source": "https://pypi.org/pypi/six/1.17.0/json",
+      "url": "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl",
+      "version": "1.17.0"
+    },
+    "vtk": {
+      "filename": "vtk-9.6.2-cp312-cp312-win_amd64.whl",
+      "requires": [
+        "matplotlib>=2.0.0",
+        "numpy>=1.9; extra == \"numpy\"",
+        "wslink>=1.0.4; extra == \"web\""
+      ],
+      "sha256": "83b4af00b31395a13acb20e26a42ee097b85e41a0a087be2340d3749cb58250f",
+      "source": "https://pypi.org/pypi/vtk/9.6.2/json",
+      "url": "https://files.pythonhosted.org/packages/b4/61/58e162d9cdbf02a3578ef4e68f4003b8cb9f351b7aa409960da3cc383017/vtk-9.6.2-cp312-cp312-win_amd64.whl",
+      "version": "9.6.2"
+    }
+  },
+  "pythonArtifact": {
+    "filename": "python-3.12.10-embed-amd64.zip",
+    "sbom": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip.spdx.json",
+    "sha256": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3",
+    "source": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip"
+  },
+  "pythonVersionTested": "3.12.10",
+  "target": "CPython 3.12, Windows x86-64"
+}

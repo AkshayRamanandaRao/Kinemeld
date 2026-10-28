@@ -1,0 +1,64 @@
+{
+  "format": "mbdyn-studio/1",
+  "model": {
+    "kind": "spatial-assembly",
+    "name": "Composite STEP mass example",
+    "parameters": {
+      "gravity": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    "simulation": {
+      "duration": 0.1,
+      "step": 0.002
+    },
+    "bodies": [
+      {
+        "id": "bob",
+        "name": "Bob",
+        "mass": 1.0,
+        "inertia": {
+          "xx": 0.1,
+          "yy": 0.1,
+          "zz": 0.1
+        },
+        "pose": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "rx": 0,
+          "ry": 0,
+          "rz": 0
+        },
+        "velocity": {
+          "vx": 0.0,
+          "vy": 0.0,
+          "vz": 0.0,
+          "wx": 0.0,
+          "wy": 0.0,
+          "wz": 0.0
+        }
+      }
+    ],
+    "joints": [
+      {
+        "id": "ball",
+        "type": "spherical",
+        "a": "ground",
+        "b": "bob",
+        "anchorA": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "anchorB": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    ]
+  }
+}
