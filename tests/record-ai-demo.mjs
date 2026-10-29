@@ -99,6 +99,7 @@ try {
 
   const started = Date.now();
   const response = page.waitForResponse((r) => r.url().endsWith('/api/agent/chat'), { timeout: 1800000 });
+  response.catch(() => {}); // a failure elsewhere should report its own error
   await page.locator('#agentSend').click();
   await page.waitForTimeout(400);
   await caption('AI ASSISTANT · THINKING', `${chatModel} reads the model and the request on the CPU and calls the model-editing tools.`);
