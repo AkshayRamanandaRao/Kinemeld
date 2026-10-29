@@ -43,7 +43,9 @@ fn workspace() -> Result<PathBuf, String> {
         };
     }
     let exe = env::current_exe().map_err(|e| e.to_string())?;
-    exe.ancestors().find(|path| path.join("backend/server.py").is_file()).map(Path::to_path_buf)
+    // A macOS bundle keeps resources in Contents/Resources/app next to Contents/MacOS.
+    let bundled = exe.parent().and_then(Path::parent).map(|contents| contents.join("Resources").join("app"));
+    exe.ancestors().map(Path::to_path_buf).chain(bundled).find(|path| path.join("backend/server.py").is_file())
         .ok_or_else(|| "Could not locate the workspace. Place the executable inside the Kinemeld folder or set MBDYN_STUDIO_WORKSPACE.".into())
 }
 
@@ -54,8 +56,15 @@ fn data_directory(_workspace: &Path) -> Result<PathBuf, String> {
     } else {
         #[cfg(windows)]
         { PathBuf::from(env::var_os("LOCALAPPDATA").ok_or("LOCALAPPDATA is unavailable; set MBDYN_STUDIO_DATA_DIR to a writable folder.")?).join("MBDynStudio") }
-        #[cfg(not(windows))]
-        { _workspace.to_path_buf() }
+        #[cfg(target_os = "macos")]
+        { PathBuf::from(env::var_os("HOME").ok_or("HOME is unavailable; set MBDYN_STUDIO_DATA_DIR to a writable folder.")?).join("Library/Application Support/Kinemeld") }
+        #[cfg(all(unix, not(target_os = "macos")))]
+        {
+            match env::var_os("XDG_DATA_HOME").filter(|value| !value.is_empty()) {
+                Some(base) => PathBuf::from(base).join("kinemeld"),
+                None => PathBuf::from(env::var_os("HOME").ok_or("HOME is unavailable; set MBDYN_STUDIO_DATA_DIR to a writable folder.")?).join(".local/share/kinemeld"),
+            }
+        }
     };
     if !data.is_absolute() { return Err("MBDYN_STUDIO_DATA_DIR must be an absolute writable folder.".into()); }
     fs::create_dir_all(data.join("runs")).map_err(|error| format!("Cannot create writable data folder {}: {error}", data.display()))?;
@@ -138,8 +147,9 @@ fn run() -> Result<(), String> {
     let python = private_runtime::python_for(&root, env::var_os("MBDYN_STUDIO_PYTHON"))?;
     let service = BackendService::start_with_data_dir(&root, &python, &data).map_err(|error| format!("Cannot start the local Python solver service: {error}. Repair the application-local Python runtime, install Python 3.10+, or set MBDYN_STUDIO_PYTHON to its executable."))?;
     let base = service.client().base_url();
-    let mut context = WebContext::new(Some(data.join("runs").join("desktop-webview")));
+    // The event loop initialises the native toolkit (GTK on Linux) before any web context exists.
     let event_loop = EventLoopBuilder::<String>::with_user_event().build();
+    let mut context = WebContext::new(Some(data.join("runs").join("desktop-webview")));
     let proxy = event_loop.create_proxy();
     if smoke {
         let timeout_proxy = proxy.clone();
@@ -174,7 +184,19 @@ fn run() -> Result<(), String> {
     if smoke {
         builder = builder.with_initialization_script(include_str!("smoke.js"));
     }
-    let webview = builder.build(&window).map_err(|e| format!("Cannot create the WebView2 viewer: {e}. Install the Microsoft WebView2 Runtime and retry."))?;
+    #[cfg(target_os = "linux")]
+    let webview = {
+        use tao::platform::unix::WindowExtUnix;
+        use wry::WebViewBuilderExtUnix;
+        let container = window.default_vbox().ok_or("The GTK window has no content container.")?;
+        builder.build_gtk(container)
+    }
+    .map_err(|e| format!("Cannot create the WebKitGTK viewer: {e}. Install WebKitGTK 4.1 (libwebkit2gtk-4.1) and retry."))?;
+    #[cfg(not(target_os = "linux"))]
+    let webview = builder.build(&window).map_err(|e| {
+        if cfg!(windows) { format!("Cannot create the WebView2 viewer: {e}. Install the Microsoft WebView2 Runtime and retry.") }
+        else { format!("Cannot create the system web viewer: {e}.") }
+    })?;
     let mut service = Some(service);
     let mut projects = ProjectOpenState::default();
     let mut busy = false;

@@ -47,6 +47,10 @@ def configuration():
         if config["mode"] == "wsl" and not re.fullmatch(r"[A-Za-z0-9_.-]+", config.get("distribution", "")):
             raise ValueError("The WSL distribution name is invalid.")
         return config
+    # Release packages may ship a solver next to the application; PATH is the final fallback.
+    bundled = ROOT / "solver" / "bin" / ("mbdyn.exe" if os.name == "nt" else "mbdyn")
+    if bundled.is_file() and os.access(bundled, os.X_OK):
+        return {"mode": "native", "executable": str(bundled)}
     binary = shutil.which("mbdyn")
     return {"mode": "native", "executable": binary} if binary else None
 

@@ -1,39 +1,70 @@
-# Windows desktop host
+# Desktop host
 
-Build the desktop executable using the steps below, then double-click
-`Start MBDyn Studio Desktop.cmd` in the project root. The executable is not
-included in a fresh checkout. The app needs the project folder, Python 3.10+,
-Microsoft WebView2 Runtime and a configured MBDyn solver; see
-[solver setup](../docs/solver.md). The assistant additionally needs a local
-Ollama model; see [AI agent](../docs/ai-agent.md). STEP import needs
-`cadquery-ocp` in the backend's Python environment; it is not bundled with the
-executable. See [STEP geometry](../docs/step-geometry.md).
+The desktop host is a small Rust program (Tao, Wry and native file dialogs) that starts the
+local Python service and shows the interface in the operating system's web view: WebView2 on
+Windows, WKWebView on macOS and WebKitGTK on Linux. It is not an all-Rust solver or CAD kernel.
+Prebuilt archives for all three platforms are published on the
+[releases page](https://github.com/AkshayRamanandaRao/Kinemeld/releases); see the main README
+for their requirements.
 
-The desktop host is Rust (Tao, Wry and native file dialogs). Its embedded UI uses
-WebView2, Three.js and the local Python solver service; it is not an all-Rust
-solver or CAD kernel. Files retain the validated model, saved results, STEP sources and body
-attachments; older projects with STL references can still be reopened. Native save makes a backup on replacement and detects external
-file changes. Interactive OS file dialogs have not yet been manually qualified.
+The app needs its resource folder (backend, frontend, examples), Python 3.10+, and an MBDyn
+solver — configured as in [solver setup](../docs/solver.md), on `PATH`, or bundled at
+`solver/bin/mbdyn` inside the application folder. STEP import needs `cadquery-ocp` 7.9 in the
+backend's Python environment (`pip install -r requirements.txt`). The assistant additionally
+needs a local Ollama model; see [AI agent](../docs/ai-agent.md).
 
-The snapshot check also identifies an existing project through case and hard-link aliases. If the original is missing, it conservatively treats a different-cased name as the same destination even in a case-sensitive Windows directory; choose a more distinct name to save a copy. It detects changes observed before the check; it cannot make noncooperating external writes atomic with the subsequent replacement. Save locks are per path, so concurrent saves through distinct hard-link names are not serialized. Retain replacement backups when coordinating with other writers.
+Python is found from `MBDYN_STUDIO_PYTHON`, then an application-local runtime
+(`runtime/python/python.exe` on Windows, `runtime/python/bin/python3` elsewhere), then
+`python` (Windows) or `python3` on `PATH`. On macOS the app reads its resources from
+`Kinemeld.app/Contents/Resources/app`; elsewhere it searches the executable's folder and its
+parents for `backend/server.py`. `MBDYN_STUDIO_WORKSPACE` overrides both.
 
-To build on Windows with Rust MSVC and Visual Studio C++ tools installed:
+## Build
+
+Install Rust (stable) and the platform web-view development files, then build from the
+repository root:
+
+- **Linux:** `libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libxdo-dev` (Debian/Ubuntu names).
+- **macOS:** Xcode command-line tools.
+- **Windows:** Rust MSVC toolchain and Visual Studio C++ build tools; WebView2 Runtime to run.
+
+```bash
+cargo build --manifest-path native/Cargo.toml --locked --release -p mbdyn-studio-desktop
+```
+
+The executable is `native/target/release/mbdyn-studio-desktop` (`.exe` on Windows). Run it
+from inside a source checkout, or package it with the resources:
+
+```bash
+python3 scripts/package_release.py --platform linux --binary native/target/release/mbdyn-studio-desktop --version 0.2.0 --solver build/solver
+```
+
+`scripts/bundle_solver.sh path/to/mbdyn build/solver` prepares a relocatable solver folder
+(stripped binary, compiler runtime libraries, GPL notice and source pointer). A hidden
+self-check runs a real MBDyn job through the embedded viewer and saves and reopens a project:
+`kinemeld --smoke` (use `xvfb-run` on a headless Linux machine). It writes
+`runs/native-smoke-report-<pid>.json` in the user-data folder.
+
+On Windows the original instructions still apply:
 
 ```powershell
 cargo build --manifest-path native/Cargo.toml --locked --release -p mbdyn-studio-desktop
 Copy-Item native/target/release/mbdyn-studio-desktop.exe native/MBDynStudio.exe
 ```
 
-A hidden self-check can be run with `native/MBDynStudio.exe --smoke`. A public
-binary release still needs packaging, full third-party attribution and installed
-workflow qualification. `native/target`, the binary and machine solver config are
-excluded from source distribution.
+Then double-click `Start MBDyn Studio Desktop.cmd` in the project root.
+
+Files retain the validated model, saved results, STEP sources and body attachments; older
+projects with STL references can still be reopened. Native save makes a backup on
+replacement and detects external file changes.
+
+The snapshot check also identifies an existing project through case and hard-link aliases. If the original is missing, it conservatively treats a different-cased name as the same destination even in a case-sensitive Windows directory; choose a more distinct name to save a copy. It detects changes observed before the check; it cannot make noncooperating external writes atomic with the subsequent replacement. Save locks are per path, so concurrent saves through distinct hard-link names are not serialized. Retain replacement backups when coordinating with other writers.
 
 ## Application resources and user data
 
-On Windows the desktop reads application resources from the extracted application folder and stores runtime data in `%LOCALAPPDATA%\MBDynStudio`. This includes `runs/` and the WebView2 profile. Set `MBDYN_STUDIO_DATA_DIR` to an absolute writable folder to override this location. If the user-data directory cannot be created, startup reports an error. Browser development without that override retains the existing workspace layout.
+The desktop reads application resources from the extracted application folder and stores runtime data in a per-user folder: `%LOCALAPPDATA%\MBDynStudio` on Windows, `~/Library/Application Support/Kinemeld` on macOS and `$XDG_DATA_HOME/kinemeld` (default `~/.local/share/kinemeld`) on Linux. This includes `runs/` and the WebView2 profile. Set `MBDYN_STUDIO_DATA_DIR` to an absolute writable folder to override this location. If the user-data directory cannot be created, startup reports an error. Browser development without that override retains the existing workspace layout.
 
-Desktop solver and agent settings are `%LOCALAPPDATA%\MBDynStudio\solver.json` and `agent.json`. If a user setting is absent, the application reads the corresponding legacy `backend/solver.json` or `backend/agent.json` from the resource folder without copying, overwriting or deleting it. A present user setting takes precedence, including when invalid. The same read-only fallback applies to the old tour preference. New preferences and runs are written to user data; old run artifacts remain accessible by their existing run URLs. If the same run ID exists in both roots, artifacts come exclusively from the user-data run folder, never a mixture. This is a compatibility fallback, not automatic migration or cleanup.
+Desktop solver and agent settings are `solver.json` and `agent.json` in that folder. If a user setting is absent, the application reads the corresponding legacy `backend/solver.json` or `backend/agent.json` from the resource folder without copying, overwriting or deleting it. A present user setting takes precedence, including when invalid. The same read-only fallback applies to the old tour preference. New preferences and runs are written to user data; old run artifacts remain accessible by their existing run URLs. If the same run ID exists in both roots, artifacts come exclusively from the user-data run folder, never a mixture. This is a compatibility fallback, not automatic migration or cleanup.
 
 ## Local Windows package
 
