@@ -3,6 +3,24 @@
 All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/) while the project is in preview (0.x).
 
+## 0.3.0 — Rotary drives and inverse dynamics
+
+### Modelling
+- Revolute joints accept a **rotary drive**: a motor law (target speed with a linear speed
+  ramp) or an oscillation, both starting at rest. MBDyn imposes the hinge angle through a
+  total joint and reports the torque the drive must supply.
+- Drive parameters are edited in the joint inspector; validation checks the starting state,
+  ramp resolution and per-step rotation, and the constraint analysis counts the extra row.
+
+### Results
+- New result quantities per driven joint: measured and commanded angle (unwrapped), speed,
+  motor torque, power, and total drive work; all in the CSV export.
+
+### Studies
+- **Robot arm inverse dynamics**: turret, shoulder and elbow driven together; the study is
+  verified by drive work equalling the change in mechanical energy.
+- `backend/verify_rotary_drive.py` checks motor torque against I·α − m·g·l·cos θ.
+
 ## 0.2.0 — Professional workspaces, featured studies and desktop releases
 
 ### Interface
