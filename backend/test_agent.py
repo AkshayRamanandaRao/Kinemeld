@@ -78,6 +78,12 @@ class AgentBoundaryTests(unittest.TestCase):
         calls = [body for path, body in requests if path == "/api/chat"]
         self.assertIs(calls[0]["think"], False)
         self.assertTrue(any(item.get("role") == "tool" for item in calls[-1]["messages"]))
+        # Accepted edits report validation to the language model without repeating the whole model.
+        edited = [json.loads(item["content"]) for item in calls[-1]["messages"] if item.get("role") == "tool" and item.get("tool_name") == "set_parameters"]
+        self.assertEqual(len(edited), 1)
+        self.assertNotIn("model", edited[0]["result"])
+        self.assertTrue(edited[0]["result"]["validation"]["valid"])
+        self.assertIn("model", next(item for item in result["toolResults"] if item["name"] == "set_parameters")["result"])
         self.assertFalse(any(path not in ("/api/tags", "/api/show", "/api/chat") for path, _ in requests))
 
     def test_malicious_unknown_and_cross_family_tools_have_no_effect(self):
