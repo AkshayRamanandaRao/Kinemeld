@@ -115,9 +115,9 @@ def _worker(source):
         from OCP.Interface import Interface_Static
         from OCP.STEPCAFControl import STEPCAFControl_Reader
         from OCP.TCollection import TCollection_ExtendedString
-        from OCP.TColStd import TColStd_SequenceOfAsciiString
+        from ocp_compat import TColStd_SequenceOfAsciiString, TDF_LabelSequence
         from OCP.TDataStd import TDataStd_Name
-        from OCP.TDF import TDF_Label, TDF_LabelSequence
+        from OCP.TDF import TDF_Label
         from OCP.TDocStd import TDocStd_Document
         from OCP.TopAbs import TopAbs_FACE, TopAbs_REVERSED
         from OCP.TopExp import TopExp_Explorer
@@ -221,7 +221,7 @@ def _worker(source):
 
         explorer = TopExp_Explorer(shape, TopAbs_FACE)
         while explorer.More():
-            face = TopoDS.Face_s(explorer.Current())
+            face = TopoDS.Face(explorer.Current())
             first_triangle = len(indices)//3
             face_location = TopLoc_Location()
             triangulation = BRep_Tool.Triangulation_s(face, face_location)

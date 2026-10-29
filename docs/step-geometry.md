@@ -80,7 +80,8 @@ mass properties. The CAD identity check does not prove correct joints, alignment
 material properties, or the physical validity of a simulation.
 
 On this machine the separate Python process uses the installed `cadquery-ocp`
-(OpenCascade) package. STEP import on a different machine requires that package
+(OpenCascade) package, version 7.9 or 8; `backend/ocp_compat.py` maps the classes the two
+versions name differently. STEP import on a different machine requires that package
 in the same Python environment as the backend; no kernel is bundled in the
 Windows executable. Conversion accepts up to 24 files / 12 MiB total, and a
 maximum of 150,000 triangles per file and 200,000 per combined import. Each

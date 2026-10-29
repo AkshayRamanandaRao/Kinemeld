@@ -91,8 +91,8 @@ def _worker(source, selected, density, expected_witness=None):
         from OCP.Interface import Interface_Static
         from OCP.STEPCAFControl import STEPCAFControl_Reader
         from OCP.TCollection import TCollection_ExtendedString
-        from OCP.TColStd import TColStd_SequenceOfAsciiString
-        from OCP.TDF import TDF_Label, TDF_LabelSequence
+        from ocp_compat import TColStd_SequenceOfAsciiString, TDF_LabelSequence
+        from OCP.TDF import TDF_Label
         from OCP.TDocStd import TDocStd_Document
         from OCP.TopAbs import TopAbs_COMPOUND, TopAbs_COMPSOLID, TopAbs_FACE, TopAbs_SHELL, TopAbs_SOLID
         from OCP.TopExp import TopExp_Explorer
@@ -139,7 +139,7 @@ def _worker(source, selected, density, expected_witness=None):
         BRepMesh_IncrementalMesh(shape,0.5,False,0.3,True)
         faces=TopExp_Explorer(shape,TopAbs_FACE); has_triangles=False
         while faces.More():
-            mesh=BRep_Tool.Triangulation_s(TopoDS.Face_s(faces.Current()),TopLoc_Location())
+            mesh=BRep_Tool.Triangulation_s(TopoDS.Face(faces.Current()),TopLoc_Location())
             if mesh is not None:
                 triangles+=mesh.NbTriangles()
                 if triangles>step_geometry.MAX_TRIANGLES: raise StepMassError("STEP file exceeds the triangle limit.")
