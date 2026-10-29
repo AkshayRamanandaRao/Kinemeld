@@ -19,6 +19,39 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
     messages.scrollTop = messages.scrollHeight;
     return element;
   }
+  /** Field-by-field differences between two spatial models, one line per changed element. */
+  function modelChanges(before, after) {
+    const number = (value) => typeof value === "number" ? String(Number(value.toPrecision(6))) : JSON.stringify(value);
+    const leaves = (value, prefix = "", out = {}) => {
+      if (value && typeof value === "object" && !Array.isArray(value)) for (const [key, child] of Object.entries(value)) leaves(child, prefix ? `${prefix}.${key}` : key, out);
+      else out[prefix] = value;
+      return out;
+    };
+    const lines = [];
+    if (before.name !== after.name) lines.push(`Name: ${after.name}`);
+    for (const [group, label] of [["simulation", "Study"], ["parameters", "Parameters"]]) {
+      const a = leaves(before[group] || {}), b = leaves(after[group] || {});
+      const diff = Object.keys({ ...a, ...b }).filter((key) => JSON.stringify(a[key]) !== JSON.stringify(b[key])).map((key) => `${key} ${number(a[key])} → ${number(b[key])}`);
+      if (diff.length) lines.push(`${label}: ${diff.join(", ")}`);
+    }
+    const names = { bodies: "Body", joints: "Joint", forces: "Force element", loads: "Load", contacts: "Contact", rotationalElements: "Rotational element", jointTorques: "Joint torque", jointForces: "Joint force", frames: "Frame" };
+    for (const [collection, label] of Object.entries(names)) {
+      const old = new Map((before[collection] || []).map((entry) => [entry.id, entry]));
+      const next = new Map((after[collection] || []).map((entry) => [entry.id, entry]));
+      for (const [id, entry] of next) {
+        if (!old.has(id)) {
+          const detail = collection === "joints" ? `${entry.type} joint ${entry.a} ↔ ${entry.b}` : collection === "contacts" ? `sphere-plane contact on ${entry.body}, radius ${number(entry.radius)} m` : collection === "forces" ? `${entry.type === "oleo-strut" ? "oleo strut" : "spring-damper"} ${entry.a} ↔ ${entry.b}` : "";
+          lines.push(`Added ${label.toLowerCase()} ${id}${detail ? `: ${detail}` : ""}`);
+          continue;
+        }
+        const a = leaves(old.get(id)), b = leaves(entry);
+        const diff = Object.keys({ ...a, ...b }).filter((key) => JSON.stringify(a[key]) !== JSON.stringify(b[key])).map((key) => `${key} ${number(a[key])} → ${number(b[key])}`);
+        if (diff.length) lines.push(`${label} ${id}: ${diff.join(", ")}`);
+      }
+      for (const id of old.keys()) if (!next.has(id)) lines.push(`Removed ${label.toLowerCase()} ${id}`);
+    }
+    return lines;
+  }
   /** One line per assistant edit, in engineering terms rather than field names. */
   function describeEdit(edit) {
     const values = edit.values || {}, verb = edit.operation === "copy" ? "Copied" : edit.operation === "add" ? "Added" : "Updated";
@@ -37,8 +70,10 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
     reviewOutstanding = true;
     const item=message("Review the complete model before applying. Validation checks consistency; it cannot determine whether the agent interpreted your request correctly.");
     item.classList.add("agent-review");
-    // A readable list of the proposed edits first; the complete model comparison stays one click away.
-    if(descriptions.length){const list=document.createElement("ul");list.className="agent-changes";for(const text of descriptions.flatMap(entry=>String(entry).split(" · "))){const li=document.createElement("li");li.textContent=text;list.append(li);}item.append(list);}
+    // The actual differences between the current and proposed models, so any change the request
+    // did not ask for stands out; the complete model comparison stays one click away.
+    const changes=modelChanges(original,proposed);
+    if(changes.length){const list=document.createElement("ul");list.className="agent-changes";for(const text of changes){const li=document.createElement("li");li.textContent=text;list.append(li);}item.append(list);}
     const details=document.createElement("details"), summary=document.createElement("summary"), pre=document.createElement("pre");
     summary.textContent="Compare current and proposed model";pre.textContent=`CURRENT MODEL\n${JSON.stringify(original,null,2)}\n\nPROPOSED MODEL\n${JSON.stringify(proposed,null,2)}`;
     details.append(summary,pre);item.append(details);

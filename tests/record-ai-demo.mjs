@@ -23,7 +23,7 @@ const ffmpeg = process.env.FFMPEG || 'ffmpeg';
 const output = resolve('docs/demos');
 const REQUEST = 'Connect the wheel to the knuckle with a revolute wheel bearing about the x axis at both body origins. '
   + 'Add a sphere-plane tyre contact on the wheel: radius 0.208 m at the wheel origin, against the floor plane through the world origin with normal +z, '
-  + 'stiffness 20000 N/m and damping 100 N·s/m. Then raise both bodies to z = 0.6 m with an initial velocity of -1 m/s in z, '
+  + 'stiffness 20000 N/m and damping 100 N·s/m. Then raise both bodies to z = 0.6 m, keeping their x and y positions, with an initial velocity of -1 m/s in z, '
   + 'and set the study to 1.5 s with a 0.0005 s step.';
 
 // Starting point: the shipped wheel-end CAD with mass from the solids, but no links, contact or drop.
@@ -123,7 +123,7 @@ try {
   const review = page.locator('.agent-review').last();
   await review.waitFor({ timeout: 60000 });
   await review.scrollIntoViewIfNeeded();
-  await caption('AI ASSISTANT · REVIEW', `Proposal returned after ${seconds} s on this CPU-only machine (waiting condensed). The edits are listed and validated; review them before applying.`);
+  await caption('AI ASSISTANT · REVIEW', `Proposal returned after ${seconds} s on this CPU-only machine (waiting condensed). Every changed field is listed with its old and new value; check them before applying.`);
   await shot(5);
 
   await review.getByRole('button', { name: /Apply/ }).click();
