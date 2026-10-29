@@ -24,6 +24,10 @@ All notable changes to Kinemeld are recorded here. Versions follow
   plots, the CSV columns and the stale-result state.
 - Robot-arm demo recording on the homepage.
 
+### Fixes
+- macOS release archives can bundle MBDyn again: the bundling script no longer stops when a
+  runtime library has no Homebrew dependencies.
+
 ## 0.2.0 — Professional workspaces, featured studies and desktop releases
 
 ### Interface

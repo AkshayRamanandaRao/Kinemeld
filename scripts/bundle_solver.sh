@@ -16,7 +16,8 @@ case "$(uname -s)" in
   Darwin)
     # Rewrite Homebrew GCC runtime references to the bundled copies, then ad-hoc sign.
     copy_deps() {
-      otool -L "$1" | awk 'NR>1 {print $1}' | grep -E '/(opt|usr/local)/' | while read -r dep; do
+      # grep exits 1 when a library has no Homebrew dependencies; that is not an error here.
+      otool -L "$1" | awk 'NR>1 {print $1}' | { grep -E '/(opt|usr/local)/' || true; } | while read -r dep; do
         name="$(basename "$dep")"
         if [ ! -f "$out/lib/$name" ]; then cp -L "$dep" "$out/lib/$name"; chmod 644 "$out/lib/$name"; copy_deps "$out/lib/$name"; fi
         install_name_tool -change "$dep" "@loader_path/../lib/$name" "$1" 2>/dev/null || true
@@ -27,7 +28,7 @@ case "$(uname -s)" in
     for lib in "$out"/lib/*.dylib; do
       [ -e "$lib" ] || continue
       install_name_tool -id "@loader_path/$(basename "$lib")" "$lib"
-      otool -L "$lib" | awk 'NR>1 {print $1}' | grep -E '/(opt|usr/local)/' | while read -r dep; do
+      otool -L "$lib" | awk 'NR>1 {print $1}' | { grep -E '/(opt|usr/local)/' || true; } | while read -r dep; do
         install_name_tool -change "$dep" "@loader_path/$(basename "$dep")" "$lib"
       done
       codesign --force --sign - "$lib"
