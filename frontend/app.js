@@ -1252,6 +1252,7 @@ function setBusy(busy) {
   $("runButton").querySelector("span:last-child").textContent = busy
     ? "Solving…"
     : "Run simulation";
+  $("runButton").setAttribute("aria-label", busy ? "Solving…" : "Run simulation");
   $("solveRunButton").lastChild.textContent = busy ? "Solving…" : "Run MBDyn";
 }
 async function run(preview = false) {

@@ -6,7 +6,7 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation (0.4)
+## Current foundation (0.5)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
   forces, springs, dampers, oleo struts, contact and selected prescribed motion.
@@ -24,6 +24,8 @@ appropriate.
 - Desktop builds for Linux, macOS and Windows; CI and tagged releases on GitHub.
 - Rotary drives on revolute joints with motor torque, power and work from the solver.
 - Full-resolution plots and statistics, pinned traces, run comparison and SVG/PNG plot export.
+- Joint anchors, joint axes and named frames placed by picking or dragging onto analytic CAD
+  faces (cylinders and planes), and in-view distance and angle measurement.
 
 ## Release plan
 
@@ -38,9 +40,9 @@ Each step ships as its own release with an example, documentation and solver evi
 3. **0.4 — Post-processing II (released):** statistics and plots from the full-resolution solver
    output with peak-preserving decimation, overlays of several quantities and bodies,
    comparison with a pinned earlier run, and SVG/PNG plot export.
-4. **0.5 — Interaction:** place joint anchors and frames directly in the 3D view by
-   picking CAD features (hole axes, cylinder centres, faces), drag-to-edit with snapping,
-   and in-view distance and angle measurement.
+4. **0.5 — Interaction (released):** place joint anchors and frames directly in the 3D view
+   by picking CAD features (hole axes, cylinder centres, faces), drag joint symbols onto
+   faces with snapping, and in-view distance and angle measurement.
 5. **0.6 — Reliability and CAD:** support for the current OpenCascade runtime
    (`cadquery-ocp` 8), crash-safe autosave and recovery in the desktop app, and
    clean-machine installation checks for every platform package.
@@ -53,8 +55,9 @@ Each step ships as its own release with an example, documentation and solver evi
 - **Engineering examples:** extend suspension and landing-gear studies only
   with traceable geometry, hardpoints, material data and loading. Add independent
   checks, convergence evidence and comparison with measurements where available.
-- **Interaction and assistance:** extend AI actions only where the underlying
-  physical and solver behavior is verified.
+- **Interaction and assistance:** pick circular edges, cones and tori, constrained dragging
+  along an axis or plane without a target face, and features at a solved pose; extend AI
+  actions only where the underlying physical and solver behavior is verified.
 
 ## Longer-term work
 

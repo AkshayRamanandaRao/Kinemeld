@@ -15,6 +15,8 @@ higher than this estimate; MBDyn reports a singular assembly when constraints co
 
 ### Placing joints and frames from CAD
 
+![Picking the hub cylinder of the wheel-end assembly to place the hub bearing](images/cad-picking.png)
+
 STEP imports keep each face's analytic geometry: cylinders (bores, shafts, pins) with
 their axis, centre, radius and length, and planes with a point and outward normal. In a 3D
 assembly with imported parts:
