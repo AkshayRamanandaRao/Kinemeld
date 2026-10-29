@@ -19,7 +19,7 @@ export class MechanismView {
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setClearColor(0, 0);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.append(this.renderer.domElement);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -186,6 +186,7 @@ export class MechanismView {
     else if (model.kind === "mass-spring") this.buildSpring();
     else buildIndustry(this);
     this.renderStep();
+    this.placeGround();
     if (this.referenceMesh) this.placeReference();
     if (this.isolatedReference) this.showLabels(false);
     this.setSelection(this.selection || "body");
@@ -594,6 +595,35 @@ export class MechanismView {
   setGrid(visible) {
     this.grid.visible = visible;
   }
+  /** Put the grid and shadow floor at a contact plane, or just below the geometry or motion envelope. */
+  placeGround(envelopeMinZ = null) {
+    const s = this.scale || 1;
+    let z = -0.075;
+    if (["source-example", "planar-assembly", "spatial-assembly"].includes(this.model?.kind)) {
+      const planes = (this.model.contacts || []).filter((c) => Math.abs(c.planeNormal.z) > 0.99).map((c) => c.planePoint.z + this.sourceParts.offset.z);
+      if (planes.length) z = Math.min(...planes) - s * 0.012;
+      else {
+        const bounds = new THREE.Box3().setFromObject(this.stepView ? this.stepView.group : this.group);
+        const lowest = Math.min(bounds.isEmpty() ? 0 : bounds.min.z, Number.isFinite(envelopeMinZ) ? envelopeMinZ : Infinity);
+        z = Math.min(-0.075 * s, lowest - 0.03 * s);
+      }
+    }
+    this.grid.position.z = z;
+    this.floor.position.z = z - 0.001 * s;
+  }
+  /** Lowest display height reached by any body point during a result (origins and farthest geometry). */
+  resultEnvelopeMinZ(result) {
+    let lowest = Infinity;
+    for (const track of this.bodyTracks(result)) {
+      const reach = this.stepView?.farthestPoint?.(track.id)?.length() ?? 0;
+      const node = (i) => result.samples[i].nodes?.find((item) => String(item.id) === track.id);
+      for (let i = 0; i < result.samples.length; i++) {
+        const n = node(i);
+        if (n) lowest = Math.min(lowest, n.z + this.sourceParts.offset.z - reach);
+      }
+    }
+    return lowest;
+  }
   /** World-space display position of a body's characteristic point for each sample. */
   bodyTracks(result) {
     const samples = result?.samples;
@@ -632,7 +662,7 @@ export class MechanismView {
       ];
     return [];
   }
-  setTrails(result) {
+  setTrails(result, options = {}) {
     if (this.trails) {
       for (const trail of this.trails) {
         this.scene.remove(trail.ghost, trail.tube);
@@ -641,13 +671,19 @@ export class MechanismView {
       }
     }
     this.trails = null;
+    this.trailTimes = null;
     if (!result) return;
     const radius = (this.scale || 1) * 0.0045;
+    this.trailWindow = options.window || 0;
+    this.trailTimes = result.samples.map((sample) => sample.time);
+    const bodies = options.bodies ? new Set(options.bodies) : null;
     this.trails = this.bodyTracks(result).map((track, index) => {
+      if (bodies && !bodies.has(track.id) && !bodies.has(track.entity)) return null;
       const color = TRAIL_COLORS[index % TRAIL_COLORS.length];
       const valid = track.points.map((point, frame) => [point, frame]).filter(([point]) => point && [point.x, point.y, point.z].every(Number.isFinite));
       if (valid.length < 2) return null;
       const ghost = new THREE.Line(new THREE.BufferGeometry().setFromPoints(valid.map(([point]) => point)), new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.28, depthWrite: false }));
+      ghost.visible = !this.trailWindow;
       const stride = Math.max(1, Math.ceil(valid.length / 700));
       const kept = valid.filter((_, i) => i % stride === 0 || i === valid.length - 1);
       const radial = 6;
@@ -667,9 +703,19 @@ export class MechanismView {
     this.setTrailFrame(0);
   }
   setTrailFrame(frame) {
-    for (const trail of this.trails || []) {
-      const segments = trail.segmentsAt[Math.max(0, Math.min(frame, trail.segmentsAt.length - 1))];
-      trail.tube.geometry.setDrawRange(0, segments * trail.perSegment);
+    if (!this.trails?.length) return;
+    const last = this.trailTimes.length - 1, end = Math.max(0, Math.min(frame, last));
+    let start = 0;
+    if (this.trailWindow > 0) {
+      // First sample inside the trailing time window.
+      const from = this.trailTimes[end] - this.trailWindow;
+      let lo = 0, hi = end;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (this.trailTimes[mid] < from) lo = mid + 1; else hi = mid; }
+      start = lo;
+    }
+    for (const trail of this.trails) {
+      const first = trail.segmentsAt[start], segments = trail.segmentsAt[end];
+      trail.tube.geometry.setDrawRange(first * trail.perSegment, Math.max(0, segments - first) * trail.perSegment);
     }
   }
   setFollow(entity) {
