@@ -1,6 +1,6 @@
 # Featured studies
 
-Six editable 3D assemblies show what the MBDyn solver does well: closed kinematic
+Seven editable 3D assemblies show what the MBDyn solver does well: closed kinematic
 loops, gyroscopic coupling, nonlinear force elements, contact and chaotic dynamics.
 Open any of them from **Examples → Featured studies**, run it in **Solve**, and
 explore it in **Post-processing**. Each project stores a camera, a default plot and
@@ -18,12 +18,24 @@ checks that each saved project validates and keeps its force elements and geomet
 
 | Study | Solver features | Independent check (MBDyn 1.7.3) |
 | --- | --- | --- |
+| Robot arm inverse dynamics | Three rotary drives (motor ramp and oscillations), joint reactions as motor torques | Drive work equals the change in kinetic and potential energy; commands followed within 10⁻¹² rad |
 | Double-wishbone quarter-car | Closed spatial loop, spherical/revolute joints, preloaded coil-over, stiff tie rod, harmonic wheel-pad force | ±60 mm wheel travel; bump steer 0.64°; camber change 2.1° |
 | Oleo-pneumatic gear drop test | Oleo strut (polytropic gas, orifice damping, stops), damped sphere–plane tyre contact, prismatic guides | 183 mm peak stroke without bottoming; settled tyre load within 3 % of weight; peak load factor 6.0 |
 | Slider-crank engine run-up | Spherical + universal + prismatic loop closure, follower drive torque, viscous load | Stroke equals 2 × crank radius to 0.01 mm; steady motor power balances dissipation within 2 % |
 | Gyroscopic top | Spherical joint, 120 rad/s spin, full inertia tensor | Spin conserved to 1 %; mean precession 4.66 rad/s vs 4.78 rad/s from steady-precession theory |
 | Tumbling T-handle | Free body, zero gravity | World angular momentum conserved; three spin reversals in 12 s |
 | Chaotic double pendulums | Two identical revolute chains, 0.001° apart | Agree within 0.08 mm for 1.5 s, then separate by 0.64 m |
+
+## Robot arm inverse dynamics
+
+A turret, upper arm and forearm with a steel payload, about 35 kg in total. The turret
+yaws at 45°/s after a 1 s ramp, the shoulder swings up by 50° and back at 0.3 Hz and the
+elbow bends by 80° at 0.45 Hz — all prescribed by [rotary drives](rotary-drives.md). MBDyn
+returns the torque each motor needs: the shoulder carries 46–88 N·m, mostly against
+gravity, while the yaw axis needs only ±5 N·m for inertia and coupling.
+
+**Watch:** the forearm trail, then plot **Rotary drive torque** for each joint and
+**Rotary drive power** to see when the shoulder works against gravity and when it brakes.
 
 ## Double-wishbone quarter-car
 
