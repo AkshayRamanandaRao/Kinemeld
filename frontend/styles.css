@@ -1888,8 +1888,12 @@ dialog::backdrop {
 }
 .tour-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
+}
+.tour-actions .tour-action {
+  margin-right: auto;
 }
 .guided-tour-target {
   outline: 3px solid #ed9a17 !important;

@@ -14,7 +14,14 @@ To use a different local port, create `%LOCALAPPDATA%\MBDynStudio\agent.json` fo
 {"endpoint":"http://127.0.0.1:11435"}
 ```
 
-The file is limited to 4 KiB and accepts only the `endpoint` field. Only HTTP literal loopback IP addresses are permitted, including IPv6 loopback. Hostnames, URL credentials, paths, queries and redirects are rejected. Connections use Python's direct HTTP client, without inherited proxy settings. No ambient environment, API key files or unrelated application configuration is read.
+On a CPU-only machine a 4B model can need several minutes to read the model and tool
+descriptions; add `timeoutSeconds` (30–1800, default 120) to allow one chat turn longer:
+
+```json
+{"endpoint":"http://127.0.0.1:11434","timeoutSeconds":600}
+```
+
+The file is limited to 4 KiB and accepts only the `endpoint` and optional `timeoutSeconds` fields. Only HTTP literal loopback IP addresses are permitted, including IPv6 loopback. Hostnames, URL credentials, paths, queries and redirects are rejected. Connections use Python's direct HTTP client, without inherited proxy settings. No ambient environment, API key files or unrelated application configuration is read.
 
 Models labelled `cloud`, models carrying remote-host/model metadata, and tiny remote stubs are excluded. The selected model is checked again through `/api/show` for remote metadata and tool capability before inference. This app does not change the Ollama daemon's configuration or independently attest its network behavior. For a daemon-wide offline policy, Ollama documents `OLLAMA_NO_CLOUD=1` or `disable_ollama_cloud:true`; changing that setting and restarting a shared daemon is outside this feature. [Ollama FAQ](https://docs.ollama.com/faq#how-do-i-disable-ollamas-cloud-features)
 
@@ -146,7 +153,7 @@ Errors are `{ok:false,error,code}`. Invalid requests use HTTP 400; missing/unsup
 
 ## Bounds and implementation
 
-The existing API accepts at most 64 KiB JSON. Chat adds a 4,000-character latest message, eight history messages of at most 4,000 characters each and 16,000 characters total, eight model responses, eight total tool calls, a 120-second inference budget, and a 1-MiB maximum provider response. Inventory/show probes each have a separate four-second limit. Only one chat inference runs at a time. Socket deadlines interrupt stalled local requests; the lock is released on failure.
+The existing API accepts at most 64 KiB JSON. Chat adds a 4,000-character latest message, eight history messages of at most 4,000 characters each and 16,000 characters total, eight model responses, eight total tool calls, a 120-second inference budget (configurable with `timeoutSeconds`), and a 1-MiB maximum provider response. Inventory/show probes each have a separate four-second limit. Only one chat inference runs at a time. Socket deadlines interrupt stalled local requests; the lock is released on failure.
 
 The model/tool JSON parser rejects duplicate fields, nonfinite numbers, excessive nesting and unsupported shapes. Numeric edits reject strings, booleans, unknown fields and fields belonging to other template kinds. Spatial graph edits are one atomic batch of up to 32 typed add, update, or body-copy operations; unknown fields, invalid types and deletion or retyping are rejected. The full candidate must pass existing graph, kinematic, range and time-step checks before any change enters the draft. Copying a body reads its existing mass, inertia, pose and velocity directly rather than regenerating those values. Every accepted edit goes through the existing range, physical time-scale and step-count checks. All modifications occur on a deep copy; the caller's project and example definitions remain unchanged. No solver run, file write, source upload, arbitrary network request or environment-reading tool is available.
 
