@@ -195,11 +195,37 @@ def joint_state(joint,a,b,reference=None):
     return {"id":joint["id"],"positionError":position,"velocityError":velocity,"angularError":angular_error,"angularVelocityError":angular_velocity_error}
 
 
+def rotary_law(motion):
+    """Name the drive law of a revolute motion: a speed ramp or a cosine oscillation."""
+    keys=set(motion) if isinstance(motion,dict) else set()
+    return 'speed' if keys=={'speedDegPerS','rampTime'} else 'oscillation' if keys=={'amplitudeDeg','frequencyHz'} else None
+
+
+def rotary_angle(motion,t):
+    """Prescribed relative rotation (rad) of a driven revolute at time t; starts at rest."""
+    if rotary_law(motion)=='speed':
+        w,tau=math.radians(motion['speedDegPerS']),motion['rampTime'];r=lambda x:max(x,0.)
+        return w/(2*tau)*(r(t)**2-r(t-tau)**2)
+    return math.radians(motion['amplitudeDeg'])*(1-math.cos(2*math.pi*motion['frequencyHz']*t))
+
+
+def rotary_drive_caller(motion,f):
+    """MBDyn drive for the rotation about the hinge axis; both laws have zero speed at t = 0."""
+    if rotary_law(motion)=='speed':
+        coefficient=math.radians(motion['speedDegPerS'])/(2*motion['rampTime'])
+        return f'string, "{f(coefficient)}*(ramp(Time)^2-ramp(Time-{f(motion["rampTime"])})^2)"'
+    return f"cosine, 0, {f(2*math.pi*motion['frequencyHz'])}, {f(math.radians(motion['amplitudeDeg']))}, forever, 0"
+
+
+def driven(joint):
+    return joint['type']=='revolute' and 'motion' in joint
+
+
 def element_csv_values_per_row(model):
     """Count the scalar element and reaction columns repeated on each body row."""
     joints=model['joints'];rotary=model.get('rotationalElements',[]);drives=model.get('jointTorques',[])
     linear=model.get('jointForces',[]);forces=model.get('forces',[]);loads=model.get('loads',[]);contacts=model.get('contacts',[])
-    return (6*len(joints)+7*len(contacts)+4*sum(j['type']=='cylindrical' for j in joints)
+    return (6*len(joints)+7*len(contacts)+4*sum(j['type']=='cylindrical' for j in joints)+4*sum(driven(j) for j in joints)+2*any(driven(j) for j in joints)
             +10*len(loads)+4*len(forces)+6*sum(j['type']=='prismatic' for j in joints)
             +4*sum(force.get('type')=='oleo-strut' for force in forces)
             +3*len(rotary)+2*len(drives)+2*len(linear)+2*bool(loads)+3*bool(rotary or forces)
@@ -265,8 +291,13 @@ def validate(model):
                 before=len(issues);nums(joint.get(key),{k:(-1,1) for k in ('x','y','z')},p+'.'+key)
                 if len(issues)==before and abs(norm(xyz(joint[key]))-1)>1e-7:issue(p+'.'+key,'Axis must be a unit vector.')
         if 'motion' in joint:
-            if joint.get('type')!='prismatic':issue(p+'.motion','Prescribed translation requires a prismatic joint.')
-            nums(joint['motion'],{'amplitude':(-1000,1000),'frequencyHz':(.001,1000)},p+'.motion')
+            if joint.get('type')=='revolute':
+                motion=joint['motion'];law=rotary_law(motion)
+                if law=='speed':nums(motion,{'speedDegPerS':(-36000,36000),'rampTime':(.001,1000)},p+'.motion')
+                elif law=='oscillation':nums(motion,{'amplitudeDeg':(-360,360),'frequencyHz':(.001,1000)},p+'.motion')
+                else:issue(p+'.motion','Drive a revolute joint with speedDegPerS and rampTime, or amplitudeDeg and frequencyHz.')
+            elif joint.get('type')=='prismatic':nums(joint['motion'],{'amplitude':(-1000,1000),'frequencyHz':(.001,1000)},p+'.motion')
+            else:issue(p+'.motion','Prescribed motion requires a prismatic or revolute joint.')
     for i,force in enumerate(forces):
         path=f'forces.{i}'
         kind=force.get('type') if isinstance(force,dict) else None
@@ -368,9 +399,20 @@ def validate(model):
             message=(f"Universal axes must be perpendicular; angular error is {state['angularError']:.6g} rad." if joint['type']=='universal' else f"Joint frame directions differ by {state['angularError']:.6g} rad (weld requires equal initial orientations).")
             issue(f'joints.{i}.axisB' if joint['type'] in ('revolute','cylindrical','universal') else f'joints.{i}.b',message)
         if state['angularVelocityError']>1e-7:issue(f'joints.{i}.b',f"Joint-constrained angular velocities differ by {state['angularVelocityError']:.6g} rad/s.")
-        if joint.get('motion'):
+        if joint.get('motion') and joint['type']=='prismatic':
             if abs(state['velocity'])>1e-7:issue(f'joints.{i}.motion','Prescribed cosine motion starts at zero relative axial speed; adjust initial velocities.')
             if model['simulation']['step']*joint['motion']['frequencyHz']>.05:issue('simulation.step','Use at least 20 steps per prescribed motion cycle.')
+        if joint.get('motion') and joint['type']=='revolute':
+            motion=joint['motion'];axis=mul(body_rotation(a),xyz(joint['axisA']))
+            relative=sum(x*y for x,y in zip(axis,sub(angular(b),angular(a))))
+            if abs(relative)>1e-7:issue(f'joints.{i}.motion','A driven revolute starts at rest about its axis; set equal initial angular velocities about the hinge.')
+            dt=model['simulation']['step']
+            if rotary_law(motion)=='speed':
+                if abs(math.radians(motion['speedDegPerS']))*dt>.1:issue('simulation.step','Resolve the drive speed with at most 0.1 rad per step.')
+                if motion['rampTime']<20*dt:issue(f'joints.{i}.motion.rampTime','Use a ramp of at least 20 time steps.')
+            else:
+                if dt*motion['frequencyHz']>.05:issue('simulation.step','Use at least 20 steps per prescribed motion cycle.')
+                if abs(math.radians(motion['amplitudeDeg']))*2*math.pi*motion['frequencyHz']*dt>.1:issue('simulation.step','Resolve the oscillation speed with at most 0.1 rad per step.')
         if joint['type'] in ('revolute','cylindrical'):
             ua=mul(body_rotation(a),xyz(joint['axisA']));ub=mul(body_rotation(b),xyz(joint['axisB']))
             if sum(x*y for x,y in zip(ua,ub))<0:issue(f'joints.{i}.axisB','Joint axes must point in the same direction.')
@@ -449,6 +491,10 @@ def deck(model):
         a=0 if j['a']=='ground' else labels[j['a']];b=labels[j['b']]
         if j['type']=='spherical':
             text+=f" joint: {index}, spherical hinge, {a}, position, reference, node, {vec(j['anchorA'])}, {b}, position, reference, node, {vec(j['anchorB'])};\n"
+        elif driven(j):
+            ra,rb=body_rotation(lookup.get(j['a'])),body_rotation(lookup[j['b']]);axis=mul(ra,xyz(j['axisA']));t,second,_=basis(axis)
+            h=[[t[i],second[i],axis[i]] for i in range(3)];oa=orientation_spec(matmul(transpose(ra),h));ob=orientation_spec(matmul(transpose(rb),h))
+            text+=f" joint: {index}, total joint, {a}, position, reference, node, {vec(j['anchorA'])}, position orientation, reference, node, {oa}, rotation orientation, reference, node, {oa}, {b}, position, reference, node, {vec(j['anchorB'])}, position orientation, reference, node, {ob}, rotation orientation, reference, node, {ob}, position constraint, active, active, active, null, orientation constraint, active, active, active, single, 0,0,1, {rotary_drive_caller(j['motion'],f)};\n"
         elif j['type']=='revolute':
             world_axis=mul(body_rotation(lookup.get(j['a'])),xyz(j['axisA']));tangent,_,_=basis(world_axis)
             ra,rb=body_rotation(lookup.get(j['a'])),body_rotation(lookup[j['b']]);ta=mul(transpose(ra),tangent);tb=mul(transpose(rb),tangent)
@@ -533,8 +579,9 @@ def parse_joint_reactions(directory,model,samples):
     native_types.update({label:'rod' for label in oleo_labels})
     for label,joint in enumerate(joints,2):
         kind=joint['type'];free_slider=kind=='prismatic' and 'motion' not in joint
-        order.append(label);records[label]=(joint['id'],'force' if free_slider else 'both',-1 if kind in ('prismatic','cylindrical','weld') else 1,13 if free_slider else 16 if kind in ('spherical','universal') else 19 if kind=='revolute' else 25)
-        native_types[label]={'spherical':'sphericalhinge','revolute':'revolutehinge','universal':'cardanohinge','prismatic':'inline' if free_slider else 'totaljoint','cylindrical':'totaljoint','weld':'totaljoint'}[kind]
+        total=driven(joint)
+        order.append(label);records[label]=(joint['id'],'force' if free_slider else 'both',-1 if kind in ('prismatic','cylindrical','weld') or total else 1,13 if free_slider else 16 if kind in ('spherical','universal') else 19 if kind=='revolute' and not total else 25)
+        native_types[label]='totaljoint' if total else {'spherical':'sphericalhinge','revolute':'revolutehinge','universal':'cardanohinge','prismatic':'inline' if free_slider else 'totaljoint','cylindrical':'totaljoint','weld':'totaljoint'}[kind]
         if free_slider:
             order.append(extra);records[extra]=(joint['id'],'moment',1,13);native_types[extra]='prismatic';extra+=1
     order.extend(range(len(joints)+2,len(joints)+2+len(rotary)+len(forces)))
@@ -614,11 +661,12 @@ def parse_output(directory,model):
     references={j['id']:matmul(transpose(body_rotation(initial.get(j['a']))),body_rotation(initial[j['b']])) for j in model['joints'] if j['type']=='prismatic'}
     cylinder_frames={}
     for joint in model['joints']:
-        if joint['type']=='cylindrical':
+        if joint['type']=='cylindrical' or driven(joint):
             ra,rb=body_rotation(initial.get(joint['a'])),body_rotation(initial[joint['b']]);axis=mul(ra,xyz(joint['axisA']));t,second,_=basis(axis);h=[[t[i],second[i],axis[i]] for i in range(3)]
             cylinder_frames[joint['id']]=(matmul(transpose(ra),h),matmul(transpose(rb),h))
     previous_angles={};cylinder_angles={};previous_time=None;previous_damping=previous_power=previous_load_power=previous_linear_power=0.;dissipated=work=load_work=linear_work=0.
     contact_previous_time=None;contact_previous_power={};contact_dissipated={}
+    drive_previous_time=None;drive_previous_power=0.;drive_work=0.
     for sample in native:
         observed={}
         for body,node in zip(model['bodies'],sample['nodes']):
@@ -637,6 +685,21 @@ def parse_output(directory,model):
             previous=cylinder_angles.get(joint['id']);unwrapped=wrapped if previous is None else previous+math.atan2(math.sin(wrapped-previous),math.cos(wrapped-previous));cylinder_angles[joint['id']]=unwrapped
             cylinders.append({**{key:state[key] for key in ('id','position','velocity','transverse','transverseVelocity','angularError','angularVelocityError')},'angle':unwrapped,'angularVelocity':speed})
         if cylinders:sample['cylinders']=cylinders
+        rotary_drives=[]
+        for joint in model['joints']:
+            if not driven(joint):continue
+            a,b=observed.get(joint['a']),observed[joint['b']];fa,fb=cylinder_frames[joint['id']];ra,rb=body_rotation(a),body_rotation(b)
+            relative=matmul(transpose(matmul(ra,fa)),matmul(rb,fb));wrapped=math.atan2(relative[1][0],relative[0][0]);axis=mul(ra,xyz(joint['axisA']))
+            speed=sum(x*y for x,y in zip(axis,sub(angular(b),angular(a))))
+            previous=cylinder_angles.get(joint['id']);unwrapped=wrapped if previous is None else previous+math.atan2(math.sin(wrapped-previous),math.cos(wrapped-previous));cylinder_angles[joint['id']]=unwrapped
+            reaction=next(item for item in sample['jointReactions'] if item['id']==joint['id'])
+            torque=sum(x*y for x,y in zip(axis,xyz(reaction['moment'])))
+            rotary_drives.append({'id':joint['id'],'angle':unwrapped,'commandedAngle':rotary_angle(joint['motion'],sample['time']),'speed':speed,'torque':torque,'power':torque*speed})
+        if rotary_drives:
+            power=sum(item['power'] for item in rotary_drives)
+            if drive_previous_time is not None:drive_work+=(sample['time']-drive_previous_time)*(power+drive_previous_power)/2
+            drive_previous_time,drive_previous_power=sample['time'],power
+            sample.update(rotaryDrives=rotary_drives,rotaryDrivePower=power,rotaryDriveWork=drive_work)
         sample['jointAngularError']=max((state['angularError'] for state in states),default=0.);sample['jointAngularVelocityError']=max((state['angularVelocityError'] for state in states),default=0.)
         for key in ('positionError','velocityError','angularError','angularVelocityError'):sample[key]=max((state[key] for state in states),default=0.)
         force_states=[]
@@ -706,6 +769,7 @@ def metrics(model,samples):
             'validationScope':'3D rigid body motion, joint residuals and optional fixed-plane frictionless spherical penalty contact; no general surface contact, flexible bodies or certification.'}
     if model.get('rotationalElements') or model.get('forces'):result.update(finalElasticEnergy=samples[-1]['elasticEnergy'],dissipatedEnergy=samples[-1]['dissipatedEnergy'],energyUnit='J')
     if model.get('jointTorques'):result.update(actuationWork=samples[-1]['actuationWork'],energyUnit='J')
+    if 'rotaryDriveWork' in samples[-1]:result.update(rotaryDriveWork=samples[-1]['rotaryDriveWork'],peakRotaryDriveTorque=max(abs(d['torque']) for s in samples for d in s['rotaryDrives']),energyUnit='J')
     if model.get('jointForces'):result.update(jointForceWork=samples[-1]['jointForceWork'],energyUnit='J')
     if model.get('loads'):result.update(appliedWork=samples[-1]['appliedWork'],energyUnit='J')
     if model.get('contacts'):result.update(maxContactForce=max(c['force'] for sample in samples for c in sample['contactStates']),maxPenetration=max(c['penetration'] for sample in samples for c in sample['contactStates']),contactDissipatedEnergy=sum(c.get('dissipatedEnergy',0.) for c in samples[-1]['contactStates']))
@@ -716,7 +780,9 @@ def write_csv(path,samples):
     fields=['time','id','label','x','y','z','rx','ry','rz','vx','vy','vz','wx','wy','wz','positionError','velocityError','angularError','angularVelocityError']
     rotary=[v['id'] for v in samples[0].get('rotationalStates',[])];drives=[v['id'] for v in samples[0].get('actuationStates',[])];sliders=[v['id'] for v in samples[0].get('sliders',[])];forces=[v['id'] for v in samples[0].get('forces',[])];loads=[v['id'] for v in samples[0].get('loadStates',[])];cylinders=[v['id'] for v in samples[0].get('cylinders',[])]
     linear_drives=[v['id'] for v in samples[0].get('jointForceStates',[])];contacts=[v['id'] for v in samples[0].get('contactStates',[])]
-    reactions=[v['id'] for v in samples[0].get('jointReactions',[])]
+    reactions=[v['id'] for v in samples[0].get('jointReactions',[])];rotary_drives=[v['id'] for v in samples[0].get('rotaryDrives',[])]
+    for name in rotary_drives:fields += [f'rotaryDrive:{name}:angle_rad',f'rotaryDrive:{name}:speed_rad_s',f'rotaryDrive:{name}:torque_Nm',f'rotaryDrive:{name}:power_W']
+    if rotary_drives:fields += ['rotaryDrivePower_W','rotaryDriveWork_J']
     for name in reactions:fields += [f'jointReaction:{name}:{kind}_{axis}_{unit}' for kind,unit in (('force','N'),('moment','Nm')) for axis in ('x','y','z')]
     for name in contacts:fields += [f'contact:{name}:gap_m',f'contact:{name}:penetration_m',f'contact:{name}:force_N',f'contact:{name}:power_W',f'contact:{name}:energy_J',f'contact:{name}:dampingPower_W',f'contact:{name}:dissipatedEnergy_J']
     for name in cylinders:fields += [f'cylindrical:{name}:position_m',f'cylindrical:{name}:velocity_m_s',f'cylindrical:{name}:angle_rad',f'cylindrical:{name}:angularVelocity_rad_s']
@@ -739,6 +805,9 @@ def write_csv(path,samples):
             for reaction in sample.get('jointReactions',[]):
                 for kind,unit in (('force','N'),('moment','Nm')):
                     for axis in ('x','y','z'):values[f"jointReaction:{reaction['id']}:{kind}_{axis}_{unit}"]=reaction[kind][axis]
+            for state in sample.get('rotaryDrives',[]):
+                for key,unit in (('angle','angle_rad'),('speed','speed_rad_s'),('torque','torque_Nm'),('power','power_W')):values[f"rotaryDrive:{state['id']}:{unit}"]=state[key]
+            if 'rotaryDrivePower' in sample:values.update(rotaryDrivePower_W=sample['rotaryDrivePower'],rotaryDriveWork_J=sample['rotaryDriveWork'])
             for state in sample.get('cylinders',[]):
                 for key,unit in (('position','position_m'),('velocity','velocity_m_s'),('angle','angle_rad'),('angularVelocity','angularVelocity_rad_s')):values[f"cylindrical:{state['id']}:{unit}"]=state[key]
             for state in sample.get('loadStates',[]):

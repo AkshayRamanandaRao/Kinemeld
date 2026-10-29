@@ -65,6 +65,8 @@ def joint_rows(joint, lookup):
     if kind in ("revolute", "cylindrical"):
         rotation(t1, f"rotation about {_label(t1)}")
         rotation(t2, f"rotation about {_label(t2)}")
+        if kind == "revolute" and joint.get("motion"):
+            rotation(axis, "prescribed rotation about the axis")
     if kind == "universal":
         ub = s.mul(s.body_rotation(b), s.xyz(joint["axisB"]))
         normal = s.cross(axis, ub)
