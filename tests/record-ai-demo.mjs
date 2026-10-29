@@ -147,10 +147,10 @@ try {
   assert(result.ok, JSON.stringify(result.error));
   await page.waitForFunction(() => document.querySelector('#resultSource')?.textContent.includes('MBDyn'));
   await page.locator('#signalSelect').selectOption({ label: 'Contact normal force (reconstructed)' });
-  await page.locator('#resetViewButton').click();
   const peakIndex = result.samples.reduce((best, sample, i, all) => (sample.contactStates[0].force > all[best].contactStates[0].force ? i : best), 0);
   await page.evaluate((i) => { const s = document.querySelector('#timeSlider'); s.value = String(i); s.dispatchEvent(new Event('input')); }, peakIndex);
-  await page.waitForTimeout(400);
+  await page.locator('#resetViewButton').click();
+  await page.waitForTimeout(500);
   const peak = result.samples[peakIndex].contactStates[0].force;
   await caption('POST-PROCESSING', `MBDyn solved the assistant-built model: ${result.samples.length.toLocaleString()} samples, peak tyre load ${(peak / 1000).toFixed(2)} kN at first impact.`);
   await shot(4.5);
