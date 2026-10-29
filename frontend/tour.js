@@ -55,7 +55,7 @@ function setPreference(value) { try { localStorage.setItem(KEY, value); } catch 
 /** Start the optional, non-blocking first-run guide and expose it through Tour. */
 export async function setupTour() {
   const panel=element("guidedTour"), button=element("tourButton"), disable=element("tourDisable");
-  let index=0, highlighted=null, autoEnabled=preference()!=="off", interacted=false;
+  let index=0, highlighted=null, autoEnabled=preference()==="on", interacted=false;
   let pendingWrite=Promise.resolve();
   function persist(enabled) {
     autoEnabled=enabled;

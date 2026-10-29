@@ -1,0 +1,8 @@
+{
+  "studies": [
+    {"id": "double-wishbone", "category": "AUTOMOTIVE · STEP GEOMETRY", "title": "Double-wishbone suspension", "description": "Closed spatial loop built from original STEP control arms, knuckle, hub and tyre; observe wheel travel, camber and toe.", "project": "open-suspension/suspension.mbdyn-studio"},
+    {"id": "aircraft-nose-gear", "category": "AEROSPACE · STEP GEOMETRY", "title": "Aircraft nose-gear kinematics", "description": "Open-source STEP nose-gear assembly with six modelled bodies and a prescribed strut stroke.", "project": "open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio"},
+    {"id": "oleo-strut", "category": "AEROSPACE · NONLINEAR FORCE", "title": "Nonlinear oleo strut", "description": "Gas spring, asymmetric orifice damping and stroke stops on a STEP wheel-end fixture.", "project": "oleo-strut/wheel-oleo.mbdyn-studio"},
+    {"id": "wheel-end", "category": "AUTOMOTIVE · STEP GEOMETRY", "title": "Wheel-end torque response", "description": "Knuckle, hub and tyre STEP parts with an idealized wheel-bearing torque case.", "project": "open-wheel-end/wheel-end.mbdyn-studio"}
+  ]
+}
