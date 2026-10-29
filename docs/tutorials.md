@@ -1,6 +1,6 @@
 # First simulations
 
-These examples teach a complete **Model → Validate → Run → Results** cycle.
+These examples teach a complete **Pre-processing → Solve → Post-processing** cycle (see [workspaces](workspaces.md)). **Validate model** and the study settings are in the Solve workspace; plots, playback and CSV export are in Post-processing.
 Open the local application at `http://127.0.0.1:8766` after starting its server as
 described in the README. Confirm the solver status before requesting an MBDyn run.
 

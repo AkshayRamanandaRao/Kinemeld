@@ -405,6 +405,8 @@ def validate(model):
         if a==b:has_loops=True
         else:parents[b]=a
     summary.update(bodies=len(bodies),joints=len(joints),forces=len(forces),loads=len(loads),timeSteps=steps,nodeLabels={b['id']:i+1 for i,b in enumerate(bodies)},hasLoops=has_loops)
+    import constraint_analysis
+    summary['mobility']=constraint_analysis.analyse(model)
     return {"valid":not issues,"issues":issues,"summary":summary}
 
 

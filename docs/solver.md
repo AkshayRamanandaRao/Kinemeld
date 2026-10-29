@@ -59,6 +59,10 @@ For Windows with WSL:
 {"mode":"wsl","distribution":"YourExistingDistro","executable":"/absolute/linux/path/to/mbdyn"}
 ```
 
+Without a `solver.json`, the service uses a solver bundled with the application at
+`solver/bin/mbdyn` (`mbdyn.exe` on Windows) — the Linux release archive includes one — and
+otherwise the first `mbdyn` on `PATH`. A present `solver.json` always takes precedence.
+
 The HTTP API cannot change this executable or submit arbitrary input-deck text.
 Only validated physical parameters enter the generated decks. Files written by
 each run are retained in a new `runs/<run-id>` directory under the desktop user-data folder, or under the workspace for browser development. Legacy workspace run artifacts remain readable without being moved. The solver has a

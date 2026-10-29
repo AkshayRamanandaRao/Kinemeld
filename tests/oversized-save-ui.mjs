@@ -1,4 +1,5 @@
 /** Oversized full solver CSV must fail locally before desktop IPC, with export preserved. */
+import './workspace-shim.mjs';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir, open, stat, unlink, writeFile } from 'node:fs/promises';

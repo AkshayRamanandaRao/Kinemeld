@@ -83,14 +83,15 @@
           </div>
           <div class="view-actions">
             <span id="modelKindBadge">1 moving body · 1 joint</span
-            ><button id="stepButton" class="text-button" title="Import STEP solid parts"><span data-icon="layers"></span>CAD parts</button
+            ><button id="stepButton" class="text-button" title="Import STEP solid parts"><span data-icon="layers"></span>STEP parts</button
             ><button id="referenceIsolateButton" class="text-button" title="Show only the STL reference" hidden>Isolate STL</button
             ><button id="referenceRemoveButton" class="text-button" title="Remove visual reference" hidden>Remove STL</button
             ><span class="view-divider" aria-hidden="true"></span
             ><button id="trailsButton" class="icon-button" title="Motion trails" aria-label="Motion trails" aria-pressed="false" data-icon="trail"></button
             ><button id="labelsButton" class="icon-button" title="Labels" aria-label="Toggle labels" aria-pressed="true" data-icon="tag"></button
             ><button id="gridButton" class="icon-button" title="Toggle grid" aria-label="Toggle grid" aria-pressed="true" data-icon="grid"></button
-            ><button id="resetViewButton" class="icon-button" title="Fit model in view (F)" aria-label="Fit model in view" data-icon="fit"></button>
+            ><button id="resetViewButton" class="icon-button" title="Fit model in view (F)" aria-label="Fit model in view" data-icon="fit"></button
+            ><button id="presentButton" class="icon-button" title="Presentation mode (P)" aria-label="Presentation mode" aria-pressed="false" data-icon="present"></button>
           </div>
         </div>
         <section id="viewport" class="viewport" aria-label="Interactive 3D mechanism. Drag to orbit, scroll to zoom." tabindex="0">
@@ -107,6 +108,7 @@
             ><span class="view-label" id="referenceStatus" hidden></span>
           </div>
           <div class="view-clock" id="viewTime">t = 0.000 s</div>
+          <button id="presentExit" class="present-exit" type="button">Exit presentation · Esc</button>
           <div class="axis-key"><span class="x">X</span><span class="y">Y</span><span class="z">Z ↑</span></div>
           <div class="viewport-hint" id="viewportHint">Drag to orbit <i>·</i> Right-drag to pan <i>·</i> Scroll to zoom <i>·</i> Click a body to inspect</div>
         </section>

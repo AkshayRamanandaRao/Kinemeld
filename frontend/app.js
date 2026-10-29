@@ -53,6 +53,7 @@ const paths = {
   ruler: "M3 17L17 3l4 4L7 21z M7 13l2 2 M10 10l2 2 M13 7l2 2",
   eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
   force: "M12 3v14 M7 12l5 5 5-5 M5 21h14",
+  present: "M3 4h18v12H3z M8 20h8 M12 16v4 M10 8l4 2-4 2z",
 };
 function icon(name) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.cube}"/></svg>`;
@@ -516,8 +517,14 @@ function renderChecklist() {
   const steps = Number.isFinite(m.simulation?.duration / m.simulation?.step) ? Math.ceil(m.simulation.duration / m.simulation.step) : NaN;
   items.push([Number.isFinite(steps) ? (steps > 20000 ? "bad" : "ok") : "bad", "Time steps", Number.isFinite(steps) ? steps.toLocaleString() : "—"]);
   if (m.kind === "spatial-assembly") {
-    const dof = spatialMobility(m);
-    items.push([dof >= 0 ? "ok" : "warn", "Mobility (Grübler)", `${dof} DOF`]);
+    const analysis = state.validation?.summary?.mobility;
+    if (analysis) {
+      const redundant = analysis.redundant.length;
+      items.push([redundant ? "warn" : "ok", "Mobility (constraint rank)", `${analysis.dof} DOF${redundant ? ` · ${redundant} redundant` : ""}`]);
+    } else {
+      const dof = spatialMobility(m);
+      items.push([dof >= 0 ? "ok" : "warn", "Mobility (Grübler)", `${dof} DOF`]);
+    }
   }
   items.push([state.result ? (stale() ? "warn" : "ok") : "", "Result", state.result ? (stale() ? "stale · rerun" : "current") : "none"]);
   $("checklist").replaceChildren(...items.map(([cls, label, detail]) => {
@@ -526,6 +533,14 @@ function renderChecklist() {
     li.innerHTML = `<span class="mark">${cls === "ok" ? "✓" : cls === "bad" ? "!" : cls === "warn" ? "~" : "·"}</span><span>${escapeHtml(label)}</span><small>${escapeHtml(detail)}</small>`;
     return li;
   }));
+  const redundant = m.kind === "spatial-assembly" ? state.validation?.summary?.mobility?.redundant || [] : [];
+  if (redundant.length) {
+    const li = document.createElement("li");
+    li.className = "redundancy";
+    li.innerHTML = `<p>Redundant constraints — MBDyn will reject this assembly. Make the loop exact, e.g. a spherical joint at one end of a link and a universal joint at the other.</p><ul>${redundant.map((item) => `<li><button type="button" data-joint="${escapeHtml(item.joint)}">${escapeHtml(item.joint)}</button> ${escapeHtml(item.component)}</li>`).join("")}</ul>`;
+    li.querySelectorAll("[data-joint]").forEach((button) => { button.onclick = () => { switchStep("model"); select(`joint-${button.dataset.joint}`); }; });
+    $("checklist").append(li);
+  }
   const seconds = m.simulation?.duration, dt = m.simulation?.step;
   $("stepSummary").textContent = Number.isFinite(steps) ? `${steps.toLocaleString()} implicit steps of ${dt} s cover ${seconds} s. Smaller steps capture faster motion and take longer.` : "Enter a positive duration and time step.";
 }
@@ -942,6 +957,9 @@ async function validate(show = true) {
     state.validation = result;
     showIssues(result.issues || []);
     renderChecklist();
+    const mobility = result.summary?.mobility;
+    if (state.model.kind === "spatial-assembly" && mobility)
+      $("modelKindBadge").textContent = `${state.model.bodies.length} bodies · ${state.model.joints.length} joints · ${mobility.dof} DOF${mobility.redundant.length ? ` · ${mobility.redundant.length} redundant` : ""}`;
     $("validationBadge").textContent = result.valid
       ? "Ready"
       : "Needs attention";
@@ -993,7 +1011,6 @@ let workspace = "model";
 function switchStep(step) {
   const validating = step === "validate";
   if (validating) step = "simulate";
-  const changedWorkspace = workspace !== step;
   workspace = step;
   document.body.classList.remove("ws-model", "ws-simulate", "ws-results");
   document.body.classList.add(`ws-${step}`);
@@ -1003,17 +1020,19 @@ function switchStep(step) {
   if (step === "simulate") {
     renderChecklist();
     if (validating) validate();
-    else validate(false).then(renderChecklist);
-    if (sourceInfo() && changedWorkspace)
-      notice("The source deck controls duration and time step. Run the preserved upstream model or inspect its input.");
   }
-  if (step === "results") {
-    if (!state.result && changedWorkspace) notice("No result is loaded. Run the model from the Solve workspace to generate a response.");
-    if (state.result) requestAnimationFrame(drawPlot);
-  }
-  if (step === "model" && !stale() && changedWorkspace) notice("");
+  if (step === "results" && state.result) requestAnimationFrame(drawPlot);
   refreshTrails();
 }
+// Switch to the workspace that owns a control, e.g. when following an issue to its field.
+function revealElement(element) {
+  const owner = element?.closest?.(".pane-model, .pane-simulate, .console-panel, .pane-results, .results-panel");
+  if (!owner) return false;
+  const step = owner.matches(".pane-model") ? "model" : owner.matches(".pane-simulate, .console-panel") ? "simulate" : "results";
+  if (step !== workspace) switchStep(step);
+  return true;
+}
+window.__kinemeldReveal = revealElement;
 function setBusy(busy) {
   state.busy = busy;
   $("cancelRunButton").hidden = !busy || !activeRunToken;
@@ -1399,7 +1418,7 @@ function drawPlot() {
     })
     .join("");
   let grid = "";
-  const yTicks = niceTicks(min, max, Math.max(2, Math.floor((h - top - bottom) / 34)));
+  const yTicks = niceTicks(min, max, Math.max(3, Math.floor((h - top - bottom) / 28)));
   for (const val of yTicks) {
     const y = py(val);
     grid += `<line x1="${left}" x2="${w - right}" y1="${y}" y2="${y}" stroke="var(--line)" ${val === 0 ? "" : 'stroke-dasharray="2 3"'}/><text x="${left - 7}" y="${y + 3}" text-anchor="end">${formatTick(val, max - min)}</text>`;
@@ -1409,7 +1428,8 @@ function drawPlot() {
     grid += `<line x1="${x}" x2="${x}" y1="${top}" y2="${h - bottom}" stroke="var(--line)" stroke-dasharray="2 3"/><text x="${x}" y="${h - bottom + 14}" text-anchor="middle">${formatTick(t, duration)}</text>`;
   }
   const axes = `<line x1="${left}" x2="${left}" y1="${top}" y2="${h - bottom}" stroke="var(--line-strong)"/><line x1="${left}" x2="${w - right}" y1="${h - bottom}" y2="${h - bottom}" stroke="var(--line-strong)"/><text x="${w - right}" y="${h - 4}" text-anchor="end">time · s</text><text transform="translate(12 ${(top + h - bottom) / 2}) rotate(-90)" text-anchor="middle">${escapeHtml(signal.unit)}</text>`;
-  const legend = series.map(({ label }, i) => `<g transform="translate(${left + 10 + i * 78} ${top + 4})"><line x1="0" x2="16" y1="0" y2="0" stroke="${PLOT_COLORS[i]}" stroke-width="2" ${i ? `stroke-dasharray="${i === 1 ? "6 3" : "2 3"}"` : ""}/><text x="21" y="3" fill="var(--text)">${escapeHtml(label)}</text></g>`).join("");
+  const legendWidth = series.length * 78 + 6;
+  const legend = `<rect x="${left + 4}" y="${top - 6}" width="${legendWidth}" height="18" rx="4" fill="var(--surface)" opacity="0.88"/>` + series.map(({ label }, i) => `<g transform="translate(${left + 10 + i * 78} ${top + 4})"><line x1="0" x2="16" y1="0" y2="0" stroke="${PLOT_COLORS[i]}" stroke-width="2" ${i ? `stroke-dasharray="${i === 1 ? "6 3" : "2 3"}"` : ""}/><text x="21" y="3" fill="var(--text)">${escapeHtml(label)}</text></g>`).join("");
   const markers = series.map((_, i) => `<circle class="plot-marker" data-index="${i}" r="3.5" fill="var(--surface)" stroke="${PLOT_COLORS[i]}" stroke-width="2" cx="-10" cy="-10"/>`).join("");
   $("plot").innerHTML =
     `<svg viewBox="0 0 ${w} ${h}" role="presentation"><g fill="var(--dim)" font-family="PlexMono" font-size="9.5">${grid}${axes}</g>${curves}<line id="plotHover" y1="${top}" y2="${h - bottom}" x1="-10" x2="-10" stroke="var(--faint)" stroke-width="1"/><line id="plotCursor" x1="${px(samples[state.frame]?.time ?? first)}" x2="${px(samples[state.frame]?.time ?? first)}" y1="${top}" y2="${h - bottom}" stroke="var(--accent)" stroke-width="1.2"/>${markers}<g font-family="Plex" font-size="10.5">${legend}</g></svg><div class="plot-readout" id="plotReadout" hidden></div>`;
@@ -2311,6 +2331,14 @@ document.querySelectorAll("[data-view]").forEach(
 );
 $("resetViewButton").onclick = () => view?.reset();
 $("solveRunButton").onclick = () => run();
+function setPresentation(on) {
+  document.body.classList.toggle("present", on);
+  $("presentButton").setAttribute("aria-pressed", String(on));
+  if (on && state.result && workspace !== "results") switchStep("results");
+  requestAnimationFrame(() => { view?.resize(); if (state.result) drawPlot(); });
+}
+$("presentButton").onclick = () => setPresentation(!document.body.classList.contains("present"));
+$("presentExit").onclick = () => setPresentation(false);
 $("frameBackButton").onclick = () => { state.playing = false; setFrame(state.frame - 1); };
 $("frameForwardButton").onclick = () => { state.playing = false; setFrame(state.frame + 1); };
 $("loopButton").onclick = () => {
@@ -2489,6 +2517,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "F5") { e.preventDefault(); if (!state.busy) run(); return; }
   if (["1", "2", "3"].includes(e.key)) { switchStep(["model", "simulate", "results"][Number(e.key) - 1]); return; }
   if (e.key.toLowerCase() === "f") { view?.reset(); return; }
+  if (e.key.toLowerCase() === "p") { $("presentButton").click(); return; }
+  if (e.key === "Escape" && document.body.classList.contains("present")) { setPresentation(false); return; }
   if (!state.result || workspace !== "results") return;
   if (e.key === " ") { e.preventDefault(); $("playButton").click(); }
   else if (e.key === "ArrowLeft") { e.preventDefault(); $("frameBackButton").click(); }

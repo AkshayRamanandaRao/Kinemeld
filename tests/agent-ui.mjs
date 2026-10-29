@@ -1,4 +1,5 @@
 /** Real UI + backend validation, with controlled AI replies and a counted, non-executing Run boundary. */
+import './workspace-shim.mjs';
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";

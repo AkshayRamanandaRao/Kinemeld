@@ -1,40 +1,33 @@
 # Simulation demo recordings
 
-The four homepage previews show the actual Kinemeld browser interface and
-MBDyn solver results for the linked STEP projects. The recordings contain no
-audio. Each six-second clip walks through 72 selected result samples; the
-label **SLOW PLAYBACK** distinguishes the recording's playback rate from the
-simulation's time. Each GIF is a smaller looping preview of its MP4.
+The homepage clips show the actual Kinemeld interface in presentation mode playing back
+real MBDyn 1.7.3 solutions of the [featured studies](featured-studies.md). Each recording
+is captured frame by frame at 30 fps from the solver's output samples; the caption in the
+viewport states the playback rate (real time, 0.5× or 0.2×). The clips have no audio. Each
+GIF is a smaller 15 fps preview of its MP4.
 
-| Demo | Simulated interval | What to watch |
-| --- | --- | --- |
-| [Aircraft nose gear](demos/aircraft-nose-gear.mp4) | 0.5 s | Prescribed strut travel, linkage motion and the slider-position plot. The model title states its kinematic-only limits. |
-| [Double-wishbone suspension](demos/double-wishbone.mp4) | 0.15 s | Motion of the source STEP arms, knuckle and wheel, alongside the wheel position plot. |
-| [Wheel-end torque](demos/wheel-end.mp4) | 0.5 s | Wheel motion and the angular-velocity response to the applied torque. |
-| [Oleo strut](demos/oleo-strut.mp4) | About 1 s | Prescribed wheel-end travel and the native gas-pressure response of the illustrative strut. |
+| Demo | Simulated interval | Playback | What to watch |
+| --- | --- | --- | --- |
+| [Quarter-car](demos/quarter-car.mp4) | 2.5 s | 0.5× | Arms swinging through ±60 mm; knuckle camber (X) and toe (Z) in the plot |
+| [Gear drop test](demos/gear-drop.mp4) | 1.2 s | 0.2× | Touchdown, strut stroke and the gas / orifice / stop force components |
+| [Slider-crank](demos/slider-crank.mp4) | 4 s | 0.5× | Crank speed running up and rippling twice per revolution |
+| [Gyroscopic top](demos/gyroscopic-top.mp4) | 4 s | 0.5× | Precession of the axis with nutation cusps traced by the trail |
+| [Tumbling T-handle](demos/tumbling-handle.mp4) | 12 s | real time | Periodic flips; spin component in body axes reversing sign |
+| [Chaotic pendulums](demos/chaotic-pendulums.mp4) | 14 s | real time | Two pendulums 0.001° apart separating after about two seconds |
 
-The recordings demonstrate the models as authored, not verified physical
-equipment. See each example's engineering guide on the homepage for source
-rights, assumed joints and properties, numerical checks and applicability.
+The studies are teaching models with representative parameters, not validated hardware.
 
 ## Recreate the recordings
 
-Install the project dependencies and configure MBDyn and STEP import as described
-in the [main README](../README.md). Install Playwright's Chromium and ensure an
-FFmpeg executable is available. The recorder uses the `FFMPEG` environment
-variable when set; otherwise it looks for the executable from Python's
-`imageio-ffmpeg` package. Start the application service, then run:
+Start the service with a working MBDyn (`python start.py --no-browser`), make sure FFmpeg
+is on `PATH` (or set `FFMPEG`), then run:
 
-```powershell
-$env:MBDYN_STUDIO_URL = 'http://127.0.0.1:8766'
+```bash
 node tests/record-demo-videos.mjs
 ```
 
-The recorder loads each saved project, runs MBDyn, verifies that the expected
-STEP attachments and solver samples are present, steps through the result
-timeline and encodes the frames as H.264 MP4 and animated GIF. It decodes each
-completed file to check for playback errors. To regenerate one demo, append its
-name: `aircraft-nose-gear`, `double-wishbone`, `wheel-end` or `oleo-strut`.
-Temporary screenshots are removed after encoding; saved project and model
-files are not modified. The process requires a running service and a working
-solver; no preview trajectory is substituted for a failed solve.
+Append a study name (`quarter-car`, `gear-drop`, `slider-crank`, `gyroscopic-top`,
+`tumbling-handle` or `chaotic-pendulums`) to record one. The recorder opens each featured
+study, runs MBDyn, switches to presentation mode, steps the timeline at the stated rate,
+encodes H.264 MP4 and a palette-optimised GIF, and decodes both to check for errors. No
+preview trajectory is substituted for a failed solve; saved project files are not modified.

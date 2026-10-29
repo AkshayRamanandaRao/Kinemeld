@@ -1,3 +1,4 @@
+import './workspace-shim.mjs';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { readFile } from 'node:fs/promises';

@@ -398,6 +398,13 @@ def run(model, control=None):
         result["displaySampleCount"] = len(result["samples"])
     except (OSError, ValueError, ArithmeticError, subprocess.TimeoutExpired) as exc:
         result["error"] = str(exc)
+        redundant = check["summary"].get("mobility", {}).get("redundant", []) if model["kind"] == spatial_assembly.KIND else []
+        if redundant:
+            listed = "; ".join(f"{item['joint']} ({item['component']})" for item in redundant[:4])
+            result["error"] += (f" The constraint analysis found {len(redundant)} redundant constraint(s): {listed}"
+                                f"{' …' if len(redundant) > 4 else ''}. MBDyn cannot assemble redundant loops; "
+                                "make the loop exact, for example with a spherical joint at one end of a link and a universal joint at the other.")
+            result["redundantConstraints"] = redundant
     result["elapsedSeconds"] = time.monotonic()-start
     with (directory / "solver.log").open("rb") as log:
         log.seek(0, 2)

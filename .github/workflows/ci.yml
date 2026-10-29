@@ -44,7 +44,9 @@ jobs:
         run: python -m unittest discover -p 'test_*.py'
       - name: Featured studies against independent physics
         working-directory: backend
-        run: python -B verify_featured_studies.py
+        run: |
+          python -B verify_featured_studies.py
+          python -B verify_constraint_analysis.py
 
   native:
     name: Desktop host (${{ matrix.os }})
