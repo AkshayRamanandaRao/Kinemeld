@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  solver-and-backend:
+    name: Backend, solver checks and interface syntax
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Restore MBDyn build
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: mbdyn-1.7.3-${{ runner.os }}-ubuntu22-${{ hashFiles('backend/build_solver.sh') }}
+      - name: Build MBDyn 1.7.3
+        run: |
+          sudo apt-get update && sudo apt-get install -y gfortran
+          MBDYN_JOBS=4 bash backend/build_solver.sh
+          echo "{\"mode\":\"native\",\"executable\":\"$PWD/backend/vendor/mbdyn-1.7.3/mbdyn/mbdyn\"}" > backend/solver.json
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Interface syntax
+        run: |
+          npm ci
+          npm run check
+      - name: Backend unit and solver tests
+        working-directory: backend
+        run: python -m unittest discover -p 'test_*.py'
+      - name: Featured studies against independent physics
+        working-directory: backend
+        run: python -B verify_featured_studies.py
+
+  native:
+    name: Desktop host (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux webview dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libxdo-dev
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+      - name: Test
+        run: cargo test --manifest-path native/Cargo.toml --locked
+      - name: Build
+        run: cargo build --manifest-path native/Cargo.toml --locked --release -p mbdyn-studio-desktop

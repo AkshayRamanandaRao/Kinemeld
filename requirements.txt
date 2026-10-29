@@ -1,0 +1,1 @@
+cadquery-ocp==7.9.3.1.1  # optional: STEP import and mass properties (8.x is not yet supported)

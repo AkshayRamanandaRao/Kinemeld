@@ -21,3 +21,6 @@ __pycache__/
 *.log
 *.zip
 .DS_Store
+/native/kinemeld-desktop
+/build/
+/dist/
