@@ -17,6 +17,100 @@
       "next": "Run it, then compare oleo force components with the tyre contact force in Post-processing."
     },
     {
+      "id": "aircraft-nose-gear",
+      "category": "AEROSPACE · ORIGINAL STEP ASSEMBLY",
+      "title": "Aircraft nose-gear kinematics",
+      "description": "An 80 mm shock-strut stroke prescribed on the original 11-part STEP assembly: the torque-link scissor folds and both wheels follow. Kinematic illustration only.",
+      "project": "open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio",
+      "next": "Run it, then watch the scissor fold and plot Slider position for the oleo joint.",
+      "overlay": {
+        "name": "Aircraft nose gear: 80 mm shock-strut stroke · KINEMATIC ONLY · loads invalid · source overlaps",
+        "simulation": {
+          "duration": 2.0,
+          "step": 0.002
+        },
+        "jointMotion": {
+          "oleo": {
+            "amplitude": 0.04,
+            "frequencyHz": 0.5
+          }
+        },
+        "view": {
+          "camera": [
+            1.0,
+            -0.82,
+            0.5
+          ],
+          "target": [
+            0.0,
+            -0.02,
+            0.26
+          ],
+          "signal": 5,
+          "selection": "node-lower_link",
+          "selectedJoint": "oleo",
+          "trails": false
+        }
+      }
+    },
+    {
+      "id": "oleo-strut",
+      "category": "AEROSPACE · ORIGINAL STEP PARTS",
+      "title": "Oleo strut on a wheel-end fixture",
+      "description": "Gas spring, asymmetric orifice damping and stroke stops on original STEP knuckle, hub and tyre parts under imposed motion.",
+      "project": "oleo-strut/wheel-oleo.mbdyn-studio",
+      "overlay": {
+        "view": {
+          "camera": [
+            1.05,
+            -0.95,
+            0.5
+          ],
+          "target": [
+            0.0,
+            0.0,
+            0.22
+          ],
+          "signal": 13,
+          "selection": "node-knuckle",
+          "trails": false
+        }
+      }
+    },
+    {
+      "id": "wheel-end-drop",
+      "category": "AUTOMOTIVE · ORIGINAL STEP PARTS · CONTACT",
+      "title": "Wheel-end drop test",
+      "description": "Knuckle, hub and tyre from the original STEP files dropped at 1 m/s onto a rigid floor; MBDyn solves the tyre contact force, rebound and settling.",
+      "project": "open-wheel-end/wheel-end-drop.mbdyn-studio",
+      "next": "Run it, then scrub through the impact and plot Contact normal force.",
+      "overlay": {
+        "simulation": {
+          "duration": 1.5,
+          "step": 0.0005
+        },
+        "view": {
+          "camera": [
+            1.6,
+            -0.75,
+            -0.28
+          ],
+          "target": [
+            0.0,
+            0.0,
+            -0.34
+          ],
+          "signal": 6,
+          "selection": "node-wheel",
+          "trails": true,
+          "trailBodies": [
+            "wheel"
+          ],
+          "trailPoint": "auto"
+        }
+      }
+    },
+    {
       "id": "slider-crank",
       "category": "MACHINERY · CLOSED LOOP",
       "title": "Slider-crank engine run-up",
@@ -47,20 +141,6 @@
       "description": "Two identical double pendulums released 0.001° apart stay together for seconds, then diverge completely: sensitive dependence on initial conditions.",
       "project": "chaotic-pendulums/chaotic-pendulums.mbdyn-studio",
       "next": "Run it with motion trails on and watch the two bobs separate after about three seconds."
-    },
-    {
-      "id": "aircraft-nose-gear",
-      "category": "AEROSPACE · ORIGINAL STEP ASSEMBLY",
-      "title": "Aircraft nose-gear kinematics",
-      "description": "Open-source STEP nose-gear assembly with six modelled bodies and a prescribed strut stroke. Inferred linkage; kinematic illustration only.",
-      "project": "open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio"
-    },
-    {
-      "id": "oleo-strut",
-      "category": "AEROSPACE · ORIGINAL STEP PARTS",
-      "title": "Oleo strut on a wheel-end fixture",
-      "description": "Gas spring, asymmetric orifice damping and stroke stops on original STEP knuckle, hub and tyre parts under imposed motion.",
-      "project": "oleo-strut/wheel-oleo.mbdyn-studio"
     }
   ]
 }

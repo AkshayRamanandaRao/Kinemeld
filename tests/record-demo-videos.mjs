@@ -14,6 +14,9 @@ const output = resolve('docs/demos'), fps = 30;
 const studies = [
   { name: 'quarter-car', title: 'Double-wishbone quarter-car', rate: 0.5, caption: 'Wheel-pad force 3.2 ± 1.6 kN at 0.8 Hz · camber gain and bump steer' },
   { name: 'gear-drop', title: 'Oleo-pneumatic gear drop test', rate: 0.2, caption: '290 kg carriage dropped at 2 m/s · gas, orifice and stop forces' },
+  { name: 'aircraft-nose-gear', title: 'Aircraft nose-gear kinematics', rate: 0.5, caption: 'Original 11-part STEP assembly · 80 mm shock-strut stroke folds the torque links · kinematic illustration' },
+  { name: 'oleo-strut', title: 'Oleo strut on a wheel-end fixture', rate: 0.25, caption: 'Original STEP wheel end on a gas/oil strut · 50 mm stroke · gas, orifice and stop forces' },
+  { name: 'wheel-end-drop', title: 'Wheel-end drop test', rate: 0.25, caption: 'Original STEP knuckle, hub and tyre · 1 m/s drop onto a rigid floor · tyre load and rebound' },
   { name: 'slider-crank', title: 'Slider-crank engine run-up', rate: 0.5, caption: '2 N·m motor against a 90 N·s/m pumping load · crank speed run-up' },
   { name: 'gyroscopic-top', title: 'Gyroscopic top', rate: 0.5, caption: '120 rad/s spin on a spherical tip · precession with nutation cusps' },
   { name: 'tumbling-handle', title: 'Tumbling T-handle', rate: 1, caption: 'Zero gravity, spin about the intermediate principal axis · Dzhanibekov flips' },

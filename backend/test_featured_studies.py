@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import unittest
 
+import featured
 import spatial_assembly as spatial
 from server import featured_catalog
 
@@ -16,6 +17,9 @@ REQUIRED = {
     "gyroscopic-top": set(),
     "tumbling-handle": set(),
     "chaotic-pendulums": set(),
+    "aircraft-nose-gear": set(),
+    "oleo-strut": {"forces"},
+    "wheel-end-drop": {"contacts"},
 }
 
 
@@ -31,7 +35,7 @@ class FeaturedStudyTests(unittest.TestCase):
     def test_projects_validate_with_their_element_groups_and_geometry(self):
         for study in featured_catalog():
             with self.subTest(study=study["id"]):
-                project = json.loads((ROOT / "examples" / study["project"]).read_text(encoding="utf-8"))
+                project = featured.project(study)
                 model = project["model"]
                 self.assertEqual(project["format"], "mbdyn-studio/1")
                 check = spatial.validate(model)
@@ -49,6 +53,27 @@ class FeaturedStudyTests(unittest.TestCase):
                     view = project["view"]
                     self.assertEqual(len(view["camera"]), 3)
                     self.assertIsInstance(view["signal"], int)
+
+    def test_overlays_leave_saved_projects_unchanged(self):
+        for study in featured_catalog():
+            if "overlay" not in study:
+                continue
+            with self.subTest(study=study["id"]):
+                path = ROOT / "examples" / study["project"]
+                before = path.read_text(encoding="utf-8")
+                opened = featured.project(study)
+                self.assertEqual(path.read_text(encoding="utf-8"), before)
+                for joint_id, motion in study["overlay"].get("jointMotion", {}).items():
+                    self.assertEqual(next(j for j in opened["model"]["joints"] if j["id"] == joint_id)["motion"], motion)
+                if "simulation" in study["overlay"]:
+                    self.assertEqual(opened["model"]["simulation"], study["overlay"]["simulation"])
+
+    def test_overlay_rejects_unknown_fields_and_unprescribed_joints(self):
+        project = {"model": {"joints": [{"id": "hinge", "type": "revolute"}]}}
+        with self.assertRaises(ValueError):
+            featured.apply_overlay(project, {"camera": [0, 0, 1]})
+        with self.assertRaises(ValueError):
+            featured.apply_overlay(project, {"jointMotion": {"hinge": {"amplitude": 1, "frequencyHz": 1}}})
 
 
 if __name__ == "__main__":
