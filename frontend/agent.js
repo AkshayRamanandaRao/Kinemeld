@@ -19,12 +19,28 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
     messages.scrollTop = messages.scrollHeight;
     return element;
   }
+  /** One line per assistant edit, in engineering terms rather than field names. */
+  function describeEdit(edit) {
+    const values = edit.values || {}, verb = edit.operation === "copy" ? "Copied" : edit.operation === "add" ? "Added" : "Updated";
+    const fields = (group) => Object.entries(values[group] || {}).map(([key, value]) => `${key} ${value}`).join(", ");
+    if (edit.operation === "copy") return `Copied body ${edit.sourceId} as ${edit.id}`;
+    if (edit.collection === "joints" && edit.operation === "add") return `Added ${values.type || ""} joint ${edit.id}: ${values.a} ↔ ${values.b}`.replace("  ", " ");
+    if (edit.collection === "contacts" && edit.operation === "add") return `Added sphere-plane contact ${edit.id} on ${values.body}${values.radius ? `, radius ${values.radius} m` : ""}`;
+    if (edit.collection === "forces" && edit.operation === "add") return `Added ${values.type === "oleo-strut" ? "oleo strut" : "spring-damper"} ${edit.id}: ${values.a} ↔ ${values.b}`;
+    if (edit.collection === "bodies" && edit.operation === "update") {
+      const parts = [values.pose && `pose ${fields("pose")}`, values.velocity && `velocity ${fields("velocity")}`, values.mass !== undefined && `mass ${values.mass} kg`].filter(Boolean);
+      if (parts.length) return `Updated body ${edit.id}: ${parts.join("; ")}`;
+    }
+    return `${verb} ${edit.collection.replace(/s$/, "")} ${edit.id} (${Object.keys(values).join(", ")})`;
+  }
   function reviewSpatial({before, original, proposed, bindings, descriptions, runAfter}) {
     reviewOutstanding = true;
     const item=message("Review the complete model before applying. Validation checks consistency; it cannot determine whether the agent interpreted your request correctly.");
     item.classList.add("agent-review");
+    // A readable list of the proposed edits first; the complete model comparison stays one click away.
+    if(descriptions.length){const list=document.createElement("ul");list.className="agent-changes";for(const text of descriptions.flatMap(entry=>String(entry).split(" · "))){const li=document.createElement("li");li.textContent=text;list.append(li);}item.append(list);}
     const details=document.createElement("details"), summary=document.createElement("summary"), pre=document.createElement("pre");
-    details.open=true;summary.textContent="Compare current and proposed model";pre.textContent=`CURRENT MODEL\n${JSON.stringify(original,null,2)}\n\nPROPOSED MODEL\n${JSON.stringify(proposed,null,2)}`;
+    summary.textContent="Compare current and proposed model";pre.textContent=`CURRENT MODEL\n${JSON.stringify(original,null,2)}\n\nPROPOSED MODEL\n${JSON.stringify(proposed,null,2)}`;
     details.append(summary,pre);item.append(details);
     const allowed=new Set(["planar-assembly","spatial-assembly"].includes(proposed.kind) ? (proposed.bodies || []).map(body=>body.id) : []);
     const detached=Object.entries(bindings).filter(([,binding])=>!allowed.has(binding.body) || ((proposed.kind === "spatial-assembly") !== (Object.hasOwn(binding.pose || {},"rx") && Object.hasOwn(binding.pose || {},"rz"))));
@@ -113,7 +129,7 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
               if (action.type === "set_parameters") return `Set parameters: ${Object.keys(action.values || {}).join(", ")}`;
               if (action.type === "set_simulation") return `Set study: ${Object.keys(action.values || {}).join(", ")}`;
               if (action.type === "set_spatial_gravity") return `Set gravity (m/s²): ${Object.entries(action.values || {}).map(([key,value])=>`${key}=${value}`).join(", ")}`;
-              if (action.type === "edit_spatial_assembly") return (action.edits || []).map(edit=>`${edit.operation === "copy" ? "Copied" : edit.operation === "add" ? "Added" : "Updated"} ${edit.collection} ${edit.id}${edit.operation === "copy" ? ` from ${edit.sourceId}` : ""} (${Object.keys(edit.values || {}).join(", ")})`).join(" · ");
+              if (action.type === "edit_spatial_assembly") return (action.edits || []).map(describeEdit).join(" · ");
               return "Updated supported model";
             });
             if (model.kind === "spatial-assembly" || response.proposedModel.kind === "spatial-assembly") {

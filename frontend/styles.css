@@ -2174,3 +2174,13 @@ legend {
   background: color-mix(in srgb, var(--soft) 60%, transparent);
   box-shadow: inset 2px 0 0 var(--accent);
 }
+
+.agent-changes {
+  margin: 6px 0 4px;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.agent-changes li::marker {
+  color: var(--accent);
+}
