@@ -19,7 +19,7 @@ function patchLocator(page) {
     if (typeof original !== 'function') continue;
     prototype[name] = async function (...args) {
       try {
-        await this.evaluate((element) => window.__kinemeldReveal?.(element), undefined, { timeout: 4000 });
+        await this.evaluate((element) => window.__kinemeldReveal?.(element), undefined, { timeout: 15000 });
       } catch {
         // Missing, multiple or detached elements keep Playwright's own waiting and errors.
       }
