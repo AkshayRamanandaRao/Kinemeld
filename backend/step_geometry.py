@@ -107,6 +107,9 @@ def convert_step(data, name="Imported STEP"):
 def _worker(source):
     try:
         from OCP.BRep import BRep_Tool
+        from OCP.BRepAdaptor import BRepAdaptor_Surface
+        from OCP.GeomAbs import GeomAbs_Cylinder, GeomAbs_Plane
+        from OCP.gp import gp_Vec
         from OCP.BRepMesh import BRepMesh_IncrementalMesh
         from OCP.IFSelect import IFSelect_RetDone
         from OCP.Interface import Interface_Static
@@ -185,10 +188,41 @@ def _worker(source):
         if len(parts) >= MAX_PARTS:
             raise StepError(f"STEP file exceeds the {MAX_PARTS}-part limit.")
         BRepMesh_IncrementalMesh(shape, 0.5, False, 0.3, True)
-        positions, indices = [], []
+        positions, indices, faces = [], [], []
+        placement = location.Transformation()
+
+        def metres(point):
+            point = point.Transformed(placement)
+            return [round(point.X()*.001, 9), round(point.Y()*.001, 9), round(point.Z()*.001, 9)]
+
+        def direction(vector):
+            vector = vector.Transformed(placement)
+            return [round(vector.X(), 9), round(vector.Y(), 9), round(vector.Z(), 9)]
+
+        def feature(face):
+            # Analytic face geometry for picking joint anchors and axes; the adaptor includes the
+            # face's own location, so only the assembly placement is applied here.
+            surface = BRepAdaptor_Surface(face, True)
+            kind = surface.GetType()
+            if kind == GeomAbs_Cylinder:
+                cylinder = surface.Cylinder()
+                axis = cylinder.Axis()
+                start, end = surface.FirstVParameter(), surface.LastVParameter()
+                centre = axis.Location().Translated(gp_Vec(axis.Direction()).Multiplied((start + end) / 2))
+                return {"type": "cylinder", "centre": metres(centre), "axis": direction(axis.Direction()),
+                        "radius": round(cylinder.Radius()*.001, 9), "length": round(abs(end - start)*.001, 9)}
+            if kind == GeomAbs_Plane:
+                plane = surface.Plane()
+                normal = plane.Axis().Direction()
+                if face.Orientation() == TopAbs_REVERSED:
+                    normal = normal.Reversed()
+                return {"type": "plane", "point": metres(plane.Location()), "normal": direction(normal)}
+            return None
+
         explorer = TopExp_Explorer(shape, TopAbs_FACE)
         while explorer.More():
             face = TopoDS.Face_s(explorer.Current())
+            first_triangle = len(indices)//3
             face_location = TopLoc_Location()
             triangulation = BRep_Tool.Triangulation_s(face, face_location)
             if triangulation is not None:
@@ -208,10 +242,14 @@ def _worker(source):
                     if face.Orientation() == TopAbs_REVERSED:
                         b,c = c,b
                     indices.extend([offset+a-1, offset+b-1, offset+c-1])
+                count = len(indices)//3 - first_triangle
+                described = feature(face) if count else None
+                if described:
+                    faces.append({"triangles": [first_triangle, count], **described})
             explorer.Next()
         if positions and indices:
             parts.append({"id":f"part-{len(parts)+1}", "name":name, "path":current_path,
-                          "productName":product_name or None, "positions":positions, "indices":indices,
+                          "productName":product_name or None, "positions":positions, "indices":indices, "faces":faces,
                           "_occurrencePath":occurrence_path})
     for i in range(1, roots.Length()+1):
         visit(roots.Value(i), TopLoc_Location(), [], [], 0)
