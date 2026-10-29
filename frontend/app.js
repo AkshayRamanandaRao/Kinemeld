@@ -170,15 +170,18 @@ const escapeHtml = (value) =>
 const stale = () => state.result && state.resultSignature !== signature();
 const format = (n, d = 3) => (Number.isFinite(n) ? n.toFixed(d) : "—");
 let noticeTimer;
+const noticeText = $("noticeText"), noticeClose = $("noticeClose");
 function notice(message, type = "") {
   clearTimeout(noticeTimer);
-  $("noticeText").textContent = message;
+  noticeText.textContent = message;
+  // Other code may have replaced the toast's content; restore the text and close button.
+  $("notice").replaceChildren(noticeText, noticeClose);
   $("notice").className = `notice ${type}`;
   $("notice").hidden = !message;
   // Informational toasts fade; warnings and errors stay until replaced or dismissed.
   if (message && !type) noticeTimer = setTimeout(() => { $("notice").hidden = true; }, 6000);
 }
-$("noticeClose").onclick = () => { clearTimeout(noticeTimer); $("notice").hidden = true; };
+noticeClose.onclick = () => { clearTimeout(noticeTimer); $("notice").hidden = true; };
 function status(message) {
   $("statusText").textContent = message;
 }
@@ -681,6 +684,45 @@ function select(entity) {
   if ($("followToggle").checked) view?.setFollow(entity);
   if ($("trailBodies").value === "selected") refreshTrails();
   if (entity === "study") { switchStep("simulate"); $("durationInput").focus(); }
+}
+/** Name and short description of an entity for hover tooltips. */
+function describeEntity(entity) {
+  const model = state.model, id = entity.replace(/^(joint|force|node|contact|applied)-/, "");
+  if (model.kind === "spatial-assembly") {
+    const body = entity === "body" ? model.bodies[0] : entity.startsWith("node-") ? model.bodies.find((b) => b.id === id) : null;
+    if (body) return [body.name, `Rigid body · ${format(body.mass, 4)} kg`];
+    const joint = entity.startsWith("joint-") && model.joints.find((j) => j.id === id);
+    if (joint) return [joint.id, `${joint.type[0].toUpperCase()}${joint.type.slice(1)} joint · ${joint.a} ↔ ${joint.b}`];
+    const force = entity.startsWith("force-") && (model.forces || []).find((f) => f.id === id);
+    if (force) return [force.id, `${force.type === "oleo-strut" ? "Oleo-pneumatic strut" : "Spring-damper"} · ${force.a} ↔ ${force.b}`];
+    const contact = entity.startsWith("contact-") && (model.contacts || []).find((c) => c.id === id);
+    if (contact) return [contact.id, `Sphere-plane contact · ${contact.body}`];
+  }
+  const item = document.querySelector(`#modelTree [data-entity="${CSS.escape(entity)}"]`);
+  return item ? [item.children[1]?.textContent || entity, item.children[2]?.textContent || ""] : [entity, ""];
+}
+/** Hover from the 3D view: tooltip at the cursor and the matching tree row highlighted. */
+function showHover(entity, x, y) {
+  const tip = $("viewTooltip");
+  document.querySelectorAll("#modelTree .tree-item.hovered").forEach((item) => item.classList.remove("hovered"));
+  if (!entity || entity.startsWith("step-part-")) { tip.hidden = true; return; }
+  document.querySelector(`#modelTree [data-entity="${CSS.escape(entity)}"]`)?.classList.add("hovered");
+  const [name, detail] = describeEntity(entity);
+  tip.innerHTML = `<b>${escapeHtml(name)}</b>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}`;
+  const rect = $("canvasMount").getBoundingClientRect();
+  tip.hidden = false;
+  const left = Math.min(x - rect.left + 14, rect.width - tip.offsetWidth - 8);
+  const top = y - rect.top + 18 + tip.offsetHeight > rect.height ? y - rect.top - tip.offsetHeight - 10 : y - rect.top + 18;
+  tip.style.left = `${Math.max(8, left)}px`;
+  tip.style.top = `${Math.max(8, top)}px`;
+}
+// Hovering a tree row highlights the same entity in the 3D view.
+$("modelTree").addEventListener("pointerover", (event) => view?.setHover(event.target.closest?.(".tree-item")?.dataset.entity || null));
+$("modelTree").addEventListener("pointerleave", () => view?.setHover(null));
+function setGlyphs(on) {
+  state.glyphs = on;
+  $("glyphsButton").setAttribute("aria-pressed", String(on));
+  view?.setGlyphs(on);
 }
 function renderProperties() {
   const pendulum = state.model.kind !== "mass-spring";
@@ -1904,6 +1946,7 @@ function currentViewState() {
     trails: Boolean(state.trails),
     trailWindow: Number($("trailWindow").value) || 0,
     trailPoint: $("trailPoint").value,
+    glyphs: state.glyphs !== false,
     ...(state.trailPreset && $("trailBodies").value === "preset" ? { trailBodies: state.trailPreset } : {}),
   };
 }
@@ -2022,6 +2065,7 @@ function applyDisplayPreset(preset) {
   } else $("trailWindow").value = "0";
   $("trailPoint").value = preset?.trailPoint === "tip" ? "tip" : "auto";
   if (typeof preset?.trails === "boolean") setTrails(preset.trails);
+  setGlyphs(preset?.glyphs !== false);
 }
 // Keep the previous document and its live reference geometry until the new view is complete.
 function commitOpenedProject(project, reference, step) {
@@ -2375,6 +2419,7 @@ $("labelsButton").onclick = () => {
   $("labelsButton").setAttribute("aria-pressed", String(show));
   $("viewport").classList.toggle("hide-labels", !show);
 };
+$("glyphsButton").onclick = () => setGlyphs(state.glyphs === false);
 $("gridButton").onclick = () => {
   const next = $("gridButton").getAttribute("aria-pressed") !== "true";
   $("gridButton").setAttribute("aria-pressed", String(next));
@@ -2546,7 +2591,7 @@ async function init() {
         $("stepPart").dispatchEvent(new Event("change"));
         $("stepDialog").showModal();
       } else select(entity);
-    });
+    }, showHover);
   } catch (error) {
     const box = document.createElement("div");
     box.className = "error-box";

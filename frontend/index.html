@@ -88,6 +88,7 @@
             ><button id="referenceRemoveButton" class="text-button" title="Remove visual reference" hidden>Remove STL</button
             ><span class="view-divider" aria-hidden="true"></span
             ><button id="trailsButton" class="icon-button" title="Motion trails" aria-label="Motion trails" aria-pressed="false" data-icon="trail"></button
+            ><button id="glyphsButton" class="icon-button" title="Joint and force symbols" aria-label="Joint and force symbols" aria-pressed="true" data-icon="joint"></button
             ><button id="labelsButton" class="icon-button" title="Labels" aria-label="Toggle labels" aria-pressed="true" data-icon="tag"></button
             ><button id="gridButton" class="icon-button" title="Toggle grid" aria-label="Toggle grid" aria-pressed="true" data-icon="grid"></button
             ><button id="resetViewButton" class="icon-button" title="Fit model in view (F)" aria-label="Fit model in view" data-icon="fit"></button
@@ -101,6 +102,7 @@
             <p id="viewportDescription">A rigid-body motion study, from setup to response.</p>
           </div>
           <div id="canvasMount" class="canvas-mount"></div>
+          <div id="viewTooltip" class="view-tooltip" role="tooltip" hidden></div>
           <div id="topology" class="topology" hidden></div>
           <div class="viewport-tags">
             <span class="view-label" id="viewSource">Initial configuration</span
