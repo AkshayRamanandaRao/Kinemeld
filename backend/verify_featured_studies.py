@@ -180,7 +180,34 @@ def quarter_car():
     ]
 
 
-STUDIES = {"gyroscopic-top": gyroscopic_top, "tumbling-handle": tumbling_handle, "chaotic-pendulums": chaotic_pendulums,
+def mechanical_energy(model, sample):
+    bodies = {b["id"]: b for b in model["bodies"]}
+    total = 0.0
+    for identifier, body in bodies.items():
+        n = node(sample, identifier)
+        r = rotation(n)
+        offset = spatial.mul(r, [body["centerOfMass"][k] for k in "xyz"])
+        w = [n[k] for k in ("wx", "wy", "wz")]
+        v = [a + b for a, b in zip([n[k] for k in ("vx", "vy", "vz")], spatial.cross(w, offset))]
+        height = n["z"] + offset[2]
+        total += 0.5 * body["mass"] * sum(x * x for x in v) + 0.5 * sum(x * y for x, y in zip(w, spatial.mul(world_inertia(body, n), w))) + body["mass"] * 9.81 * height
+    return total
+
+
+def robot_arm():
+    model = load("robot-arm")
+    samples = solve(model)
+    work = samples[-1]["rotaryDriveWork"]
+    change = mechanical_energy(model, samples[-1]) - mechanical_energy(model, samples[0])
+    peak = max(abs(d["torque"]) for s in samples for d in s["rotaryDrives"])
+    worst = max(abs(d["angle"] - d["commandedAngle"]) for s in samples for d in s["rotaryDrives"])
+    return [
+        check(worst < 1e-6, f"All three axes follow their commanded angles within {worst:.1e} rad."),
+        check(abs(work - change) < 0.01 * peak, f"Drive work {work:.3f} J equals the change in kinetic and potential energy {change:.3f} J (no dissipation)."),
+    ]
+
+
+STUDIES = {"robot-arm": robot_arm, "gyroscopic-top": gyroscopic_top, "tumbling-handle": tumbling_handle, "chaotic-pendulums": chaotic_pendulums,
            "slider-crank": slider_crank, "gear-drop": gear_drop, "quarter-car": quarter_car}
 
 

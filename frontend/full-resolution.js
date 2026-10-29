@@ -10,11 +10,13 @@ const ELEMENT_COLUMNS = {
   torque: { torque: "torque_Nm", power: "power_W" },
   contact: { gap: "gap_m", penetration: "penetration_m", force: "force_N", power: "power_W", energy: "energy_J", dampingPower: "dampingPower_W", dissipatedEnergy: "dissipatedEnergy_J" },
   "joint-force": { force: "force_N", power: "power_W" },
+  drive: { angle: "angle_rad", speed: "speed_rad_s", torque: "torque_Nm", power: "power_W" },
 };
-const ELEMENT_PREFIX = { force: "force", oleo: "force", slider: "slider", cylinder: "cylindrical", rotary: "rotational", torque: "actuation", contact: "contact", "joint-force": "jointForce" };
+const ELEMENT_PREFIX = { force: "force", oleo: "force", slider: "slider", cylinder: "cylindrical", rotary: "rotational", torque: "actuation", contact: "contact", "joint-force": "jointForce", drive: "rotaryDrive" };
 const SYSTEM_COLUMNS = {
   loadPower: "loadPower_W", appliedWork: "appliedWork_J", actuationPower: "actuationPower_W", actuationWork: "actuationWork_J",
   jointForcePower: "jointForcePower_W", jointForceWork: "jointForceWork_J", elasticEnergy: "elasticEnergy_J", dampingPower: "dampingPower_W", dissipatedEnergy: "dissipatedEnergy_J",
+  rotaryDrivePower: "rotaryDrivePower_W", rotaryDriveWork: "rotaryDriveWork_J",
 };
 const NODE_FIELDS = new Set(["x", "y", "z", "rx", "ry", "rz", "vx", "vy", "vz", "wx", "wy", "wz"]);
 
