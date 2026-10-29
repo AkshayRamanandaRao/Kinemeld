@@ -47,7 +47,7 @@ class OpenWheelTests(unittest.TestCase):
   from OCP.BRepBndLib import BRepBndLib
   Interface_Static.SetCVal_s('xstep.cascade.unit','MM')
   reader=STEPControl_Reader();self.assertEqual(reader.ReadFile(str(SOURCE/FILES[2][0])),IFSelect_RetDone);reader.TransferRoots()
-  box=Bnd_Box();BRepBndLib.AddOptimal_s(reader.OneShape(),box,False,False);xmin,ymin,zmin,xmax,ymax,zmax=box.Get()
+  box=Bnd_Box();BRepBndLib.AddOptimal_s(reader.OneShape(),box,False,False);low,high=box.CornerMin(),box.CornerMax();xmin,ymin,zmin,xmax,ymax,zmax=low.X(),low.Y(),low.Z(),high.X(),high.Y(),high.Z()
   for extent in (abs(ymin),abs(ymax),abs(zmin),abs(zmax)):self.assertAlmostEqual(extent/1000,.208,places=5)
  @unittest.skipUnless(importlib.util.find_spec('OCP'),'OpenCascade OCP required')
  def test_source_mass_and_composite_tensor(self):
@@ -76,7 +76,7 @@ class OpenWheelTests(unittest.TestCase):
   from OCP.GeomAbs import GeomAbs_Cylinder
   Interface_Static.SetCVal_s('xstep.cascade.unit','MM');reader=STEPControl_Reader();self.assertEqual(reader.ReadFile(str(SOURCE/FILES[0][0])),IFSelect_RetDone);reader.TransferRoots();it=TopExp_Explorer(reader.OneShape(),TopAbs_FACE);found=False
   while it.More():
-   surface=BRepAdaptor_Surface(TopoDS.Face_s(it.Current()))
+   surface=BRepAdaptor_Surface(TopoDS.Face(it.Current()))
    if surface.GetType()==GeomAbs_Cylinder:
     cylinder=surface.Cylinder();p=cylinder.Location();a=cylinder.Axis().Direction()
     if abs(cylinder.Radius()/1000-.02)<1e-7 and abs(p.Y()/1000+.0875)<1e-7 and abs(p.Z()/1000)<1e-7 and abs(abs(a.X())-1)<1e-7:found=True

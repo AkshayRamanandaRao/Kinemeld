@@ -40,7 +40,8 @@ class OpenNoseGearTest(unittest.TestCase):
   from OCP.Interface import Interface_Static
   from OCP.TCollection import TCollection_ExtendedString
   from OCP.TDocStd import TDocStd_Document
-  from OCP.TDF import TDF_Label,TDF_LabelSequence
+  from OCP.TDF import TDF_Label
+  from ocp_compat import TDF_LabelSequence
   from OCP.XCAFDoc import XCAFDoc_DocumentTool,XCAFDoc_ShapeTool
   from OCP.TopLoc import TopLoc_Location
   from OCP.BRepAlgoAPI import BRepAlgoAPI_Common

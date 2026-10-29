@@ -140,8 +140,7 @@ to every release.
 ### From source
 
 Requirements: Python 3.10+, an MBDyn 1.7.3 executable ([build or configure it](docs/solver.md)),
-and optionally `cadquery-ocp` 7.9 for STEP (`pip install -r requirements.txt`; version 8 is not
-yet supported).
+and optionally `cadquery-ocp` 7.9 or 8 for STEP (`pip install -r requirements.txt`).
 
 ```bash
 git clone https://github.com/AkshayRamanandaRao/Kinemeld.git

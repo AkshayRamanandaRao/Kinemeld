@@ -43,7 +43,8 @@ class NoseGearKinematicsTest(unittest.TestCase):
   from OCP.Interface import Interface_Static
   from OCP.TCollection import TCollection_ExtendedString
   from OCP.TDocStd import TDocStd_Document
-  from OCP.TDF import TDF_Label,TDF_LabelSequence
+  from OCP.TDF import TDF_Label
+  from ocp_compat import TDF_LabelSequence
   from OCP.XCAFDoc import XCAFDoc_DocumentTool,XCAFDoc_ShapeTool
   from OCP.TopLoc import TopLoc_Location
   from OCP.TopExp import TopExp_Explorer
@@ -65,7 +66,7 @@ class NoseGearKinematicsTest(unittest.TestCase):
    for index in indices:
     found=False;explorer=TopExp_Explorer(parts[index-1],TopAbs_FACE)
     while explorer.More():
-     surface=BRepAdaptor_Surface(TopoDS.Face_s(explorer.Current()))
+     surface=BRepAdaptor_Surface(TopoDS.Face(explorer.Current()))
      if surface.GetType()==GeomAbs_Cylinder:
       cylinder=surface.Cylinder();p=cylinder.Location();direction=cylinder.Axis().Direction()
       if abs(cylinder.Radius()-7.5)<1e-3 and abs(abs(direction.X())-1)<1e-6 and abs(p.Y()-y)<1e-3 and abs(p.Z()-z)<1e-3:found=True

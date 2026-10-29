@@ -9,7 +9,7 @@ for their requirements.
 
 The app needs its resource folder (backend, frontend, examples), Python 3.10+, and an MBDyn
 solver — configured as in [solver setup](../docs/solver.md), on `PATH`, or bundled at
-`solver/bin/mbdyn` inside the application folder. STEP import needs `cadquery-ocp` 7.9 in the
+`solver/bin/mbdyn` inside the application folder. STEP import needs `cadquery-ocp` 7.9 or 8 in the
 backend's Python environment (`pip install -r requirements.txt`). The assistant additionally
 needs a local Ollama model; see [AI agent](../docs/ai-agent.md).
 
