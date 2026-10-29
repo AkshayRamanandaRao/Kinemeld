@@ -9,16 +9,18 @@ import math
 from pathlib import Path
 import sys
 
+import featured
 import solver
 import spatial_assembly as spatial
+from verify_aircraft_nose_kinematics import actual_scissor, independent_scissor
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def load(study_id):
-    catalog = json.loads((ROOT / "examples" / "featured.json").read_text(encoding="utf-8"))
-    study = next(item for item in catalog["studies"] if item["id"] == study_id)
-    return json.loads((ROOT / "examples" / study["project"]).read_text(encoding="utf-8"))["model"]
+    """The model a featured study opens with, including its catalog overlay."""
+    study = next(item for item in featured.catalog() if item["id"] == study_id)
+    return featured.project(study)["model"]
 
 
 def solve(model):
@@ -207,8 +209,81 @@ def robot_arm():
     ]
 
 
+def aircraft_nose_gear():
+    model = load("aircraft-nose-gear")
+    samples = solve(model)
+    motion = next(j for j in model["joints"] if j["id"] == "oleo")["motion"]
+    stroke = [motion["amplitude"] * (1 - math.cos(2 * math.pi * motion["frequencyHz"] * s["time"])) for s in samples]
+    slider = max(abs(element(s, "sliders", "oleo")["position"] - q) for s, q in zip(samples, stroke))
+    # Independent planar check: the scissor pin lies on two circles about the upper and lower pins.
+    scissor = max(math.dist(actual_scissor(s, model), independent_scissor(model, q)) for s, q in zip(samples, stroke))
+    fold = [node(s, "upper_link")["rx"] for s in samples]
+    return [
+        check(slider < 1e-9, f"The strut follows the prescribed {1000 * max(stroke):.0f} mm stroke within {slider:.1e} m."),
+        check(scissor < 1e-8, f"The scissor pin matches two-circle linkage geometry within {scissor:.1e} m over the whole stroke."),
+        check(max(fold) - min(fold) > 10, f"The upper torque link folds through {max(fold) - min(fold):.1f}°."),
+    ]
+
+
+def oleo_strut():
+    model = load("oleo-strut")
+    samples = solve(model)
+    force = next(f for f in model["forces"] if f["id"] == "oleo")
+    error = 0.0
+    for s in samples:
+        state = element(s, "forces", "oleo")
+        ratio = 1 + force["gasArea"] * (state["length"] - force["restLength"]) / force["gasVolume"]
+        expected = force["pressure"] * ratio ** (-force["gamma"])
+        error = max(error, abs(state["gasPressure"] - expected) / expected)
+    lengths = [element(s, "forces", "oleo")["length"] for s in samples]
+    pressures = [element(s, "forces", "oleo")["gasPressure"] for s in samples]
+    return [
+        check(error < 1e-6, f"Native gas pressure follows the polytropic law p₀(V₀/V)^γ within {error:.1e} (relative)."),
+        check(max(lengths) - min(lengths) > 0.04, f"The fixture strokes the strut through {1000 * (max(lengths) - min(lengths)):.0f} mm; gas pressure spans {min(pressures) / 1e5:.2f}–{max(pressures) / 1e5:.2f} bar."),
+    ]
+
+
+def wheel_end_drop():
+    model = load("wheel-end-drop")
+    samples = solve(model)
+    g = -model["parameters"]["gravity"]["z"]
+    contact = model["contacts"][0]
+    wheel = next(b for b in model["bodies"] if b["id"] == contact["body"])
+    z0, v0 = wheel["pose"]["z"], wheel["velocity"]["vz"]
+    # Free fall until the tyre sphere reaches the floor; first contact time from the quadratic.
+    drop = z0 - contact["radius"]
+    t_contact = (v0 + math.sqrt(v0 * v0 + 2 * g * drop)) / g
+    free = [s for s in samples if s["time"] < t_contact - 1e-9]
+    fall = max(abs(node(s, "wheel")["z"] - (z0 + v0 * s["time"] - 0.5 * g * s["time"] ** 2)) for s in free)
+    first = next(s["time"] for s in samples if element(s, "contactStates", contact["id"])["penetration"] > 0)
+
+    def energy(s):
+        total = element(s, "contactStates", contact["id"])["energy"]
+        for body in model["bodies"]:
+            n = node(s, body["id"])
+            r = rotation(n)
+            arm = spatial.mul(r, [body["centerOfMass"][k] for k in "xyz"])
+            w = [n["wx"], n["wy"], n["wz"]]
+            v = [n[f"v{k}"] + c for k, c in zip("xyz", spatial.cross(w, arm))]
+            iw = spatial.mul(world_inertia(body, n), w)
+            total += 0.5 * body["mass"] * sum(x * x for x in v) + 0.5 * sum(a * b for a, b in zip(w, iw))
+            total += body["mass"] * g * (n["z"] + arm[2])
+        return total
+
+    lost = energy(samples[0]) - energy(samples[-1])
+    dissipated = element(samples[-1], "contactStates", contact["id"])["dissipatedEnergy"]
+    peak = max(element(s, "contactStates", contact["id"])["force"] for s in samples)
+    weight = sum(b["mass"] for b in model["bodies"]) * g
+    return [
+        check(fall < 1e-6, f"Before impact the wheel follows free fall within {fall:.1e} m."),
+        check(abs(first - t_contact) <= 2 * model["simulation"]["step"], f"First tyre contact at {first * 1000:.1f} ms matches the free-fall prediction ({t_contact * 1000:.1f} ms)."),
+        check(abs(lost - dissipated) < 0.02 * dissipated, f"Mechanical energy lost ({lost:.2f} J) equals contact damping dissipation ({dissipated:.2f} J) within 2 %; peak tyre load {peak / weight:.1f}× weight."),
+    ]
+
+
 STUDIES = {"robot-arm": robot_arm, "gyroscopic-top": gyroscopic_top, "tumbling-handle": tumbling_handle, "chaotic-pendulums": chaotic_pendulums,
-           "slider-crank": slider_crank, "gear-drop": gear_drop, "quarter-car": quarter_car}
+           "slider-crank": slider_crank, "gear-drop": gear_drop, "quarter-car": quarter_car,
+           "aircraft-nose-gear": aircraft_nose_gear, "oleo-strut": oleo_strut, "wheel-end-drop": wheel_end_drop}
 
 
 def main(selected):

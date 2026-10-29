@@ -54,6 +54,7 @@ const paths = {
   eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
   force: "M12 3v14 M7 12l5 5 5-5 M5 21h14",
   present: "M3 4h18v12H3z M8 20h8 M12 16v4 M10 8l4 2-4 2z",
+  newfile: "M6 3h8l4 4v14H6z M14 3v4h4 M12 11v6 M9 14h6",
 };
 function icon(name) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.cube}"/></svg>`;
@@ -170,15 +171,18 @@ const escapeHtml = (value) =>
 const stale = () => state.result && state.resultSignature !== signature();
 const format = (n, d = 3) => (Number.isFinite(n) ? n.toFixed(d) : "—");
 let noticeTimer;
+const noticeText = $("noticeText"), noticeClose = $("noticeClose");
 function notice(message, type = "") {
   clearTimeout(noticeTimer);
-  $("noticeText").textContent = message;
+  noticeText.textContent = message;
+  // Other code may have replaced the toast's content; restore the text and close button.
+  $("notice").replaceChildren(noticeText, noticeClose);
   $("notice").className = `notice ${type}`;
   $("notice").hidden = !message;
   // Informational toasts fade; warnings and errors stay until replaced or dismissed.
   if (message && !type) noticeTimer = setTimeout(() => { $("notice").hidden = true; }, 6000);
 }
-$("noticeClose").onclick = () => { clearTimeout(noticeTimer); $("notice").hidden = true; };
+noticeClose.onclick = () => { clearTimeout(noticeTimer); $("notice").hidden = true; };
 function status(message) {
   $("statusText").textContent = message;
 }
@@ -682,6 +686,45 @@ function select(entity) {
   if ($("trailBodies").value === "selected") refreshTrails();
   if (entity === "study") { switchStep("simulate"); $("durationInput").focus(); }
 }
+/** Name and short description of an entity for hover tooltips. */
+function describeEntity(entity) {
+  const model = state.model, id = entity.replace(/^(joint|force|node|contact|applied)-/, "");
+  if (model.kind === "spatial-assembly") {
+    const body = entity === "body" ? model.bodies[0] : entity.startsWith("node-") ? model.bodies.find((b) => b.id === id) : null;
+    if (body) return [body.name, `Rigid body · ${format(body.mass, 4)} kg`];
+    const joint = entity.startsWith("joint-") && model.joints.find((j) => j.id === id);
+    if (joint) return [joint.id, `${joint.type[0].toUpperCase()}${joint.type.slice(1)} joint · ${joint.a} ↔ ${joint.b}`];
+    const force = entity.startsWith("force-") && (model.forces || []).find((f) => f.id === id);
+    if (force) return [force.id, `${force.type === "oleo-strut" ? "Oleo-pneumatic strut" : "Spring-damper"} · ${force.a} ↔ ${force.b}`];
+    const contact = entity.startsWith("contact-") && (model.contacts || []).find((c) => c.id === id);
+    if (contact) return [contact.id, `Sphere-plane contact · ${contact.body}`];
+  }
+  const item = document.querySelector(`#modelTree [data-entity="${CSS.escape(entity)}"]`);
+  return item ? [item.children[1]?.textContent || entity, item.children[2]?.textContent || ""] : [entity, ""];
+}
+/** Hover from the 3D view: tooltip at the cursor and the matching tree row highlighted. */
+function showHover(entity, x, y) {
+  const tip = $("viewTooltip");
+  document.querySelectorAll("#modelTree .tree-item.hovered").forEach((item) => item.classList.remove("hovered"));
+  if (!entity || entity.startsWith("step-part-")) { tip.hidden = true; return; }
+  document.querySelector(`#modelTree [data-entity="${CSS.escape(entity)}"]`)?.classList.add("hovered");
+  const [name, detail] = describeEntity(entity);
+  tip.innerHTML = `<b>${escapeHtml(name)}</b>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}`;
+  const rect = $("canvasMount").getBoundingClientRect();
+  tip.hidden = false;
+  const left = Math.min(x - rect.left + 14, rect.width - tip.offsetWidth - 8);
+  const top = y - rect.top + 18 + tip.offsetHeight > rect.height ? y - rect.top - tip.offsetHeight - 10 : y - rect.top + 18;
+  tip.style.left = `${Math.max(8, left)}px`;
+  tip.style.top = `${Math.max(8, top)}px`;
+}
+// Hovering a tree row highlights the same entity in the 3D view.
+$("modelTree").addEventListener("pointerover", (event) => view?.setHover(event.target.closest?.(".tree-item")?.dataset.entity || null));
+$("modelTree").addEventListener("pointerleave", () => view?.setHover(null));
+function setGlyphs(on) {
+  state.glyphs = on;
+  $("glyphsButton").setAttribute("aria-pressed", String(on));
+  view?.setGlyphs(on);
+}
 function renderProperties() {
   const pendulum = state.model.kind !== "mass-spring";
   const double = state.model.kind === "double-pendulum";
@@ -819,7 +862,7 @@ function renderProperties() {
   $("stepInput").value = state.model.simulation.step ?? "";
   $("inspectorNote").textContent = source
     ? "The upstream deck and its original study settings are preserved. The node graph is schematic; open the deck to inspect actual elements."
-    : spatial ? "Edit 3D poses, velocities and local joint frames in SI units. Lines show body origins, not solid geometry." : assembly ? "Edit bodies, joint anchors and loads in SI units. Lines show body origins, not solid geometry."
+    : spatial ? "Edit 3D poses, velocities and local joint frames in SI units. Symbols in the 3D view mark joint anchors and axes and force elements." : assembly ? "Edit bodies, joint anchors and loads in SI units. Lines show body origins, not solid geometry."
     : industrial
       ? "Edit this engineering template in SI units. Open the example guide for its equations, parameter studies and modelling limits."
       : state.selection === "ground"
@@ -1790,7 +1833,8 @@ $("stepFile").onchange = async event => {
   } catch(error) {if(token===stepLoad){renderStepControls();notice(`STEP import failed: ${error.message}`,"error");}}
   finally {event.target.value="";}
 };
-$("stepExample").onclick = async () => {
+/** Load original parts from the shipped suspension STEP set; `pattern` selects a subset by file name. */
+async function loadSuspensionParts(pattern = null) {
   const token=++stepLoad;
   try {
     $("stepDetail").textContent="Loading and converting the original suspension STEP parts…";
@@ -1798,12 +1842,18 @@ $("stepExample").onclick = async () => {
     if(!responseCatalog.ok)throw Error("STEP service is unavailable. Restart Kinemeld to load the updated backend.");
     const catalog=await responseCatalog.json(), inputs=[];
     for (const [i,file] of catalog.files.entries()) {
+      if (pattern && !pattern.test(file.name)) continue;
       const response=await fetch(`/api/step/suspension/${i}`);if(!response.ok)throw Error(`Cannot load ${file.name}.`);
       inputs.push({name:file.name,bytes:new Uint8Array(await response.arrayBuffer()),sha256:file.sha256});
     }
-    const asset=await loadStepAsset(inputs);if(token!==stepLoad)return;
-    replaceStep(asset);notice("Original double-wishbone STEP parts loaded. Source alignment and all physical body attachments require verification.");
-  } catch(error) {if(token===stepLoad){renderStepControls();notice(`Suspension STEP import failed: ${error.message}`,"error");}}
+    if(!inputs.length)throw Error("No matching STEP parts were found.");
+    const asset=await loadStepAsset(inputs);if(token!==stepLoad)return false;
+    replaceStep(asset);
+    return true;
+  } catch(error) {if(token===stepLoad){renderStepControls();notice(`Suspension STEP import failed: ${error.message}`,"error");}return false;}
+}
+$("stepExample").onclick = async () => {
+  if (await loadSuspensionParts()) notice("Original double-wishbone STEP parts loaded. Source alignment and all physical body attachments require verification.");
 };
 
 $("durationInput").onchange = (e) =>
@@ -1912,6 +1962,7 @@ function currentViewState() {
     trails: Boolean(state.trails),
     trailWindow: Number($("trailWindow").value) || 0,
     trailPoint: $("trailPoint").value,
+    glyphs: state.glyphs !== false,
     ...(state.trailPreset && $("trailBodies").value === "preset" ? { trailBodies: state.trailPreset } : {}),
   };
 }
@@ -2030,6 +2081,7 @@ function applyDisplayPreset(preset) {
   } else $("trailWindow").value = "0";
   $("trailPoint").value = preset?.trailPoint === "tip" ? "tip" : "auto";
   if (typeof preset?.trails === "boolean") setTrails(preset.trails);
+  setGlyphs(preset?.glyphs !== false);
 }
 // Keep the previous document and its live reference geometry until the new view is complete.
 function commitOpenedProject(project, reference, step) {
@@ -2263,6 +2315,26 @@ $("projectFile").onchange = async (e) => {
     e.target.value = "";
   }
 };
+// A new project starts as a 3D assembly with one body; STEP parts, bodies and joints are added from there.
+const NEW_ASSEMBLY = {
+  format: "mbdyn-studio/1",
+  model: {
+    kind: "spatial-assembly", name: "Untitled 3D assembly",
+    parameters: { gravity: { x: 0, y: 0, z: -9.81 } }, simulation: { duration: 1, step: 0.001 },
+    bodies: [{ id: "body1", name: "Body 1", mass: 1, inertia: { xx: 0.1, yy: 0.1, zz: 0.1 }, pose: { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0 }, velocity: { vx: 0, vy: 0, vz: 0, wx: 0, wy: 0, wz: 0 } }],
+    joints: [],
+  },
+};
+async function newAssembly() {
+  if (state.busy || state.saving || state.opening) return;
+  const text = JSON.stringify(NEW_ASSEMBLY);
+  if (await openProjectText(async () => text, text.length)) {
+    browserDirty = false;
+    switchStep("model");
+    notice("New 3D assembly. Import STEP parts, then add bodies, joints and loads in Pre-processing.");
+  }
+}
+$("newButton").onclick = newAssembly;
 async function openFeatured(study) {
   if (state.busy || state.saving || state.opening) return;
   notice(`Loading ${study.title} and converting its CAD geometry…`, "warn");
@@ -2384,6 +2456,7 @@ $("labelsButton").onclick = () => {
   $("labelsButton").setAttribute("aria-pressed", String(show));
   $("viewport").classList.toggle("hide-labels", !show);
 };
+$("glyphsButton").onclick = () => setGlyphs(state.glyphs === false);
 $("gridButton").onclick = () => {
   const next = $("gridButton").getAttribute("aria-pressed") !== "true";
   $("gridButton").setAttribute("aria-pressed", String(next));
@@ -2555,7 +2628,7 @@ async function init() {
         $("stepPart").dispatchEvent(new Event("change"));
         $("stepDialog").showModal();
       } else select(entity);
-    });
+    }, showHover);
   } catch (error) {
     const box = document.createElement("div");
     box.className = "error-box";
@@ -2616,7 +2689,14 @@ async function init() {
   }
   requestAnimationFrame(animate);
   try {
-    await setupTour();
+    await setupTour({
+      newAssembly,
+      importWheelEnd: async () => {
+        if (await loadSuspensionParts(/(Knuckle_Left Knuckle|Hub|Front Tyre)\.step$/)) notice("Knuckle, hub and tyre STEP parts loaded. Attach each part to its body in STEP parts.");
+      },
+      openStudy: (id) => { const study = state.featured?.find((item) => item.id === id); if (study) openFeatured(study); },
+      openFeaturedStudies: () => { $("examplesButton").click(); },
+    });
   } catch (error) {
     notice(`The guided tour could not start: ${error.message}. The model workspace remains available.`, "warn");
   }

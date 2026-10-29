@@ -38,6 +38,13 @@ All notable changes to Kinemeld are recorded here. Versions follow
   P present, Ctrl+S save, Ctrl+O open.
 - Per-body colours for attached CAD, contact planes drawn where the solver places them,
   and a ground grid placed under the motion envelope.
+- Joint symbols (revolute, cylindrical, prismatic, spherical, universal, weld) at their
+  anchors and axes, coil and strut symbols between force anchors and axis triads for named
+  frames, drawn over the CAD and selectable; hover highlighting between the 3D view and the
+  model tree with a tooltip.
+- **New 3D assembly** command, and a guided tour that builds an automotive wheel-end drop
+  test from its STEP parts across the three workspaces, with actions that start the
+  assembly, load the parts and open the finished study.
 - Examples gallery with sections and a **Featured studies** group that opens complete
   projects (geometry, camera, plot and trail presets) in one click.
 - Projects now save the camera, selection, plot and trail settings, including browser exports.
@@ -47,6 +54,18 @@ All notable changes to Kinemeld are recorded here. Versions follow
   initial configuration and each redundant constraint named by joint and component, shown in
   the Solve checklist and appended to MBDyn failures (`docs/constraint-diagnostics.md`,
   verified by `backend/verify_constraint_analysis.py`).
+
+### Industry demos
+- Industry-first homepage: an end-to-end recording that builds the wheel-end drop test from
+  the original STEP files through solve and post-processing, and clips of the quarter-car,
+  gear drop test, aircraft nose gear, oleo strut fixture, wheel-end drop test and
+  slider-crank engine.
+- The aircraft nose gear runs an 80 mm shock-strut stroke; the oleo strut fixture and a new
+  **Wheel-end drop test** featured study open with framed views and plots. Featured
+  catalog entries can carry a documented overlay so verified project files stay unchanged.
+- `verify_featured_studies.py` checks the nose gear against two-circle linkage geometry,
+  the oleo gas pressure against the polytropic law and the wheel-end drop against free fall
+  and the contact energy balance.
 
 ### Studies
 - Six new MBDyn studies with measured STEP mass properties: double-wishbone quarter-car,
@@ -64,6 +83,15 @@ All notable changes to Kinemeld are recorded here. Versions follow
   which the backend detects automatically at `solver/bin/mbdyn`.
 - GitHub Actions: CI (MBDyn build, backend suite, study verification, native tests on three
   operating systems) and a tag-triggered release workflow that attaches the MBDyn source.
+
+### AI assistant
+- The proposal review lists every changed field with its old and new value, so changes a
+  request did not ask for are visible before applying.
+- After an accepted edit the language model reads back the validation result rather than the
+  whole model, saving minutes per request on CPU-only machines.
+- Optional `timeoutSeconds` in the assistant settings for CPU-only machines.
+- Demo recording of the assistant adding a wheel bearing, tyre contact and drop conditions with
+  a real local `qwen3.5:4b` model.
 
 ### Fixes
 - STEP import documents the supported OpenCascade runtime (`cadquery-ocp` 7.9; 8.x removed

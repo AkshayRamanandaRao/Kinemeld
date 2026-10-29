@@ -19,12 +19,63 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
     messages.scrollTop = messages.scrollHeight;
     return element;
   }
+  /** Field-by-field differences between two spatial models, one line per changed element. */
+  function modelChanges(before, after) {
+    const number = (value) => typeof value === "number" ? String(Number(value.toPrecision(6))) : JSON.stringify(value);
+    const leaves = (value, prefix = "", out = {}) => {
+      if (value && typeof value === "object" && !Array.isArray(value)) for (const [key, child] of Object.entries(value)) leaves(child, prefix ? `${prefix}.${key}` : key, out);
+      else out[prefix] = value;
+      return out;
+    };
+    const lines = [];
+    if (before.name !== after.name) lines.push(`Name: ${after.name}`);
+    for (const [group, label] of [["simulation", "Study"], ["parameters", "Parameters"]]) {
+      const a = leaves(before[group] || {}), b = leaves(after[group] || {});
+      const diff = Object.keys({ ...a, ...b }).filter((key) => JSON.stringify(a[key]) !== JSON.stringify(b[key])).map((key) => `${key} ${number(a[key])} → ${number(b[key])}`);
+      if (diff.length) lines.push(`${label}: ${diff.join(", ")}`);
+    }
+    const names = { bodies: "Body", joints: "Joint", forces: "Force element", loads: "Load", contacts: "Contact", rotationalElements: "Rotational element", jointTorques: "Joint torque", jointForces: "Joint force", frames: "Frame" };
+    for (const [collection, label] of Object.entries(names)) {
+      const old = new Map((before[collection] || []).map((entry) => [entry.id, entry]));
+      const next = new Map((after[collection] || []).map((entry) => [entry.id, entry]));
+      for (const [id, entry] of next) {
+        if (!old.has(id)) {
+          const detail = collection === "joints" ? `${entry.type} joint ${entry.a} ↔ ${entry.b}` : collection === "contacts" ? `sphere-plane contact on ${entry.body}, radius ${number(entry.radius)} m` : collection === "forces" ? `${entry.type === "oleo-strut" ? "oleo strut" : "spring-damper"} ${entry.a} ↔ ${entry.b}` : "";
+          lines.push(`Added ${label.toLowerCase()} ${id}${detail ? `: ${detail}` : ""}`);
+          continue;
+        }
+        const a = leaves(old.get(id)), b = leaves(entry);
+        const diff = Object.keys({ ...a, ...b }).filter((key) => JSON.stringify(a[key]) !== JSON.stringify(b[key])).map((key) => `${key} ${number(a[key])} → ${number(b[key])}`);
+        if (diff.length) lines.push(`${label} ${id}: ${diff.join(", ")}`);
+      }
+      for (const id of old.keys()) if (!next.has(id)) lines.push(`Removed ${label.toLowerCase()} ${id}`);
+    }
+    return lines;
+  }
+  /** One line per assistant edit, in engineering terms rather than field names. */
+  function describeEdit(edit) {
+    const values = edit.values || {}, verb = edit.operation === "copy" ? "Copied" : edit.operation === "add" ? "Added" : "Updated";
+    const fields = (group) => Object.entries(values[group] || {}).map(([key, value]) => `${key} ${value}`).join(", ");
+    if (edit.operation === "copy") return `Copied body ${edit.sourceId} as ${edit.id}`;
+    if (edit.collection === "joints" && edit.operation === "add") return `Added ${values.type || ""} joint ${edit.id}: ${values.a} ↔ ${values.b}`.replace("  ", " ");
+    if (edit.collection === "contacts" && edit.operation === "add") return `Added sphere-plane contact ${edit.id} on ${values.body}${values.radius ? `, radius ${values.radius} m` : ""}`;
+    if (edit.collection === "forces" && edit.operation === "add") return `Added ${values.type === "oleo-strut" ? "oleo strut" : "spring-damper"} ${edit.id}: ${values.a} ↔ ${values.b}`;
+    if (edit.collection === "bodies" && edit.operation === "update") {
+      const parts = [values.pose && `pose ${fields("pose")}`, values.velocity && `velocity ${fields("velocity")}`, values.mass !== undefined && `mass ${values.mass} kg`].filter(Boolean);
+      if (parts.length) return `Updated body ${edit.id}: ${parts.join("; ")}`;
+    }
+    return `${verb} ${edit.collection.replace(/s$/, "")} ${edit.id} (${Object.keys(values).join(", ")})`;
+  }
   function reviewSpatial({before, original, proposed, bindings, descriptions, runAfter}) {
     reviewOutstanding = true;
     const item=message("Review the complete model before applying. Validation checks consistency; it cannot determine whether the agent interpreted your request correctly.");
     item.classList.add("agent-review");
+    // The actual differences between the current and proposed models, so any change the request
+    // did not ask for stands out; the complete model comparison stays one click away.
+    const changes=modelChanges(original,proposed);
+    if(changes.length){const list=document.createElement("ul");list.className="agent-changes";for(const text of changes){const li=document.createElement("li");li.textContent=text;list.append(li);}item.append(list);}
     const details=document.createElement("details"), summary=document.createElement("summary"), pre=document.createElement("pre");
-    details.open=true;summary.textContent="Compare current and proposed model";pre.textContent=`CURRENT MODEL\n${JSON.stringify(original,null,2)}\n\nPROPOSED MODEL\n${JSON.stringify(proposed,null,2)}`;
+    summary.textContent="Compare current and proposed model";pre.textContent=`CURRENT MODEL\n${JSON.stringify(original,null,2)}\n\nPROPOSED MODEL\n${JSON.stringify(proposed,null,2)}`;
     details.append(summary,pre);item.append(details);
     const allowed=new Set(["planar-assembly","spatial-assembly"].includes(proposed.kind) ? (proposed.bodies || []).map(body=>body.id) : []);
     const detached=Object.entries(bindings).filter(([,binding])=>!allowed.has(binding.body) || ((proposed.kind === "spatial-assembly") !== (Object.hasOwn(binding.pose || {},"rx") && Object.hasOwn(binding.pose || {},"rz"))));
@@ -113,7 +164,7 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
               if (action.type === "set_parameters") return `Set parameters: ${Object.keys(action.values || {}).join(", ")}`;
               if (action.type === "set_simulation") return `Set study: ${Object.keys(action.values || {}).join(", ")}`;
               if (action.type === "set_spatial_gravity") return `Set gravity (m/s²): ${Object.entries(action.values || {}).map(([key,value])=>`${key}=${value}`).join(", ")}`;
-              if (action.type === "edit_spatial_assembly") return (action.edits || []).map(edit=>`${edit.operation === "copy" ? "Copied" : edit.operation === "add" ? "Added" : "Updated"} ${edit.collection} ${edit.id}${edit.operation === "copy" ? ` from ${edit.sourceId}` : ""} (${Object.keys(edit.values || {}).join(", ")})`).join(" · ");
+              if (action.type === "edit_spatial_assembly") return (action.edits || []).map(describeEdit).join(" · ");
               return "Updated supported model";
             });
             if (model.kind === "spatial-assembly" || response.proposedModel.kind === "spatial-assembly") {
