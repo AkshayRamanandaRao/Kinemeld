@@ -63,6 +63,14 @@ async function focus(locator) {
   }, box);
 }
 async function shot(seconds) {
+  // Modal dialogs render above the page, so keep the caption and outline inside the open one.
+  await page.evaluate(() => {
+    const target = [...document.querySelectorAll('dialog[open]')].at(-1) || document.body;
+    for (const id of ['demoCaption', 'demoFocus']) {
+      const element = document.getElementById(id);
+      if (element && element.parentElement !== target) target.append(element);
+    }
+  });
   const path = join(folder, `f${String(frames.length).padStart(5, '0')}.png`);
   await page.screenshot({ path });
   frames.push({ path, seconds });
