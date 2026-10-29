@@ -334,6 +334,17 @@ def _apply_spatial_edits(candidate, edits):
 
 
 
+def model_message(record):
+    """What the language model reads back from a tool call. Accepted edits omit the full model,
+    which the model already has, so a CPU-only local model does not re-read it after every edit."""
+    result = record.get("result")
+    if record.get("name") == "current_model" or not isinstance(result, dict) or "model" not in result:
+        return record
+    compact = {key: value for key, value in result.items() if key != "model"}
+    compact["note"] = "Edit applied to the staged model; call current_model to read the complete model."
+    return {**record, "result": compact}
+
+
 def tools_for(model):
     def tool(name, description, properties=None, required=None):
         return {"type": "function", "function": {"name": name, "description": description,
@@ -526,7 +537,7 @@ def chat(body, client=None):
             except (ValueError, OSError) as exc:
                 record = {"name": name, "ok": False, "error": str(exc)}
             proposal.results.append(record)
-            messages.append({"role": "tool", "tool_name": name, "content": json.dumps(record, allow_nan=False)})
+            messages.append({"role": "tool", "tool_name": name, "content": json.dumps(model_message(record), allow_nan=False)})
     else:
         answer = "The tool-round limit was reached. Review the accepted changes and tool diagnostics below; no solver has run."
     check = model_check(proposal.model)
