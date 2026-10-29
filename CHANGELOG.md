@@ -3,6 +3,17 @@
 All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/) while the project is in preview (0.x).
 
+## 0.4.0 — Post-processing II
+
+- Plots and statistics read the **full-resolution** solver CSV in the background: every
+  integration step, with min/max-per-pixel decimation so short peaks are never lost, the
+  time of each peak, and time-weighted RMS.
+- **Pinned traces** overlay several bodies, joints or quantities with the same unit.
+- **Compare runs**: pin a solution, change the model, run again and see both responses.
+- **SVG and PNG export** of the plot with theme colours resolved.
+- Hover readouts use each series' own resolution, so they report values between displayed
+  samples.
+
 ## 0.3.0 — Rotary drives and inverse dynamics
 
 ### Modelling
