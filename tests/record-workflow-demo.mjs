@@ -85,6 +85,48 @@ async function setField(id, value) {
 }
 async function select(entity) {
   await page.locator(`#modelTree [data-entity="${entity}"]`).click();
+  await page.locator('.inspector').evaluate((element) => { element.scrollTop = 0; });
+}
+async function ring(box) {
+  await page.evaluate((box) => {
+    let ring = document.querySelector('#demoFocus');
+    if (!ring) { ring = document.createElement('div'); ring.id = 'demoFocus'; document.body.append(ring); }
+    ring.hidden = !box;
+    if (box) Object.assign(ring.style, { left: `${box.x - 5}px`, top: `${box.y - 5}px`, width: `${box.width + 10}px`, height: `${box.height + 10}px` });
+  }, box);
+}
+/** Set several fields, then outline them together and hold so the new values can be read. */
+async function edit(pairs, hold = 1.5) {
+  for (const [id, value] of pairs) await setField(id, value);
+  await page.locator(`#${pairs[0][0]}`).scrollIntoViewIfNeeded();
+  const boxes = (await Promise.all(pairs.map(([id]) => page.locator(`#${id}`).boundingBox()))).filter(Boolean);
+  const left = Math.min(...boxes.map((b) => b.x)), top = Math.min(...boxes.map((b) => b.y));
+  await ring({ x: left, y: top, width: Math.max(...boxes.map((b) => b.x + b.width)) - left, height: Math.max(...boxes.map((b) => b.y + b.height)) - top });
+  await shot(hold);
+  await ring(null);
+}
+async function fit(hold = 0) {
+  await page.locator('#resetViewButton').click();
+  await page.waitForTimeout(400);
+  if (hold) await shot(hold);
+}
+/** Choose the parent and joint type, outline the add controls, add the body and show its properties. */
+async function addBodyWithJoint(parent, type, name, id) {
+  const add = page.getByRole('button', { name: 'Add 3D body + joint' });
+  await page.getByLabel('Parent body').selectOption(parent);
+  await page.getByLabel('New 3D joint type').selectOption(type);
+  await add.scrollIntoViewIfNeeded();
+  const boxes = await Promise.all([page.getByLabel('Parent body'), page.getByLabel('New 3D joint type'), add].map((item) => item.boundingBox()));
+  const top = Math.min(...boxes.map((b) => b.y)), bottom = Math.max(...boxes.map((b) => b.y + b.height));
+  const left = Math.min(...boxes.map((b) => b.x)), right = Math.max(...boxes.map((b) => b.x + b.width));
+  await ring({ x: left, y: top, width: right - left, height: bottom - top });
+  await shot(1.4);
+  await add.click();
+  await ring(null);
+  await page.locator('.inspector').evaluate((element) => { element.scrollTop = 0; });
+  await page.getByLabel('Body name').fill(name);
+  await page.getByLabel('Body name').dispatchEvent('change');
+  await edit([[`spatial-body-${id}-pose-x`, 0], [`spatial-body-${id}-pose-y`, 0], [`spatial-body-${id}-pose-z`, 0]], 1.6);
 }
 async function step(name) {
   await page.locator(`[data-step="${name}"]`).click();
@@ -117,91 +159,71 @@ try {
 
   await caption('1 · PRE-PROCESSING · BODIES', 'Name the first body Knuckle and put its frame at the wheel-bearing centre.');
   await select('body');
-  await act(page.getByLabel('Body name'), async () => {
-    await page.getByLabel('Body name').fill('Knuckle');
-    await page.getByLabel('Body name').dispatchEvent('change');
-    await setField('spatial-body-body1-pose-x', BEARING.x);
-    await setField('spatial-body-body1-pose-y', BEARING.y);
-  });
-
-  await caption('1 · PRE-PROCESSING · LINKS', 'Add the Hub to the Knuckle with a revolute wheel bearing.');
-  const addBody = page.getByRole('button', { name: 'Add 3D body + joint' });
-  await page.getByLabel('Parent body').selectOption('body1');
-  await page.getByLabel('New 3D joint type').selectOption('revolute');
-  await act(addBody, () => addBody.click());
-  await page.getByLabel('Body name').fill('Hub');
+  await page.getByLabel('Body name').fill('Knuckle');
   await page.getByLabel('Body name').dispatchEvent('change');
-  for (const axis of ['x', 'y', 'z']) await setField(`spatial-body-body2-pose-${axis}`, 0);
+  await edit([['spatial-body-body1-pose-x', BEARING.x], ['spatial-body-body1-pose-y', BEARING.y]], 2);
 
-  await caption('1 · PRE-PROCESSING · LINKS', 'Weld the Tyre to the Hub. Each body later gets its own material.');
-  await page.getByLabel('Parent body').selectOption('body2');
-  await page.getByLabel('New 3D joint type').selectOption('weld');
-  await act(addBody, () => addBody.click());
-  await page.getByLabel('Body name').fill('Tyre');
-  await page.getByLabel('Body name').dispatchEvent('change');
-  for (const axis of ['x', 'y', 'z']) await setField(`spatial-body-body3-pose-${axis}`, 0);
-  await shot(1.2);
+  await caption('1 · PRE-PROCESSING · LINKS', 'Add the Hub to the Knuckle with a revolute wheel bearing. Its frame starts at the CAD origin, where the hub part was modelled.');
+  await addBodyWithJoint('body1', 'revolute', 'Hub', 'body2');
+  await caption('1 · PRE-PROCESSING · LINKS', 'Weld the Tyre to the Hub, so each part can have its own material.');
+  await addBodyWithJoint('body2', 'weld', 'Tyre', 'body3');
+  await fit(1.4);
 
-  await caption('1 · PRE-PROCESSING · ATTACH CAD', 'Attach each STEP solid to its body. The solid then follows that body’s motion.');
+  await caption('1 · PRE-PROCESSING · ATTACH CAD', 'Attach each STEP solid to its body. From now on the solid follows that body.');
   await page.locator('#stepButton').click();
   for (const [part, body] of [['0:part-1', 'body1'], ['1:part-1', 'body2'], ['2:part-1', 'body3']]) {
     await page.locator('#stepPart').selectOption(part);
     await page.locator('#stepBody').selectOption(body);
-    await act(page.locator('#stepBind'), () => page.locator('#stepBind').click(), 0.6, 0.5);
+    await act(page.locator('#stepBind'), () => page.locator('#stepBind').click(), 0.7, 0.4);
   }
   assert.match(await page.locator('#stepDetail').textContent(), /3 attached/);
-
   await page.locator('#stepClose').click();
+  await fit(1.6);
 
-  await caption('1 · PRE-PROCESSING · ASSEMBLE', 'Place the Hub and Tyre frames at the bearing centre: the parts move into the knuckle.');
+  await caption('1 · PRE-PROCESSING · ASSEMBLE', 'Move the Hub and Tyre frames to the bearing centre: their parts move into the knuckle.');
   for (const body of ['body2', 'body3']) {
     await select(`node-${body}`);
-    await setField(`spatial-body-${body}-pose-x`, BEARING.x);
-    await setField(`spatial-body-${body}-pose-y`, BEARING.y);
+    await edit([[`spatial-body-${body}-pose-x`, BEARING.x], [`spatial-body-${body}-pose-y`, BEARING.y]], 1.1);
   }
-  await page.locator('#resetViewButton').click();
-  await page.waitForTimeout(400);
-  await shot(2);
+  await fit(2);
 
-  await caption('1 · PRE-PROCESSING · JOINT FRAMES', 'Set the bearing anchors at the body origins and its axis along x; the weld sits at the same point.');
+  await caption('1 · PRE-PROCESSING · JOINT FRAMES', 'Put the bearing anchors at the body origins with the axis along x; the weld sits at the same point.');
   await select('joint-joint1');
-  for (const [field, value] of [['anchorB-z', 0], ['axisA-x', 1], ['axisA-y', 0], ['axisB-x', 1], ['axisB-y', 0]]) await setField(`spatial-joint-joint1-${field}`, value);
-  await shot(1.6);
+  await edit([['spatial-joint-joint1-anchorB-z', 0], ['spatial-joint-joint1-axisA-x', 1], ['spatial-joint-joint1-axisA-y', 0], ['spatial-joint-joint1-axisB-x', 1], ['spatial-joint-joint1-axisB-y', 0]], 2);
   await select('joint-joint2');
-  await setField('spatial-joint-joint2-anchorB-z', 0);
-  await shot(1.2);
+  await edit([['spatial-joint-joint2-anchorB-z', 0]], 1.2);
 
-  await caption('1 · PRE-PROCESSING · MASS FROM CAD', 'Compute mass, centre of mass and inertia from each solid: steel knuckle and hub, rubber tyre.');
+  await caption('1 · PRE-PROCESSING · MASS FROM CAD', 'Compute mass, centre of mass and inertia from each solid: steel knuckle and hub (7850 kg/m³), rubber tyre (1100 kg/m³).');
   await page.locator('#stepButton').click();
   for (const [part, density] of [['0:part-1', 7850], ['1:part-1', 7850], ['2:part-1', 1100]]) {
     await page.locator('#stepPart').selectOption(part);
     await page.locator('#stepMassDensity').fill(String(density));
     await page.locator('#stepMassCalculate').click();
     await page.waitForFunction(() => /Mass: /.test(document.querySelector('#stepMassResult')?.textContent || ''), null, { timeout: 240000 });
+    await page.locator('#stepMassResult').scrollIntoViewIfNeeded();
     await act(page.locator('#stepMassApply'), async () => {
       await page.locator('#stepMassApply').click();
       await page.waitForFunction(() => document.querySelector('#stepMassApply')?.disabled);
-    }, 1.1, 0.4);
+    }, 1.4, 0);
   }
   await page.locator('#stepClose').click();
-
-  await caption('1 · PRE-PROCESSING · CONTACT', 'Add a sphere-plane tyre contact: 0.208 m radius on the floor plane, 20 kN/m stiffness and 100 N·s/m damping.');
   await select('node-body3');
+  await page.locator('#spatial-body-body3-mass').scrollIntoViewIfNeeded();
+  await edit([['spatial-body-body3-mass', await page.locator('#spatial-body-body3-mass').inputValue()]], 1.6);
+
+  await caption('1 · PRE-PROCESSING · CONTACT', 'Add a sphere-plane tyre contact: 0.208 m radius on the floor plane, 20 kN/m stiffness, 100 N·s/m damping.');
   const addContact = page.getByRole('button', { name: 'Add sphere-plane contact' });
   await page.getByLabel('Body for sphere contact').selectOption('body3');
-  await act(addContact, () => addContact.click());
-  for (const [field, value] of [['radius', 0.208], ['planePoint-z', 0], ['stiffness', 20000], ['damping', 100]]) await setField(`spatial-contact-contact1-${field}`, value);
-  await shot(1.6);
+  await act(addContact, () => addContact.click(), 1.2, 0);
+  await page.locator('.inspector').evaluate((element) => { element.scrollTop = 0; });
+  await edit([['spatial-contact-contact1-radius', 0.208], ['spatial-contact-contact1-planePoint-z', 0], ['spatial-contact-contact1-stiffness', 20000], ['spatial-contact-contact1-damping', 100]], 2);
 
   await caption('1 · PRE-PROCESSING · INITIAL CONDITIONS', 'Raise all three bodies to 0.6 m and give them a downward velocity of 1 m/s.');
   for (const [entity, body] of [['body', 'body1'], ['node-body2', 'body2'], ['node-body3', 'body3']]) {
     await select(entity);
-    await setField(`spatial-body-${body}-pose-z`, 0.6);
-    await setField(`spatial-body-${body}-velocity-vz`, -1);
+    await edit([[`spatial-body-${body}-pose-z`, 0.6], [`spatial-body-${body}-velocity-vz`, -1]], 0.9);
   }
-  await page.locator('#resetViewButton').click();
-  await page.waitForTimeout(400);
-  await shot(2);
+  await fit(2);
 
   // ---- Solve ---------------------------------------------------------------------------
   await caption('2 · SOLVE', 'Set a 1.5 s study at 0.5 ms steps, then validate: inputs, step budget and mobility are checked before MBDyn runs.');
