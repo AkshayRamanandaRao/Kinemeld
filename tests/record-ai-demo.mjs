@@ -104,8 +104,14 @@ try {
   await page.waitForTimeout(400);
   await caption('AI ASSISTANT · THINKING', `${chatModel} reads the model and the request on the CPU and calls the model-editing tools.`);
   await shot(2.4);
-  const reply = await (await response).json();
+  // Headless Chromium renders WebGL in software; freeze the page while no frames are captured so
+  // the local model gets the CPU. The request is already in flight; the measured time is the model's.
+  const session = await page.context().newCDPSession(page);
+  await session.send('Page.setWebLifecycleState', { state: 'frozen' });
+  const answered = await response;
   const seconds = Math.round((Date.now() - started) / 1000);
+  await session.send('Page.setWebLifecycleState', { state: 'active' });
+  const reply = await answered.json();
   assert(reply.ok !== false, JSON.stringify(reply));
   const review = page.locator('.agent-review').last();
   await review.waitFor({ timeout: 60000 });
