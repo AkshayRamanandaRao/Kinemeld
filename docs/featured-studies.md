@@ -25,6 +25,7 @@ checks that each saved project validates and keeps its force elements and geomet
 | Study | Solver features | Independent check (MBDyn 1.7.3) |
 | --- | --- | --- |
 | Robot arm inverse dynamics | Three rotary drives (motor ramp and oscillations), joint reactions as motor torques | Drive work equals the change in kinetic and potential energy; commands followed within 10⁻¹² rad |
+| Robot arm inverse dynamics | Three rotary drives (motor ramp, two oscillations) on revolute joints, measured STEP inertia | Every axis follows its command within 10⁻¹² rad; drive work equals the change in kinetic and potential energy |
 | Double-wishbone quarter-car | Closed spatial loop, spherical/revolute joints, preloaded coil-over, stiff tie rod, harmonic wheel-pad force | ±60 mm wheel travel; bump steer 0.64°; camber change 2.1° |
 | Oleo-pneumatic gear drop test | Oleo strut (polytropic gas, orifice damping, stops), damped sphere–plane tyre contact, prismatic guides | 183 mm peak stroke without bottoming; settled tyre load within 3 % of weight; peak load factor 6.0 |
 | Aircraft nose-gear kinematics | Original 11-part STEP assembly, weld/prismatic/revolute/spherical/universal joints, prescribed 80 mm stroke | Strut follows the stroke to 10⁻¹³ m; scissor pin matches two-circle linkage geometry to 10⁻¹⁴ m; torque links fold 10.5° |
@@ -45,6 +46,18 @@ gravity, while the yaw axis needs only ±5 N·m for inertia and coupling.
 
 **Watch:** the forearm trail, then plot **Rotary drive torque** for each joint and
 **Rotary drive power** to see when the shoulder works against gravity and when it brakes.
+
+## Robot arm inverse dynamics
+
+A three-axis arm on a pedestal: a turret turning on a vertical axis, an upper arm and a
+forearm carrying a steel payload, each on a revolute joint with a rotary drive. The base
+ramps to 45 °/s in one second; the shoulder and elbow oscillate (−25° at 0.3 Hz and 40° at
+0.45 Hz). MBDyn imposes the angles and returns the torque each motor must deliver — the
+inverse-dynamics question behind motor sizing ([rotary drives](rotary-drives.md)).
+
+**Watch:** the forearm trail and the shoulder torque, which combines gravity load with the
+inertia of the swinging forearm. Plot **Rotary drive torque** and choose a joint, or
+**Rotary drive work (all drives)**.
 
 ## Double-wishbone quarter-car
 

@@ -20,6 +20,9 @@ All notable changes to Kinemeld are recorded here. Versions follow
 - **Robot arm inverse dynamics**: turret, shoulder and elbow driven together; the study is
   verified by drive work equalling the change in mechanical energy.
 - `backend/verify_rotary_drive.py` checks motor torque against I·α − m·g·l·cos θ.
+- `tests/rotary-drive-ui.mjs` exercises the drive editor, a real MBDyn run, torque and angle
+  plots, the CSV columns and the stale-result state.
+- Robot-arm demo recording on the homepage.
 
 ## 0.2.0 — Professional workspaces, featured studies and desktop releases
 

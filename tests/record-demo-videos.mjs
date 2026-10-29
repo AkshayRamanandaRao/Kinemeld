@@ -12,6 +12,7 @@ const base = process.env.MBDYN_STUDIO_URL || 'http://127.0.0.1:8766';
 const ffmpeg = process.env.FFMPEG || 'ffmpeg';
 const output = resolve('docs/demos'), fps = 30;
 const studies = [
+  { name: 'robot-arm', title: 'Robot arm inverse dynamics', rate: 1, caption: 'Base turning at 45°/s, shoulder and elbow oscillating · motor torques from inverse dynamics' },
   { name: 'quarter-car', title: 'Double-wishbone quarter-car', rate: 0.5, caption: 'Wheel-pad force 3.2 ± 1.6 kN at 0.8 Hz · camber gain and bump steer' },
   { name: 'gear-drop', title: 'Oleo-pneumatic gear drop test', rate: 0.2, caption: '290 kg carriage dropped at 2 m/s · gas, orifice and stop forces' },
   { name: 'aircraft-nose-gear', title: 'Aircraft nose-gear kinematics', rate: 0.5, caption: 'Original 11-part STEP assembly · 80 mm shock-strut stroke folds the torque links · kinematic illustration' },
