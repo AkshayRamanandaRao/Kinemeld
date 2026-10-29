@@ -158,7 +158,7 @@ def spinning_top():
     table = Fixture().add("cylinder", {"radius": 0.13, "length": 0.012}, (0, 0, -0.006), label="table")
     table.add("cylinder", {"radius": 0.012, "length": 0.006}, (0, 0, 0.0), label="pivot-cup")
     return project("Gyroscopic top: precession and nutation", [top], stand, {"duration": 4.0, "step": 0.0005}, fixture=table,
-                   view={"camera": [0.36, -0.5, 0.34], "target": [0, 0, 0.07], "signal": 3, "selection": "body", "trails": True, "trailWindow": 0})
+                   view={"camera": [0.24, -0.36, 0.42], "target": [0, 0, 0.07], "signal": 3, "selection": "body", "trails": True, "trailWindow": 0})
 
 
 def tumbling_handle():
@@ -243,7 +243,7 @@ def slider_crank():
         block.add("brick", {"x": 0.006, "y": 0.05, "z": 0.24}, (x, 0, deck_z + 0.03), label="bore-guide")
     block.add("brick", {"x": 0.12, "y": 0.05, "z": 0.012}, (0, 0, deck_z + 0.156), label="cylinder-head")
     return project("Slider-crank engine: torque-driven run-up", [crank, rod, piston], joints, {"duration": 4.0, "step": 0.0005}, fixture=block,
-                   view={"camera": [0.62, 0.95, 0.42], "target": [0, 0, 0.12], "signal": 3, "selection": "body", "trails": True, "trailWindow": 0, "trailBodies": ["rod"]},
+                   view={"camera": [0.44, 0.66, 0.3], "target": [0, 0, 0.12], "signal": 3, "selection": "body", "trails": True, "trailWindow": 0, "trailBodies": ["rod"]},
                    jointTorques=drive, forces=load)
 
 

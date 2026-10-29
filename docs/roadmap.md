@@ -6,34 +6,45 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation
+## Current foundation (0.2)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
-  forces, springs, dampers, contact and selected prescribed motion.
+  forces, springs, dampers, oleo struts, contact and selected prescribed motion.
 - Original STEP import, body attachments, explicit-density mass properties,
   project save/reopen, MBDyn deck inspection, simulation and result playback.
-- Local assistant proposals for a bounded set of supported model edits.
-- Worked suspension, wheel-end, gear and strut demonstrations with documented
-  assumptions. These are inferred teaching studies, not validated hardware.
+- Pre-processing, Solve and Post-processing workspaces with interactive plots,
+  statistics, motion trails, follow camera and presentation mode.
+- Six featured studies verified against independent physics, plus the earlier
+  suspension, wheel-end, gear and strut demonstrations with documented assumptions.
+- Desktop builds for Linux, macOS and Windows; CI and tagged releases on GitHub.
 
-## Next priorities
+## Release plan
 
-1. **Reliability and publication:** protect edits during asynchronous CAD and
-   project operations, exercise save/open and recovery, qualify native Windows
-   dialogs, produce clean-machine builds, and finish dependency and license audits.
-2. **Rigid-body modeling:** expand 3D joint and actuation coverage, including
-   prescribed rotary motion; improve diagnostics for redundant constraints,
-   initial conditions and singular assemblies. Verify moving reference frames,
-   real solver output and STEP playback.
-3. **Postprocessing:** derive point and wheel measurements from full-resolution
-   solver data, retain units, frames and result provenance, and test peaks between
-   displayed samples. Improve plots, result comparison and export.
-4. **Engineering examples:** extend suspension and landing-gear studies only
-   with traceable geometry, hardpoints, material data and loading. Add independent
-   checks, convergence evidence and comparison with measurements where available.
-5. **Interaction and assistance:** make joints and reference frames easier to
-   place and inspect, improve selection and diagnostics, and extend AI actions
-   only where the underlying physical and solver behavior is verified.
+Each step ships as its own release with an example, documentation and solver evidence.
+
+1. **0.3 — Post-processing II:** overlay several quantities and bodies in one plot,
+   compare a result with a pinned earlier run, derive statistics from the full-resolution
+   solver output instead of displayed samples, and export plots as SVG/PNG.
+2. **0.4 — Actuation and diagnostics:** prescribed rotary motion for revolute joints
+   (angle, speed and ramp laws), and a pre-solve constraint check that reports redundant
+   or conflicting joints by name before MBDyn rejects the assembly.
+3. **0.5 — Interaction:** joint and frame glyphs in the 3D view (axes, anchors, force
+   element lines), hover highlighting between tree, view and properties, and direct
+   selection of joints and force elements in the viewport.
+4. **0.6 — Reliability and CAD:** support for the current OpenCascade runtime
+   (`cadquery-ocp` 8), crash-safe autosave and recovery in the desktop app, and
+   clean-machine installation checks for every platform package.
+
+## Further priorities
+
+- **Reliability and publication:** protect edits during asynchronous CAD and
+  project operations, exercise save/open and recovery, qualify native dialogs,
+  and finish dependency and license audits for every bundled component.
+- **Engineering examples:** extend suspension and landing-gear studies only
+  with traceable geometry, hardpoints, material data and loading. Add independent
+  checks, convergence evidence and comparison with measurements where available.
+- **Interaction and assistance:** extend AI actions only where the underlying
+  physical and solver behavior is verified.
 
 ## Longer-term work
 
@@ -48,5 +59,6 @@ The current integration has been exercised with MBDyn 1.7.3 and selected
 examples. Other versions, general models, engineering accuracy, production use
 and safety-critical qualification remain unverified. A public binary needs a
 clean-machine installation check, native dialog tests and a complete review of
-redistributed dependencies and licenses. The local Windows package does not
-bundle MBDyn or the CAD runtime.
+redistributed dependencies and licenses. Release archives bundle MBDyn 1.7.3 on
+Linux (and macOS when its CI build succeeds) with the corresponding source attached;
+no package bundles Python or the CAD runtime.

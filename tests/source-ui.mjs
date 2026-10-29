@@ -1,4 +1,5 @@
 /** Browser validation of actual pinned upstream solver runs and node postprocessing. */
+import './workspace-shim.mjs';
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { mkdir, readFile, writeFile } from "node:fs/promises";

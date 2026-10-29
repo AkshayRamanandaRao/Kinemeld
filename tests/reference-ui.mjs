@@ -1,4 +1,5 @@
 /** STEP-only selection and safe restoration of older STL-reference projects. */
+import './workspace-shim.mjs';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';

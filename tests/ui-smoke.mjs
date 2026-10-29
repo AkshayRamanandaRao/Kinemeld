@@ -1,4 +1,5 @@
 /** Exercise user workflows against the running local server, including a real MBDyn job. */
+import './workspace-shim.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';

@@ -1,3 +1,4 @@
+import './workspace-shim.mjs';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 const base=process.env.MBDYN_STUDIO_URL||'http://127.0.0.1:8768';

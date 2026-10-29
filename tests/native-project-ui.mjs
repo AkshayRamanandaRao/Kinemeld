@@ -1,4 +1,5 @@
 /** Exercise the desktop UI's project protocol against a controlled native bridge. */
+import './workspace-shim.mjs';
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { mkdir, readFile, writeFile } from "node:fs/promises";

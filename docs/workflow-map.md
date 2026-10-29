@@ -1,6 +1,6 @@
 # Multibody analysis workflow
 
-The workbench organizes a study into **Model → Validate → Simulate → Results**. The physical model is exported to the configured MBDyn solver; displayed geometry and results carry separate meanings.
+The workbench organizes a study into three workspaces — **Pre-processing → Solve → Post-processing** (see [workspaces](workspaces.md)). The physical model is exported to the configured MBDyn solver; displayed geometry and results carry separate meanings.
 
 | Stage | User question | Workbench responsibility |
 | --- | --- | --- |

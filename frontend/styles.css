@@ -1909,6 +1909,38 @@ dialog::backdrop {
 }
 
 /* ---------- Presentation mode (recordings, focus) ---------- */
+.present-exit {
+  display: none;
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11.5px;
+  min-height: 26px;
+  padding: 2px 12px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  border: 1px solid var(--line);
+  color: var(--dim);
+}
+.present .present-exit {
+  display: inline-flex;
+}
+.recording .present-exit {
+  display: none !important;
+}
+.present .viewport-title p {
+  display: block;
+  font-size: 11.5px;
+  color: var(--dim);
+  margin-top: 2px;
+}
+.present .viewport-title {
+  max-width: min(640px, 70%);
+}
+.present .view-clock {
+  display: block;
+}
 .present .browser,
 .present .inspector,
 .present .view-heading,
@@ -1922,8 +1954,12 @@ dialog::backdrop {
   grid-template-columns: minmax(0, 1fr);
 }
 .present .results-panel {
-  height: 30%;
-  min-height: 200px;
+  height: 36%;
+  min-height: 220px;
+}
+.present #stepStatus,
+.present #referenceStatus {
+  display: none !important;
 }
 .present .results-content {
   grid-template-columns: minmax(0, 1fr);
@@ -2031,4 +2067,27 @@ dialog::backdrop {
   display: block;
   width: 100%;
   margin-top: 3px;
+}
+.checklist li.redundancy {
+  display: block;
+  font-size: 11px;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-radius: 6px;
+  padding: 7px 9px;
+}
+.checklist li.redundancy ul {
+  margin: 4px 0 0;
+  padding-left: 14px;
+}
+.checklist li.redundancy li {
+  display: list-item;
+  font-size: 11px;
+}
+.checklist li.redundancy button {
+  min-height: 0;
+  padding: 0;
+  font: 600 11px PlexMono, monospace;
+  color: var(--blue-text);
+  text-decoration: underline;
 }

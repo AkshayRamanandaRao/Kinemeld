@@ -1,4 +1,5 @@
 /** Real solver → browser plots, exported channels and rendered engineering poses. */
+import './workspace-shim.mjs';
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
