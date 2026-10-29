@@ -57,20 +57,32 @@ def strict_json(data):
     return value
 
 
-def configuration():
-    """Read only this application's explicit endpoint setting; never scan credentials or environment."""
+def settings():
+    """Read only this application's explicit settings file; never scan credentials or environment."""
     path = app_paths.existing_config(CONFIG, app_paths.AGENT_CONFIG, app_paths.LEGACY_AGENT_CONFIG)
     if not path.exists():
-        return DEFAULT_ENDPOINT
+        return {}
     try:
         if path.stat().st_size > 4096:
             raise ValueError("Configuration exceeds 4 KiB.")
         value = strict_json(path.read_bytes())
-        if not isinstance(value, dict) or set(value) != {"endpoint"}:
-            raise ValueError("Use exactly one endpoint field.")
-        return value["endpoint"]
+        if not isinstance(value, dict) or "endpoint" not in value or set(value) - {"endpoint", "timeoutSeconds"}:
+            raise ValueError("Use an endpoint field and, optionally, timeoutSeconds.")
+        budget = value.get("timeoutSeconds", LIMITS["timeoutSeconds"])
+        if type(budget) not in (int, float) or not 30 <= budget <= 1800:
+            raise ValueError("timeoutSeconds must be a number from 30 to 1800.")
+        return value
     except (OSError, ValueError, RecursionError) as exc:
         raise AgentError(f"Invalid {path}: {exc}", "invalid_configuration", 503) from exc
+
+
+def configuration():
+    return settings().get("endpoint", DEFAULT_ENDPOINT)
+
+
+def time_budget():
+    """Seconds allowed for one chat turn; CPU-only machines may need more than the default."""
+    return settings().get("timeoutSeconds", LIMITS["timeoutSeconds"])
 
 
 class Ollama:
@@ -155,6 +167,7 @@ def status():
     result = {"ok": True, "provider": "ollama", "endpoint": DEFAULT_ENDPOINT, "available": False,
               "models": [], "defaultModel": None, "localOnly": True, "limits": LIMITS}
     try:
+        result["limits"] = {**LIMITS, "timeoutSeconds": time_budget()}
         client = Ollama(configuration())
         result["endpoint"] = client.endpoint
         result["models"] = client.local_models()
@@ -321,6 +334,17 @@ def _apply_spatial_edits(candidate, edits):
 
 
 
+def model_message(record):
+    """What the language model reads back from a tool call. Accepted edits omit the full model,
+    which the model already has, so a CPU-only local model does not re-read it after every edit."""
+    result = record.get("result")
+    if record.get("name") == "current_model" or not isinstance(result, dict) or "model" not in result:
+        return record
+    compact = {key: value for key, value in result.items() if key != "model"}
+    compact["note"] = "Edit applied to the staged model; call current_model to read the complete model."
+    return {**record, "result": compact}
+
+
 def tools_for(model):
     def tool(name, description, properties=None, required=None):
         return {"type": "function", "function": {"name": name, "description": description,
@@ -469,12 +493,13 @@ def chat(body, client=None):
             raise AgentError("Ollama returned malformed thinking controls.", "invalid_provider_response", 502)
     proposal = Proposal(model, message)
     messages = [{"role": "system", "content": SYSTEM + "\nInitial current model (data):\n" + json.dumps(model, allow_nan=False)}, *deepcopy(history), {"role": "user", "content": message}]
-    deadline = time.monotonic() + LIMITS["timeoutSeconds"]
+    budget = time_budget()
+    deadline = time.monotonic() + budget
     answer = ""
     for _ in range(LIMITS["rounds"]):
         remaining = deadline-time.monotonic()
         if remaining <= 0:
-            raise AgentError("Agent exceeded its 120-second inference budget. No model changes were applied.", "timeout", 504)
+            raise AgentError(f"Agent exceeded its {budget:g}-second inference budget. No model changes were applied.", "timeout", 504)
         request = {"model": selection, "messages": messages, "tools": tools_for(proposal.model),
                    "stream": False, "options": {"temperature": 0, "num_predict": 2400, "num_ctx": 8192}}
         if think is not None:
@@ -512,7 +537,7 @@ def chat(body, client=None):
             except (ValueError, OSError) as exc:
                 record = {"name": name, "ok": False, "error": str(exc)}
             proposal.results.append(record)
-            messages.append({"role": "tool", "tool_name": name, "content": json.dumps(record, allow_nan=False)})
+            messages.append({"role": "tool", "tool_name": name, "content": json.dumps(model_message(record), allow_nan=False)})
     else:
         answer = "The tool-round limit was reached. Review the accepted changes and tool diagnostics below; no solver has run."
     check = model_check(proposal.model)

@@ -16,12 +16,36 @@ Linux, macOS and Windows, or in your browser from a source checkout.
 > checks; they are not validated designs or certified hardware, and are no substitute for
 > measured data and engineering review.
 
-## Featured studies
+## Industry-inspired demos
 
-Every clip is an actual MBDyn 1.7.3 solution played back in Kinemeld's presentation mode;
-the playback rate is stated in each caption. Open the same studies from **Examples →
-Featured studies**. See the [study guide](docs/featured-studies.md) for models, parameters
-and the independent checks each one passes.
+Every clip is an actual MBDyn 1.7.3 solution recorded in Kinemeld's presentation mode; the
+playback rate is stated in each caption. Open the same studies from **Examples → Featured
+studies**. The [study guide](docs/featured-studies.md) lists each model's parameters and the
+independent checks it passes (`backend/verify_featured_studies.py`).
+
+### From STEP files to results: wheel-end drop test
+
+[![Complete workflow: STEP import, bodies and links, mass from CAD, contact, MBDyn solve and post-processing](docs/demos/workflow-wheel-end.png)](docs/demos/workflow-wheel-end.mp4)
+
+One continuous session in the real interface: a new 3D assembly, the original knuckle, hub
+and tyre STEP files, bodies with a revolute bearing and a weld, CAD attached to the bodies,
+mass and inertia computed from the solids, a tyre contact and drop conditions, then the MBDyn
+solve and the tyre-load plot. [Watch the MP4](docs/demos/workflow-wheel-end.mp4) · the
+**guided tour** (compass icon) walks through the same steps.
+
+### AI-assisted set-up
+
+[![The local AI assistant adds a wheel bearing, tyre contact and drop conditions for review](docs/demos/ai-assistant-setup.png)](docs/demos/ai-assistant-setup.mp4)
+
+The optional assistant runs a local model through [Ollama](https://ollama.com) — `qwen3.5:4b`
+in this recording — and turns a request in engineering terms into model edits: here a
+revolute wheel bearing, a tyre contact with stated stiffness and damping, drop conditions and
+the study settings. The review lists every changed field with its old and new value; nothing
+changes until you apply it, and Undo restores the previous model. Recorded on a 4-core CPU
+without a GPU; the four-minute wait for the model is condensed.
+[Watch the MP4](docs/demos/ai-assistant-setup.mp4) · [assistant guide](docs/ai-agent.md)
+
+### Featured studies
 
 <table>
 <tr>
@@ -31,16 +55,32 @@ and the independent checks each one passes.
 <b>Oleo-pneumatic gear drop test</b> — 290 kg at 2 m/s onto a gas/oil strut and damped tyre. Orifice spike, gas spring, static settle. <a href="docs/demos/gear-drop.mp4">MP4</a></td>
 </tr>
 <tr>
-<td><img src="docs/demos/slider-crank.gif" alt="Slider-crank engine running up to speed with crank angular velocity plotted"><br>
-<b>Slider-crank engine run-up</b> — loop closed by spherical, universal and prismatic joints; torque against a pumping load. <a href="docs/demos/slider-crank.mp4">MP4</a></td>
-<td><img src="docs/demos/gyroscopic-top.gif" alt="Gyroscopic top precessing with nutation cusps traced by motion trails"><br>
-<b>Gyroscopic top</b> — 120 rad/s on a spherical tip: precession within 3 % of steady-precession theory, with nutation cusps. <a href="docs/demos/gyroscopic-top.mp4">MP4</a></td>
+<td><img src="docs/demos/aircraft-nose-gear.gif" alt="Aircraft nose-gear STEP assembly through an 80 mm shock-strut stroke"><br>
+<b>Aircraft nose-gear kinematics</b> — the original 11-part STEP assembly through an 80 mm strut stroke; the torque links fold on two-circle geometry to 10⁻¹⁴ m. <a href="docs/demos/aircraft-nose-gear.mp4">MP4</a></td>
+<td><img src="docs/demos/oleo-strut.gif" alt="Oleo strut on a STEP wheel-end fixture with gas, hydraulic and stop forces"><br>
+<b>Oleo strut on a wheel-end fixture</b> — original STEP wheel end on a gas/oil strut; native gas pressure follows the polytropic law. <a href="docs/demos/oleo-strut.mp4">MP4</a></td>
 </tr>
 <tr>
-<td><img src="docs/demos/tumbling-handle.gif" alt="Free T-handle flipping periodically in zero gravity"><br>
-<b>Tumbling T-handle</b> — a free body spun about its intermediate axis flips every few seconds while angular momentum is conserved. <a href="docs/demos/tumbling-handle.mp4">MP4</a></td>
-<td><img src="docs/demos/chaotic-pendulums.gif" alt="Two double pendulums released 0.001 degrees apart diverging"><br>
-<b>Chaotic double pendulums</b> — identical except for 0.001° at release; together for two seconds, then completely different. <a href="docs/demos/chaotic-pendulums.mp4">MP4</a></td>
+<td><img src="docs/demos/wheel-end-drop.gif" alt="STEP wheel end dropped onto a rigid floor with tyre contact force plotted"><br>
+<b>Wheel-end drop test</b> — original STEP knuckle, hub and tyre dropped at 1 m/s; first contact matches free fall and the lost energy equals contact dissipation. <a href="docs/demos/wheel-end-drop.mp4">MP4</a></td>
+<td><img src="docs/demos/slider-crank.gif" alt="Slider-crank engine running up to speed with crank angular velocity plotted"><br>
+<b>Slider-crank engine run-up</b> — loop closed by spherical, universal and prismatic joints; motor torque against a pumping load. <a href="docs/demos/slider-crank.mp4">MP4</a></td>
+</tr>
+</table>
+
+### Rigid-body dynamics showcases
+
+Three classic problems that exercise the solver's 3D rotational dynamics, each checked against
+theory or a conservation law.
+
+<table>
+<tr>
+<td width="33%"><img src="docs/demos/gyroscopic-top.gif" alt="Gyroscopic top precessing with nutation cusps traced by motion trails"><br>
+<b>Gyroscopic top</b> — precession within 3 % of theory, with nutation cusps. <a href="docs/demos/gyroscopic-top.mp4">MP4</a></td>
+<td width="33%"><img src="docs/demos/tumbling-handle.gif" alt="Free T-handle flipping periodically in zero gravity"><br>
+<b>Tumbling T-handle</b> — intermediate-axis flips with angular momentum conserved. <a href="docs/demos/tumbling-handle.mp4">MP4</a></td>
+<td width="33%"><img src="docs/demos/chaotic-pendulums.gif" alt="Two double pendulums released 0.001 degrees apart diverging"><br>
+<b>Chaotic double pendulums</b> — released 0.001° apart, completely different after 3 s. <a href="docs/demos/chaotic-pendulums.mp4">MP4</a></td>
 </tr>
 </table>
 
@@ -123,9 +163,9 @@ for scope and limitations.
 
 ## Roadmap
 
-Next: richer post-processing (multi-quantity plots, result comparison, full-resolution derived
-measurements), interactive joint and frame placement, prescribed rotary drives, better
-diagnostics for redundant constraints, and validated engineering examples. Longer term:
+Next: prescribed rotary drives with motor torque results, richer post-processing
+(full-resolution plots, multi-quantity overlays, result comparison), interactive joint and
+frame placement, and more validated engineering examples. Longer term:
 broader contact, flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
 and the [changelog](CHANGELOG.md).
 

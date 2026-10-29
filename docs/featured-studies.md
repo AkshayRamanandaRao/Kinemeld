@@ -1,12 +1,18 @@
 # Featured studies
 
-Seven editable 3D assemblies show what the MBDyn solver does well: closed kinematic
-loops, gyroscopic coupling, nonlinear force elements, contact and chaotic dynamics.
+Ten editable 3D assemblies show what the MBDyn solver does well: seven industry-inspired
+studies (robotics, automotive suspension and wheel ends, landing gear, machinery) and three
+classic rigid-body problems — prescribed motion and inverse dynamics, closed kinematic loops,
+gyroscopic coupling, nonlinear force elements, contact and chaotic dynamics.
 Open any of them from **Examples → Featured studies**, run it in **Solve**, and
 explore it in **Post-processing**. Each project stores a camera, a default plot and
 trail settings so the motion is readable immediately.
 
-All geometry is generated with OpenCascade by `examples/studies/build.py`. Every
+The aircraft nose gear, oleo strut and wheel-end studies use original open-source STEP
+assemblies (see each example's README for source and licence); their catalog entries in
+`examples/featured.json` add a study length, prescribed stroke or display preset without
+changing the verified project files. The other studies' geometry is generated with
+OpenCascade by `examples/studies/build.py`. Every
 body's mass, centre of mass and full inertia tensor is measured from its STEP solids
 at a stated density and expressed in body axes; static fixtures (stands, frames,
 guides) are display-only. The studies are teaching models: dimensions, materials
@@ -21,6 +27,9 @@ checks that each saved project validates and keeps its force elements and geomet
 | Robot arm inverse dynamics | Three rotary drives (motor ramp and oscillations), joint reactions as motor torques | Drive work equals the change in kinetic and potential energy; commands followed within 10⁻¹² rad |
 | Double-wishbone quarter-car | Closed spatial loop, spherical/revolute joints, preloaded coil-over, stiff tie rod, harmonic wheel-pad force | ±60 mm wheel travel; bump steer 0.64°; camber change 2.1° |
 | Oleo-pneumatic gear drop test | Oleo strut (polytropic gas, orifice damping, stops), damped sphere–plane tyre contact, prismatic guides | 183 mm peak stroke without bottoming; settled tyre load within 3 % of weight; peak load factor 6.0 |
+| Aircraft nose-gear kinematics | Original 11-part STEP assembly, weld/prismatic/revolute/spherical/universal joints, prescribed 80 mm stroke | Strut follows the stroke to 10⁻¹³ m; scissor pin matches two-circle linkage geometry to 10⁻¹⁴ m; torque links fold 10.5° |
+| Oleo strut on a wheel-end fixture | Original STEP wheel end, oleo strut with stops, prescribed fixture stroke | Native gas pressure follows p₀(V₀/V)^γ to 10⁻¹² (relative) over a 50 mm stroke |
+| Wheel-end drop test | Original STEP knuckle/hub/tyre, revolute hub bearing, damped sphere–plane tyre contact | Free fall to 10⁻¹⁰ m; first contact 0.4 ms from prediction; energy lost equals contact dissipation within 0.1 % |
 | Slider-crank engine run-up | Spherical + universal + prismatic loop closure, follower drive torque, viscous load | Stroke equals 2 × crank radius to 0.01 mm; steady motor power balances dissipation within 2 % |
 | Gyroscopic top | Spherical joint, 120 rad/s spin, full inertia tensor | Spin conserved to 1 %; mean precession 4.66 rad/s vs 4.78 rad/s from steady-precession theory |
 | Tumbling T-handle | Free body, zero gravity | World angular momentum conserved; three spin reversals in 12 s |
@@ -66,6 +75,40 @@ The tyre is a damped sphere–plane contact (600 kN/m, 1.5 kN·s/m).
 **Watch:** the orifice force spike at touchdown, the gas spring taking over as the
 strut settles at about 110 mm stroke, and the tyre carrying the full weight. Plot
 **Oleo force components**, then switch to **Contact normal force**.
+
+## Aircraft nose-gear kinematics
+
+The original 11-occurrence nose-gear STEP assembly with six inferred bodies: strut, sliding
+piston, upper and lower torque links and two wheels. The featured study prescribes an
+80 mm cosine stroke of the shock strut over 2 s (the project file and its own guide keep
+the original 10 mm sweep). The torque-link joints are mathematical substitutions chosen to
+avoid redundant constraints, and the source solids overlap, so this is a **kinematic
+illustration only**; loads are not valid aircraft predictions
+([engineering guide](aircraft-nose-kinematics.md)).
+
+**Watch:** the scissor folding as the piston slides into the strut. Plot **Slider position**.
+
+## Oleo strut on a wheel-end fixture
+
+The original wheel-end STEP parts (knuckle, hub and tyre) on a prismatic fixture that
+strokes them 50 mm into an oleo-pneumatic strut, with a hub revolute joint. Gas pressure,
+asymmetric orifice damping and the stroke stops are illustrative, not a calibrated strut
+([engineering guide](oleo-strut.md)).
+
+**Watch:** the stop force engaging mid-stroke. Plot **Oleo force components** and **Oleo gas
+pressure**.
+
+## Wheel-end drop test
+
+The same original knuckle, hub and tyre STEP parts dropped from 0.6 m with a 1 m/s downward
+velocity onto a rigid floor. The hub turns on a revolute bearing; the tyre is a damped
+sphere–plane contact (0.208 m radius, 20 kN/m, 100 N·s/m) at the CAD origin. The rigid tyre
+and contact stiffness are approximations ([engineering guide](open-wheel-end.md)).
+
+**Watch:** free fall, three impacts of decreasing height and the knuckle swinging about the
+hub after each one. Plot **Contact normal force**. The
+[workflow recording](../README.md#from-step-files-to-results-wheel-end-drop-test) builds this
+model from the STEP files.
 
 ## Slider-crank engine run-up
 

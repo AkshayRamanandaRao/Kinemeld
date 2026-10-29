@@ -62,16 +62,16 @@ export function buildSourceView(view, example) {
     if (drawnPlanes.has(key)) continue;
     drawnPlanes.add(key);
     const normal = new THREE.Vector3(contact.planeNormal.x, contact.planeNormal.y, contact.planeNormal.z).normalize();
-    const size = scale * 2.2;
+    const size = Math.max(scale * 2.2, contact.radius * 5);
     const plane = new THREE.Mesh(
       new THREE.BoxGeometry(size, size, scale * 0.012),
-      new THREE.MeshStandardMaterial({ color: 0x8a96a8, roughness: 0.85, metalness: 0, transparent: true, opacity: 0.55 }),
+      new THREE.MeshStandardMaterial({ color: 0x9aa6b6, roughness: 0.9, metalness: 0, transparent: true, opacity: 0.3 }),
     );
     plane.receiveShadow = true;
     plane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
     plane.position.set(contact.planePoint.x, contact.planePoint.y, contact.planePoint.z).add(offset).addScaledVector(normal, -scale * 0.006);
     plane.userData.entity = `contact-${contact.id}`;
-    plane.userData.baseColor = 0x8a96a8;
+    plane.userData.baseColor = 0x9aa6b6;
     view.group.add(plane);
   }
   sampleSourceView(view, { nodes });
