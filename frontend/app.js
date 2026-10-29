@@ -172,13 +172,13 @@ const format = (n, d = 3) => (Number.isFinite(n) ? n.toFixed(d) : "—");
 let noticeTimer;
 function notice(message, type = "") {
   clearTimeout(noticeTimer);
-  $("notice").textContent = message;
+  $("noticeText").textContent = message;
   $("notice").className = `notice ${type}`;
   $("notice").hidden = !message;
   // Informational toasts fade; warnings and errors stay until replaced or dismissed.
   if (message && !type) noticeTimer = setTimeout(() => { $("notice").hidden = true; }, 6000);
 }
-$("notice").onclick = () => { $("notice").hidden = true; };
+$("noticeClose").onclick = () => { clearTimeout(noticeTimer); $("notice").hidden = true; };
 function status(message) {
   $("statusText").textContent = message;
 }
