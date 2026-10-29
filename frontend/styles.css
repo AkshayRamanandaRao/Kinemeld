@@ -2203,3 +2203,29 @@ legend {
 .agent-changes li::marker {
   color: var(--accent);
 }
+
+/* ---------- CAD feature picking ---------- */
+.pick-bar {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 32px);
+  padding: 7px 8px 7px 14px;
+  border-radius: 8px;
+  background: var(--bar);
+  color: var(--bar-text);
+  box-shadow: var(--shadow);
+  font-size: 12.5px;
+}
+.pick-bar[hidden] {
+  display: none;
+}
+.pick-bar .text-button {
+  color: inherit;
+  opacity: 0.8;
+}

@@ -67,6 +67,7 @@ export class MechanismView {
     this.renderer.domElement.addEventListener("pointerup", (e) => {
       if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5)
         return;
+      if (this.pickMode) { this.pickMode.select(this.pickPart(e.clientX, e.clientY)); return; }
       const entity = this.pick(e.clientX, e.clientY);
       if (entity) onSelect(entity);
     });
@@ -79,6 +80,7 @@ export class MechanismView {
       requestAnimationFrame(() => {
         const [x, y] = hoverQueued;
         hoverQueued = null;
+        if (this.pickMode) { this.pickMode.hover(this.pickPart(x, y), x, y); return; }
         const entity = this.pick(x, y);
         this.setHover(entity);
         this.renderer.domElement.style.cursor = entity ? "pointer" : "";
@@ -109,6 +111,53 @@ export class MechanismView {
     const shown = (object) => { for (let o = object; o; o = o.parent) if (!o.visible) return false; return true; };
     const hits = this.raycaster.intersectObjects(this.group.children, true).filter((item) => item.object.userData.entity && shown(item.object));
     return (hits.find((item) => item.object.userData.glyph) || hits[0])?.object.userData.entity || null;
+  }
+  /** STEP part and triangle under a screen point, with the hit in model coordinates (display offset removed). */
+  pickPart(clientX, clientY) {
+    if (!this.stepView) return null;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.raycaster.setFromCamera(new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, (-(clientY - rect.top) / rect.height) * 2 + 1), this.camera);
+    const meshes = new Map([...this.stepView.partMeshes].map(([id, mesh]) => [mesh, id]));
+    const hit = this.raycaster.intersectObjects([...meshes.keys()], false)[0];
+    if (!hit) return null;
+    const offset = this.sourceParts?.offset || new THREE.Vector3();
+    return { partId: meshes.get(hit.object), triangle: hit.faceIndex, point: hit.point.clone().sub(offset) };
+  }
+  /** Route clicks and hover to a picking task instead of selection; null restores normal selection. */
+  setPickMode(mode) {
+    this.pickMode = mode;
+    this.renderer.domElement.style.cursor = mode ? "crosshair" : "";
+    if (!mode) this.showFeature(null);
+  }
+  /** Preview a CAD feature (model coordinates): its axis and, for cylinders, the bore circle. */
+  showFeature(feature, color = 0xf08c1a) {
+    if (this.featureGroup) {
+      this.scene.remove(this.featureGroup);
+      this.featureGroup.traverse((object) => { object.geometry?.dispose(); object.material?.dispose(); });
+      this.featureGroup = null;
+    }
+    if (!feature) return;
+    const offset = this.sourceParts?.offset || new THREE.Vector3();
+    const group = new THREE.Group();
+    const material = () => new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity: 0.95 });
+    const size = Math.max(feature.radius ? feature.radius * 3 : 0, feature.length || 0, (this.scale || 1) * 0.15);
+    const up = new THREE.Vector3(0, 1, 0);
+    const line = new THREE.Mesh(new THREE.CylinderGeometry(size * 0.012, size * 0.012, size * 1.6, 8), material());
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(size * 0.04, size * 0.12, 16), material());
+    cone.position.y = size * 0.86;
+    group.add(line, cone);
+    if (feature.type === "cylinder") {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(feature.radius, size * 0.01, 8, 48), material());
+      ring.rotation.x = Math.PI / 2;
+      group.add(ring);
+    }
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(size * 0.035, 16, 12), material());
+    group.add(dot);
+    group.position.copy(feature.point).add(offset);
+    group.quaternion.setFromUnitVectors(up, feature.axis.clone().normalize());
+    group.traverse((object) => { object.renderOrder = 30; });
+    this.featureGroup = group;
+    this.scene.add(group);
   }
   resize() {
     const { width, height } = this.mount.getBoundingClientRect();

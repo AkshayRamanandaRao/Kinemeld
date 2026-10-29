@@ -12,6 +12,7 @@ import { setupKinematics } from "./kinematics.js";
 import { setupPointProbe } from "./point-probe.js";
 import { setupWheelKinematics } from "./wheel-kinematics.js";
 import { parseSolverCsv, fullSeries, seriesStatistics, envelope } from "./full-resolution.js";
+import { faceAt, cadPlacement, worldFeature, jointFromFeature, measureFeatures } from "./cad-features.js";
 
 const $ = (id) => document.getElementById(id);
 const paths = {
@@ -714,6 +715,10 @@ function showHover(entity, x, y) {
   if (!entity || entity.startsWith("step-part-")) { tip.hidden = true; return; }
   document.querySelector(`#modelTree [data-entity="${CSS.escape(entity)}"]`)?.classList.add("hovered");
   const [name, detail] = describeEntity(entity);
+  placeTooltip(name, detail, x, y);
+}
+function placeTooltip(name, detail, x, y) {
+  const tip = $("viewTooltip");
   tip.innerHTML = `<b>${escapeHtml(name)}</b>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}`;
   const rect = $("canvasMount").getBoundingClientRect();
   tip.hidden = false;
@@ -722,6 +727,84 @@ function showHover(entity, x, y) {
   tip.style.left = `${Math.max(8, left)}px`;
   tip.style.top = `${Math.max(8, top)}px`;
 }
+// ---------- Picking CAD features ----------
+// Faces are evaluated at the initial configuration, so the view shows it while a pick is active.
+function featureFromHit(hit) {
+  if (!hit || !state.step) return null;
+  const part = state.step.parts.find((item) => item.id === hit.partId);
+  const face = faceAt(part, hit.triangle);
+  if (!face) return null;
+  const binding = state.step.metadata.bindings[hit.partId];
+  const body = binding && (state.model.bodies || []).find((item) => item.id === binding.body);
+  return { ...worldFeature(face, cadPlacement(binding, body), hit.point), part: part.name };
+}
+let picking = false;
+function startPick(text, onFeature) {
+  if (state.model.kind !== "spatial-assembly" || !state.step || !view) return notice("Import STEP parts into a 3D assembly to pick CAD features.", "warn");
+  stopPick();
+  picking = true;
+  view.setSample(null);
+  $("pickText").textContent = text;
+  $("pickBar").hidden = false;
+  view.setPickMode({
+    hover: (hit, x, y) => {
+      const feature = featureFromHit(hit);
+      view.showFeature(feature);
+      if (feature) placeTooltip(feature.label, feature.part, x, y);
+      else $("viewTooltip").hidden = true;
+    },
+    select: (hit) => {
+      const feature = featureFromHit(hit);
+      if (!feature) return notice("Pick a cylindrical or planar face of a STEP part.", "warn");
+      onFeature(feature);
+    },
+  });
+}
+function stopPick() {
+  if (!picking) return;
+  picking = false;
+  view?.setPickMode(null);
+  $("pickBar").hidden = true;
+  $("viewTooltip").hidden = true;
+  $("measureViewButton").setAttribute("aria-pressed", "false");
+  if (state.result && !stale()) setFrame(state.frame);
+}
+$("pickCancel").onclick = stopPick;
+/** Put both ends of a joint on one picked feature: the anchors coincide and the axes agree. */
+function pickJointFromCad(jointId) {
+  if ((state.model.frameLinks || []).some((link) => link.joint === jointId)) return notice("This joint follows a linked reference frame; unlink it before placing it from CAD.", "warn");
+  startPick(`Joint ${jointId}: click a bore, shaft or pin (cylindrical face) or a planar face.`, (feature) => {
+    const joint = state.model.joints.find((item) => item.id === jointId);
+    if (!joint) return stopPick();
+    const values = jointFromFeature(state.model, joint, feature);
+    pushHistory();
+    Object.assign(joint, values);
+    changed();
+    renderTree();
+    renderProperties();
+    view?.setSelection(state.selection);
+    stopPick();
+    notice(`Joint ${jointId} placed on ${feature.part} · ${feature.label}. Both ends share the anchor${values.axisA ? " and axis" : ""}; Undo restores the previous placement.`);
+  });
+}
+let measureFirst = null;
+const millimetres = (value) => `${(value * 1000).toFixed(2)} mm`;
+$("measureViewButton").onclick = () => {
+  if (picking) return stopPick();
+  measureFirst = null;
+  startPick("Measure: click the first CAD feature.", (feature) => {
+    if (!measureFirst) {
+      measureFirst = feature;
+      $("pickText").textContent = `From ${feature.label}. Click the second feature.`;
+      return;
+    }
+    const result = measureFeatures(measureFirst, feature);
+    const d = result.delta;
+    $("pickText").textContent = `Distance ${millimetres(result.distance)} (Δx ${millimetres(d.x)}, Δy ${millimetres(d.y)}, Δz ${millimetres(d.z)})${result.angle === null ? "" : ` · axes ${result.angle.toFixed(2)}° apart`}. Click to measure again.`;
+    measureFirst = null;
+  });
+  if (picking) $("measureViewButton").setAttribute("aria-pressed", "true");
+};
 // Hovering a tree row highlights the same entity in the 3D view.
 $("modelTree").addEventListener("pointerover", (event) => view?.setHover(event.target.closest?.(".tree-item")?.dataset.entity || null));
 $("modelTree").addEventListener("pointerleave", () => view?.setHover(null));
@@ -858,7 +941,7 @@ function renderProperties() {
       return true;
     },
   });
-  if (spatial) renderSpatialEditor({container:$("properties"),model:state.model,selection:state.selection,createSolid:createPrimitiveSolid,notify:(message,type="warn")=>notice(message,type),mutate:(change,selection)=>{
+  if (spatial) renderSpatialEditor({container:$("properties"),model:state.model,selection:state.selection,createSolid:createPrimitiveSolid,pickFromCad:state.step?.parts?.some((part)=>part.faces?.length) ? pickJointFromCad : null,notify:(message,type="warn")=>notice(message,type),mutate:(change,selection)=>{
     if(state.busy){notice("Wait for the active simulation before editing the assembly.","warn");return false;}
     pushHistory();change(state.model);if(selection)state.selection=selection;
     changed();renderTree();renderProperties();view?.setSelection(state.selection);return true;
@@ -2027,19 +2110,22 @@ $("previewButton").onclick = () => run(true);
 $("validateButton").onclick = () => {
   switchStep("validate");
 };
+// Undo and Redo keep the selected entity when it still exists, so editing continues in place.
+function restoreHistory(entry) {
+  const selection = state.selection;
+  state.step=entry.step;if(view)view.stepAsset=entry.step;
+  applyModel(entry.model, false);replaceStep(entry.step,false);
+  if (selection !== state.selection && document.querySelector(`#modelTree [data-entity="${CSS.escape(selection)}"]`)) select(selection);
+}
 $("undoButton").onclick = () => {
   if (!state.history.length) return;
   state.future.push(snapshot());
-  const previous=state.history.pop();
-  state.step=previous.step;if(view)view.stepAsset=previous.step;
-  applyModel(previous.model, false);replaceStep(previous.step,false);
+  restoreHistory(state.history.pop());
 };
 $("redoButton").onclick = () => {
   if (!state.future.length) return;
   state.history.push(snapshot());
-  const next=state.future.pop();
-  state.step=next.step;if(view)view.stepAsset=next.step;
-  applyModel(next.model, false);replaceStep(next.step,false);
+  restoreHistory(state.future.pop());
 };
 async function nativeSave(saveAs) {
   if (state.saving || state.busy || state.opening) return;
@@ -2753,6 +2839,8 @@ document.addEventListener("keydown", (e) => {
   if (["1", "2", "3"].includes(e.key)) { switchStep(["model", "simulate", "results"][Number(e.key) - 1]); return; }
   if (e.key.toLowerCase() === "f") { view?.reset(); return; }
   if (e.key.toLowerCase() === "p") { $("presentButton").click(); return; }
+  if (e.key === "Escape" && picking) { stopPick(); return; }
+  if (e.key.toLowerCase() === "m" && state.step) { $("measureViewButton").click(); return; }
   if (e.key === "Escape" && document.body.classList.contains("present")) { setPresentation(false); return; }
   if (!state.result || workspace !== "results") return;
   if (e.key === " ") { e.preventDefault(); $("playButton").click(); }

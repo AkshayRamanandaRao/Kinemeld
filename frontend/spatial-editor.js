@@ -25,7 +25,7 @@ function unique(items,prefix){const ids=new Set(items.map(i=>i.id));let n=1;whil
 function types(){return [{id:'revolute',name:'Revolute'},{id:'prismatic',name:'Prismatic'},{id:'cylindrical',name:'Cylindrical'},{id:'universal',name:'Universal'},{id:'spherical',name:'Spherical'},{id:'weld',name:'Weld'}];}
 
 /** Edit spatial rigid bodies, local joint frames, and additional loop connections. */
-export function renderSpatialEditor({container,model,selection,mutate,notify,createSolid}) {
+export function renderSpatialEditor({container,model,selection,mutate,notify,createSolid,pickFromCad}) {
   const body=selection==='body'?model.bodies[0]:model.bodies.find(b=>selection===`node-${b.id}`);
   const joint=model.joints.find(j=>selection===`joint-${j.id}`);
   const rotary=(model.rotationalElements||[]).find(item=>selection===`rotary-${item.id}`);
@@ -46,6 +46,7 @@ export function renderSpatialEditor({container,model,selection,mutate,notify,cre
   } else if(joint){
     const group=section(container,`${joint.type} joint · ${joint.id}`), refs=[{id:'ground',name:'Ground'},...model.bodies];
     for(const side of ['a','b']){const select=selectRow(group,`Joint body ${side.toUpperCase()}`,side==='a'?refs:model.bodies,joint[side],value=>mutate(next=>{next.joints.find(j=>j.id===joint.id)[side]=value;}),`spatial-joint-${joint.id}-${side}`);if(jointFrameLink(model,joint.id,side)){select.disabled=true;select.title='Unlink this joint end to change its body.';}}
+    if(pickFromCad){const pick=document.createElement('button');pick.type='button';pick.className='secondary full-width';pick.id=`spatial-joint-${joint.id}-pick`;pick.textContent='Place from CAD feature…';pick.title='Click a cylindrical face (bore, shaft, pin) or a planar face in the 3D view; both joint ends are placed on it.';pick.onclick=()=>pickFromCad(joint.id);group.append(pick);}
     const note=document.createElement('p');note.textContent='Anchors and axes are local to each connected body; ground uses world coordinates. A prismatic joint slides along axis A; a cylindrical joint also rotates about the shared axis. A universal joint has two perpendicular rotation axes, A and B. Initial constraints must be consistent.';group.append(note);
     for(const side of ['anchorA','anchorB',...(['revolute','cylindrical','universal'].includes(joint.type)?['axisA','axisB']:joint.type==='prismatic'?['axisA']:[])])for(const axis of ['x','y','z']){const input=row(group,`${side} ${axis.toUpperCase()}`,side.startsWith('axis')?'':'m',joint[side][axis],value=>mutate(next=>{next.joints.find(j=>j.id===joint.id)[side][axis]=value;}),`spatial-joint-${joint.id}-${side}-${axis}`);if(jointFrameLink(model,joint.id,side.slice(-1).toLowerCase())){input.readOnly=true;input.title='This value follows a linked frame; unlink to edit.';}}
     renderJointFrameControls({container,model,joint,mutate,notify});

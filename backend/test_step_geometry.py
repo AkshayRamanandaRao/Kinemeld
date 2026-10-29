@@ -75,6 +75,40 @@ class StepGeometryTest(unittest.TestCase):
         self.assertGreater(result["triangleCount"],0)
         self.assertTrue(all(len(p["indices"]) % 3 == 0 for p in result["parts"]))
 
+    def test_faces_report_plane_geometry_in_assembly_coordinates(self):
+        result = step_geometry.convert_step(self.data, "assembly.step")
+        for part in result["parts"]:
+            faces = part["faces"]
+            self.assertEqual(len(faces), 6)
+            self.assertEqual(sum(face["triangles"][1] for face in faces), len(part["indices"]) // 3)
+            self.assertTrue(all(face["type"] == "plane" for face in faces))
+        first, second = (part["faces"] for part in result["parts"])
+        # The first box spans x = 0.1..0.2 m; its +x face lies at x = 0.2 m.
+        end = next(face for face in first if face["normal"] == [1.0, 0.0, 0.0])
+        self.assertAlmostEqual(end["point"][0], .2, places=9)
+        # The second occurrence is turned 90° about y, so its part +x face points along world -z.
+        self.assertTrue(any(face["normal"] == [0.0, 0.0, -1.0] for face in second))
+
+    def test_cylinder_faces_report_axis_centre_radius_and_length(self):
+        from OCP.BRepPrimAPI import BRepPrimAPI_MakeCylinder
+        from OCP.gp import gp_Ax2
+        from OCP.STEPControl import STEPControl_AsIs, STEPControl_Writer
+        shaft = BRepPrimAPI_MakeCylinder(gp_Ax2(gp_Pnt(10., 20., 30.), gp_Dir(0, 1, 0)), 5., 40.).Shape()
+        writer = STEPControl_Writer()
+        writer.Transfer(shaft, STEPControl_AsIs)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shaft.step"
+            self.assertEqual(writer.Write(str(path)), IFSelect_RetDone)
+            part = step_geometry.convert_step(path.read_bytes(), "shaft.step")["parts"][0]
+        cylinder = next(face for face in part["faces"] if face["type"] == "cylinder")
+        self.assertAlmostEqual(cylinder["radius"], .005, places=9)
+        self.assertAlmostEqual(cylinder["length"], .04, places=9)
+        self.assertEqual([abs(value) for value in cylinder["axis"]], [0.0, 1.0, 0.0])
+        for got, want in zip(cylinder["centre"], (.01, .04, .03)):
+            self.assertAlmostEqual(got, want, places=9)
+        caps = [face for face in part["faces"] if face["type"] == "plane"]
+        self.assertEqual(sorted(face["normal"][1] for face in caps), [-1.0, 1.0])
+
     def test_inch_source_is_converted_to_same_metre_geometry(self):
         result = step_geometry.convert_step(self.inch_data, "inch.step")
         self.assertTrue(any("inch" in unit.lower() for unit in result["sourceLengthUnits"]))

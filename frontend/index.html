@@ -92,6 +92,7 @@
             ><button id="glyphsButton" class="icon-button" title="Joint and force symbols" aria-label="Joint and force symbols" aria-pressed="true" data-icon="joint"></button
             ><button id="labelsButton" class="icon-button" title="Labels" aria-label="Toggle labels" aria-pressed="true" data-icon="tag"></button
             ><button id="gridButton" class="icon-button" title="Toggle grid" aria-label="Toggle grid" aria-pressed="true" data-icon="grid"></button
+            ><button id="measureViewButton" class="icon-button" title="Measure between CAD features (M)" aria-label="Measure between CAD features" aria-pressed="false" data-icon="ruler"></button
             ><button id="resetViewButton" class="icon-button" title="Fit model in view (F)" aria-label="Fit model in view" data-icon="fit"></button
             ><button id="presentButton" class="icon-button" title="Presentation mode (P)" aria-label="Presentation mode" aria-pressed="false" data-icon="present"></button>
           </div>
@@ -104,6 +105,7 @@
           </div>
           <div id="canvasMount" class="canvas-mount"></div>
           <div id="viewTooltip" class="view-tooltip" role="tooltip" hidden></div>
+          <div id="pickBar" class="pick-bar" role="status" hidden><span id="pickText"></span><button id="pickCancel" class="text-button" type="button">Cancel · Esc</button></div>
           <div id="topology" class="topology" hidden></div>
           <div class="viewport-tags">
             <span class="view-label" id="viewSource">Initial configuration</span
