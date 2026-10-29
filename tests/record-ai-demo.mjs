@@ -104,13 +104,20 @@ try {
   await page.waitForTimeout(400);
   await caption('AI ASSISTANT · THINKING', `${chatModel} reads the model and the request on the CPU and calls the model-editing tools.`);
   await shot(2.4);
-  // Headless Chromium renders WebGL in software; freeze the page while no frames are captured so
-  // the local model gets the CPU. The request is already in flight; the measured time is the model's.
-  const session = await page.context().newCDPSession(page);
-  await session.send('Page.setWebLifecycleState', { state: 'frozen' });
+  // Headless Chromium renders WebGL in software. Hold animation-frame callbacks while no frames are
+  // captured so the local model gets the CPU; the request is already in flight and the measured
+  // time is the model's own. Held callbacks are released afterwards.
+  await page.evaluate(() => {
+    window.__heldFrames = [];
+    window.__requestFrame = window.requestAnimationFrame;
+    window.requestAnimationFrame = (callback) => { window.__heldFrames.push(callback); return 0; };
+  });
   const answered = await response;
   const seconds = Math.round((Date.now() - started) / 1000);
-  await session.send('Page.setWebLifecycleState', { state: 'active' });
+  await page.evaluate(() => {
+    window.requestAnimationFrame = window.__requestFrame;
+    for (const callback of window.__heldFrames.splice(0)) window.requestAnimationFrame(callback);
+  });
   const reply = await answered.json();
   assert(reply.ok !== false, JSON.stringify(reply));
   const review = page.locator('.agent-review').last();
