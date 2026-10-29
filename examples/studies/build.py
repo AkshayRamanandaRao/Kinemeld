@@ -354,7 +354,38 @@ def quarter_car():
                    forces=forces, loads=loads)
 
 
+def robot_arm():
+    """Three driven axes: inverse dynamics gives the motor torques needed to follow the motion."""
+    base_h, shoulder_h, upper_l, fore_l = 0.30, 0.12, 0.42, 0.36
+    shoulder = (0.0, 0.0, base_h + shoulder_h)
+    turret = Body("turret", "Turret", {"z": base_h})
+    turret.add("cylinder", {"radius": 0.11, "length": 0.08}, ALUMINIUM, at=(0, 0, 0.04), label="turret-disc")
+    turret.add("brick", {"x": 0.08, "y": 0.14, "z": 0.16}, ALUMINIUM, at=(0, 0, 0.12), label="shoulder-yoke")
+    upper = Body("upper_arm", "Upper arm", dict(zip("xyz", shoulder)))
+    upper.add("brick", {"x": upper_l, "y": 0.06, "z": 0.07}, ALUMINIUM, at=(upper_l / 2, 0, 0), label="upper-arm-beam")
+    upper.add("cylinder", {"radius": 0.05, "length": 0.1}, STEEL, at=(0, 0, 0), rotate=(90, 0, 0), label="shoulder-motor")
+    elbow = (shoulder[0] + upper_l, 0.0, shoulder[2])
+    fore = Body("forearm", "Forearm and payload", dict(zip("xyz", elbow)))
+    fore.add("brick", {"x": fore_l, "y": 0.05, "z": 0.05}, ALUMINIUM, at=(fore_l / 2, 0, 0), label="forearm-beam")
+    fore.add("cylinder", {"radius": 0.04, "length": 0.08}, STEEL, at=(0, 0, 0), rotate=(90, 0, 0), label="elbow-motor")
+    fore.add("brick", {"x": 0.09, "y": 0.09, "z": 0.09}, STEEL, at=(fore_l + 0.045, 0, 0), label="payload")
+    joints = [
+        {"id": "base_yaw", "type": "revolute", "a": "ground", "b": "turret", "anchorA": v(0, 0, base_h), "anchorB": v(0, 0, 0),
+         "axisA": v(0, 0, 1), "axisB": v(0, 0, 1), "motion": {"speedDegPerS": 45.0, "rampTime": 1.0}},
+        {"id": "shoulder", "type": "revolute", "a": "turret", "b": "upper_arm", "anchorA": v(0, 0, shoulder_h), "anchorB": v(0, 0, 0),
+         "axisA": v(0, 1, 0), "axisB": v(0, 1, 0), "motion": {"amplitudeDeg": -25.0, "frequencyHz": 0.3}},
+        {"id": "elbow", "type": "revolute", "a": "upper_arm", "b": "forearm", "anchorA": v(upper_l, 0, 0), "anchorB": v(0, 0, 0),
+         "axisA": v(0, 1, 0), "axisB": v(0, 1, 0), "motion": {"amplitudeDeg": 40.0, "frequencyHz": 0.45}},
+    ]
+    stand = Fixture().add("cylinder", {"radius": 0.13, "length": base_h}, (0, 0, base_h / 2), label="pedestal")
+    stand.add("cylinder", {"radius": 0.25, "length": 0.03}, (0, 0, 0.015), label="floor-plate")
+    return project("Robot arm: inverse dynamics of three driven axes", [turret, upper, fore], joints, {"duration": 6.0, "step": 0.002}, fixture=stand,
+                   view={"camera": [1.25, -1.45, 1.05], "target": [0.15, 0, 0.42], "signal": 9, "selection": "node-forearm",
+                         "selectedJoint": "shoulder", "trails": True, "trailWindow": 3, "trailBodies": ["forearm"]})
+
+
 STUDIES = {
+    "robot-arm": ("robot-arm", "robot-arm.mbdyn-studio", robot_arm),
     "quarter-car": ("quarter-car", "quarter-car.mbdyn-studio", quarter_car),
     "spinning-top": ("gyroscopic-top", "gyroscopic-top.mbdyn-studio", spinning_top),
     "tumbling-handle": ("tumbling-handle", "tumbling-handle.mbdyn-studio", tumbling_handle),

@@ -58,6 +58,14 @@ export function renderSpatialEditor({container,model,selection,mutate,notify,cre
         const addMotion=document.createElement('button');addMotion.type='button';addMotion.className='secondary full-width';addMotion.textContent='Add prescribed slider motion';addMotion.onclick=()=>mutate(next=>{next.joints.find(j=>j.id===joint.id).motion={amplitude:.1,frequencyHz:1};});motion.append(addMotion);
       }
     }
+    if(joint.type==='revolute'){
+      const drive=section(container,'Rotary drive (prescribed motion)'), note=document.createElement('p');
+      note.textContent='A drive imposes the hinge angle and MBDyn reports the motor torque it needs. Motor: speed rises linearly to the target over the ramp time, then stays constant. Oscillation: angle = amplitude × (1 − cos(2π × frequency × time)). Both start at rest about the hinge.';drive.append(note);
+      const law=joint.motion ? ('speedDegPerS' in joint.motion ? 'speed' : 'oscillation') : 'none';
+      selectRow(drive,'Drive law',[{id:'none',name:'None (free hinge)'},{id:'speed',name:'Motor: speed with ramp'},{id:'oscillation',name:'Oscillation'}],law,value=>mutate(next=>{const target=next.joints.find(j=>j.id===joint.id);if(value==='none')delete target.motion;else target.motion=value==='speed'?{speedDegPerS:90,rampTime:.5}:{amplitudeDeg:30,frequencyHz:.5};}),`spatial-joint-${joint.id}-drive-law`);
+      const fields=law==='speed'?[['speedDegPerS','Target speed','°/s'],['rampTime','Ramp time','s']]:law==='oscillation'?[['amplitudeDeg','Amplitude','°'],['frequencyHz','Frequency','Hz']]:[];
+      for(const [key,title,unit] of fields)row(drive,title,unit,joint.motion[key],value=>mutate(next=>{next.joints.find(j=>j.id===joint.id).motion[key]=value;}),`spatial-joint-${joint.id}-motion-${key}`);
+    }
     const remove=document.createElement('button');remove.type='button';remove.className='secondary full-width';remove.textContent='Remove selected joint';remove.onclick=()=>{if((model.frameLinks||[]).some(link=>link.joint===joint.id))return notify('Unlink reference frames from this joint before removing it.');if((model.rotationalElements||[]).some(item=>item.joint===joint.id)||(model.jointTorques||[]).some(item=>item.joint===joint.id)||(model.jointForces||[]).some(item=>item.joint===joint.id))return notify('Remove the springs, torques and axial forces on this joint first.');mutate(next=>{next.joints=next.joints.filter(j=>j.id!==joint.id);},'body');};group.append(remove);
   } else if(applied){
     const group=section(container,`Applied force / torque · ${applied.id}`), note=document.createElement('p');note.textContent='The application point is local to the body. Force and free torque vectors use the selected global or body-local frame. Both are multiplied by offset + amplitude × sin(2π × frequency × time).';group.append(note);

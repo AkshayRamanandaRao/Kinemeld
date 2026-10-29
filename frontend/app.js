@@ -1194,6 +1194,13 @@ function elementSignals(model, result) {
       {type:"oleo",title:"Oleo gas pressure (native)",unit:"Pa",channels:[["gasPressure","Pressure"]]},
       {type:"oleo",title:"Oleo force components (native / derived)",unit:"N",channels:[["gasForce","Gas"],["hydraulicForce","Hydraulic"],["stopForce","Stop"]]},
     ] : []),
+    ...((model?.joints || []).some(joint=>joint.type==="revolute" && joint.motion) ? [
+      {type:"drive",title:"Rotary drive angle · measured / commanded",unit:"rad",channels:[["angle","Measured"],["commandedAngle","Commanded"]]},
+      {type:"drive",title:"Rotary drive speed",unit:"rad/s",channels:[["speed","Speed"]]},
+      {type:"drive",title:"Rotary drive torque (hinge reaction)",unit:"N·m",channels:[["torque","Torque"]]},
+      {type:"drive",title:"Rotary drive power",unit:"W",channels:[["power","Power"]]},
+      {type:"system",title:"Rotary drive work (all drives)",unit:"J",channels:[["rotaryDriveWork","Work"]]},
+    ] : []),
   ];
 }
 function resultSignal() {
@@ -1201,7 +1208,7 @@ function resultSignal() {
     const extra=elementSignals(state.result.model,state.result)[state.signal-NODE_SIGNALS];
     if (extra) {
       if(extra.type==="system")return extra;
-      const selected=["slider","cylinder","reaction"].includes(extra.type) ? state.selectedJoint : state.selectedForce;
+      const selected=["slider","cylinder","reaction","drive"].includes(extra.type) ? state.selectedJoint : state.selectedForce;
       return {...extra,channels:extra.channels.map(([key,label])=>[`${extra.type}:${selected}:${key}`,label])};
     }
     const node =
@@ -1240,6 +1247,7 @@ function channelValue(sample, key) {
   if (key.startsWith("reaction:")) {const [,id,path]=key.split(":");const [field,axis]=path.split(".");return sample.jointReactions?.find(item=>item.id===id)?.[field]?.[axis];}
   if (key.startsWith("load:")) {const [,id,path]=key.split(":");const item=sample.loadStates?.find(entry=>entry.id===id);const [field,axis]=path.split(".");return axis ? item?.[field]?.[axis] : item?.[field];}
   if (key.startsWith("cylinder:")) {const [,id,field]=key.split(":");return sample.cylinders?.find(item=>item.id===id)?.[field];}
+  if (key.startsWith("drive:")) {const [,id,field]=key.split(":");return sample.rotaryDrives?.find(item=>item.id===id)?.[field];}
   if (key.startsWith("slider:")) {const [,id,field]=key.split(":");return sample.sliders?.find(item=>item.id===id)?.[field];}
   if (!key.startsWith("node:")) return sample[key];
   const [, node, field] = key.split(":");
@@ -1302,7 +1310,7 @@ function renderResult() {
   const selectedElements=selectedExtra?.type === "rotary" ? result.model.rotationalElements || [] : selectedExtra?.type === "torque" ? result.model.jointTorques || [] : selectedExtra?.type === "joint-force" ? result.model.jointForces || [] : selectedExtra?.type === "contact" ? result.model.contacts || [] : selectedExtra?.type === "load" ? result.model.loads || [] : selectedExtra?.type === "oleo" ? forces.filter(force=>force.type==="oleo-strut") : forces;
   if (!selectedElements.some(item=>item.id===state.selectedForce)) state.selectedForce=selectedElements[0]?.id ?? null;
   const availableReactions=new Set((result.samples[0]?.jointReactions || []).map(item=>item.id));
-  const selectedJoints=selectedExtra?.type === "reaction" ? joints.filter(joint=>availableReactions.has(joint.id)) : joints.filter(joint=>joint.type===(selectedExtra?.type === "cylinder" ? "cylindrical" : "prismatic"));
+  const selectedJoints=selectedExtra?.type === "reaction" ? joints.filter(joint=>availableReactions.has(joint.id)) : selectedExtra?.type === "drive" ? joints.filter(joint=>joint.type==="revolute" && joint.motion) : joints.filter(joint=>joint.type===(selectedExtra?.type === "cylinder" ? "cylindrical" : "prismatic"));
   if (!selectedJoints.some(joint=>joint.id===state.selectedJoint)) state.selectedJoint=selectedJoints[0]?.id ?? null;
   $("signalTitle").textContent = resultSignal().title;
   $("signalSelect").replaceChildren(
@@ -1318,7 +1326,7 @@ function renderResult() {
   $("nodeSelect").hidden = !source || Boolean(selectedExtra);
   $("forceSelect").hidden = !["force","rotary","torque","joint-force","load","contact","oleo"].includes(selectedExtra?.type);
   $("forceSelect").setAttribute("aria-label",selectedExtra?.type === "load" ? "Result external load" : selectedExtra?.type === "rotary" ? "Result rotational spring" : selectedExtra?.type === "torque" ? "Result joint torque" : selectedExtra?.type === "joint-force" ? "Result axial joint force" : selectedExtra?.type === "contact" ? "Result contact" : selectedExtra?.type === "oleo" ? "Result oleo strut" : "Result spring or damper");
-  $("jointSelect").hidden = !["slider","cylinder","reaction"].includes(selectedExtra?.type);
+  $("jointSelect").hidden = !["slider","cylinder","reaction","drive"].includes(selectedExtra?.type);
   if(selectedElements.length){$("forceSelect").replaceChildren(...selectedElements.map(item=>{const option=document.createElement("option");option.value=item.id;option.textContent=item.id;return option;}));$("forceSelect").value=state.selectedForce;}
   if(selectedJoints.length){$("jointSelect").replaceChildren(...selectedJoints.map(joint=>{const option=document.createElement("option");option.value=joint.id;option.textContent=joint.id;return option;}));$("jointSelect").value=state.selectedJoint;}
   if (source) {
@@ -2051,6 +2059,7 @@ function commitOpenedProject(project, reference, step) {
     } else {
       clearResult();
       if (Number.isInteger(project.view?.signal)) state.signal = Math.max(0, project.view.signal);
+      for (const key of ["selectedNode", "selectedForce", "selectedJoint"]) if (typeof project.view?.[key] === "string") state[key] = project.view[key];
     }
     applyDisplayPreset(project.view);
     if(typeof project.view?.selection === "string" && document.querySelector(`[data-entity="${CSS.escape(project.view.selection)}"]`)) select(project.view.selection);

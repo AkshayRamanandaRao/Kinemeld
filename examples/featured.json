@@ -1,6 +1,14 @@
 {
   "studies": [
     {
+      "id": "robot-arm",
+      "category": "ROBOTICS · INVERSE DYNAMICS",
+      "title": "Robot arm inverse dynamics",
+      "description": "Three motor-driven axes follow prescribed angles; MBDyn returns the torque, power and energy each motor must deliver.",
+      "project": "robot-arm/robot-arm.mbdyn-studio",
+      "next": "Run it, then plot Rotary drive torque and choose shoulder, elbow or base_yaw."
+    },
+    {
       "id": "quarter-car",
       "category": "AUTOMOTIVE · KINEMATICS & COMPLIANCE",
       "title": "Double-wishbone quarter-car",
