@@ -123,9 +123,9 @@ for scope and limitations.
 
 ## Roadmap
 
-Next: richer post-processing (multi-quantity plots, result comparison, full-resolution derived
-measurements), interactive joint and frame placement, prescribed rotary drives, better
-diagnostics for redundant constraints, and validated engineering examples. Longer term:
+Next: prescribed rotary drives with motor torque results, richer post-processing
+(full-resolution plots, multi-quantity overlays, result comparison), interactive joint and
+frame placement, and more validated engineering examples. Longer term:
 broader contact, flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
 and the [changelog](CHANGELOG.md).
 
