@@ -54,6 +54,7 @@ const paths = {
   eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
   force: "M12 3v14 M7 12l5 5 5-5 M5 21h14",
   present: "M3 4h18v12H3z M8 20h8 M12 16v4 M10 8l4 2-4 2z",
+  newfile: "M6 3h8l4 4v14H6z M14 3v4h4 M12 11v6 M9 14h6",
 };
 function icon(name) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.cube}"/></svg>`;
@@ -1824,7 +1825,8 @@ $("stepFile").onchange = async event => {
   } catch(error) {if(token===stepLoad){renderStepControls();notice(`STEP import failed: ${error.message}`,"error");}}
   finally {event.target.value="";}
 };
-$("stepExample").onclick = async () => {
+/** Load original parts from the shipped suspension STEP set; `pattern` selects a subset by file name. */
+async function loadSuspensionParts(pattern = null) {
   const token=++stepLoad;
   try {
     $("stepDetail").textContent="Loading and converting the original suspension STEP parts…";
@@ -1832,12 +1834,18 @@ $("stepExample").onclick = async () => {
     if(!responseCatalog.ok)throw Error("STEP service is unavailable. Restart Kinemeld to load the updated backend.");
     const catalog=await responseCatalog.json(), inputs=[];
     for (const [i,file] of catalog.files.entries()) {
+      if (pattern && !pattern.test(file.name)) continue;
       const response=await fetch(`/api/step/suspension/${i}`);if(!response.ok)throw Error(`Cannot load ${file.name}.`);
       inputs.push({name:file.name,bytes:new Uint8Array(await response.arrayBuffer()),sha256:file.sha256});
     }
-    const asset=await loadStepAsset(inputs);if(token!==stepLoad)return;
-    replaceStep(asset);notice("Original double-wishbone STEP parts loaded. Source alignment and all physical body attachments require verification.");
-  } catch(error) {if(token===stepLoad){renderStepControls();notice(`Suspension STEP import failed: ${error.message}`,"error");}}
+    if(!inputs.length)throw Error("No matching STEP parts were found.");
+    const asset=await loadStepAsset(inputs);if(token!==stepLoad)return false;
+    replaceStep(asset);
+    return true;
+  } catch(error) {if(token===stepLoad){renderStepControls();notice(`Suspension STEP import failed: ${error.message}`,"error");}return false;}
+}
+$("stepExample").onclick = async () => {
+  if (await loadSuspensionParts()) notice("Original double-wishbone STEP parts loaded. Source alignment and all physical body attachments require verification.");
 };
 
 $("durationInput").onchange = (e) =>
@@ -2298,6 +2306,26 @@ $("projectFile").onchange = async (e) => {
     e.target.value = "";
   }
 };
+// A new project starts as a 3D assembly with one body; STEP parts, bodies and joints are added from there.
+const NEW_ASSEMBLY = {
+  format: "mbdyn-studio/1",
+  model: {
+    kind: "spatial-assembly", name: "Untitled 3D assembly",
+    parameters: { gravity: { x: 0, y: 0, z: -9.81 } }, simulation: { duration: 1, step: 0.001 },
+    bodies: [{ id: "body1", name: "Body 1", mass: 1, inertia: { xx: 0.1, yy: 0.1, zz: 0.1 }, pose: { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0 }, velocity: { vx: 0, vy: 0, vz: 0, wx: 0, wy: 0, wz: 0 } }],
+    joints: [],
+  },
+};
+async function newAssembly() {
+  if (state.busy || state.saving || state.opening) return;
+  const text = JSON.stringify(NEW_ASSEMBLY);
+  if (await openProjectText(async () => text, text.length)) {
+    browserDirty = false;
+    switchStep("model");
+    notice("New 3D assembly. Import STEP parts, then add bodies, joints and loads in Pre-processing.");
+  }
+}
+$("newButton").onclick = newAssembly;
 async function openFeatured(study) {
   if (state.busy || state.saving || state.opening) return;
   notice(`Loading ${study.title} and converting its CAD geometry…`, "warn");
@@ -2652,7 +2680,14 @@ async function init() {
   }
   requestAnimationFrame(animate);
   try {
-    await setupTour();
+    await setupTour({
+      newAssembly,
+      importWheelEnd: async () => {
+        if (await loadSuspensionParts(/(Knuckle_Left Knuckle|Hub|Front Tyre)\.step$/)) notice("Knuckle, hub and tyre STEP parts loaded. Attach each part to its body in STEP parts.");
+      },
+      openStudy: (id) => { const study = state.featured?.find((item) => item.id === id); if (study) openFeatured(study); },
+      openFeaturedStudies: () => { $("examplesButton").click(); },
+    });
   } catch (error) {
     notice(`The guided tour could not start: ${error.message}. The model workspace remains available.`, "warn");
   }
