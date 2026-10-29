@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright');
-const ACTIONS = ['click', 'dblclick', 'fill', 'press', 'pressSequentially', 'type', 'check', 'uncheck', 'setChecked', 'selectOption', 'focus', 'hover', 'clear', 'selectText', 'tap'];
+const ACTIONS = ['scrollIntoViewIfNeeded', 'dispatchEvent', 'boundingBox', 'screenshot', 'click', 'dblclick', 'fill', 'press', 'pressSequentially', 'type', 'check', 'uncheck', 'setChecked', 'selectOption', 'focus', 'hover', 'clear', 'selectText', 'tap'];
 let patched = false;
 
 function patchLocator(page) {

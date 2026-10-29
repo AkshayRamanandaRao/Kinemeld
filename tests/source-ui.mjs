@@ -84,7 +84,7 @@ try {
       await page.locator("#nodeSelect option").count(),
       entry.nodes.length,
     );
-    assert.equal(await page.locator("#plot polyline").count(), 3);
+    assert.equal(await page.locator("#plot path.plot-curve").count(), 3);
     await page
       .locator("#nodeSelect")
       .selectOption(String(entry.nodes.at(-1).id));
