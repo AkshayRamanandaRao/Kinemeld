@@ -862,7 +862,7 @@ function renderProperties() {
   $("stepInput").value = state.model.simulation.step ?? "";
   $("inspectorNote").textContent = source
     ? "The upstream deck and its original study settings are preserved. The node graph is schematic; open the deck to inspect actual elements."
-    : spatial ? "Edit 3D poses, velocities and local joint frames in SI units. Lines show body origins, not solid geometry." : assembly ? "Edit bodies, joint anchors and loads in SI units. Lines show body origins, not solid geometry."
+    : spatial ? "Edit 3D poses, velocities and local joint frames in SI units. Symbols in the 3D view mark joint anchors and axes and force elements." : assembly ? "Edit bodies, joint anchors and loads in SI units. Lines show body origins, not solid geometry."
     : industrial
       ? "Edit this engineering template in SI units. Open the example guide for its equations, parameter studies and modelling limits."
       : state.selection === "ground"
