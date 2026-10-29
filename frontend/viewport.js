@@ -625,7 +625,7 @@ export class MechanismView {
     return lowest;
   }
   /** World-space display position of a body's characteristic point for each sample. */
-  bodyTracks(result) {
+  bodyTracks(result, point = "auto") {
     const samples = result?.samples;
     if (!samples?.length || !this.model) return [];
     const kind = this.model.kind;
@@ -645,11 +645,12 @@ export class MechanismView {
           else if (kind === "planar-assembly") point.applyAxisAngle(new THREE.Vector3(0, 1, 0), (node.angleDeg ?? node.ry ?? 0) * DEG);
           return point.add(new THREE.Vector3(node.x, node.y, node.z)).add(offset);
         });
+        const tip = this.stepView?.farthestPoint?.(id);
+        if (point === "tip" && tip) return { id, entity: index ? `node-${id}` : "body", points: track(tip) };
         let points = track(centre);
         // A body spinning about a fixed centre traces nothing useful; follow its farthest geometry point instead.
         const extent = new THREE.Box3().setFromPoints(points.filter(Boolean)).getSize(new THREE.Vector3()).length();
-        const tip = this.stepView?.farthestPoint?.(id);
-        if (extent < scale * 0.03 && tip) points = track(tip);
+        if (point === "auto" && extent < scale * 0.03 && tip) points = track(tip);
         return { id, entity: index ? `node-${id}` : "body", points };
       });
     }
@@ -677,7 +678,7 @@ export class MechanismView {
     this.trailWindow = options.window || 0;
     this.trailTimes = result.samples.map((sample) => sample.time);
     const bodies = options.bodies ? new Set(options.bodies) : null;
-    this.trails = this.bodyTracks(result).map((track, index) => {
+    this.trails = this.bodyTracks(result, options.point || "auto").map((track, index) => {
       if (bodies && !bodies.has(track.id) && !bodies.has(track.entity)) return null;
       const color = TRAIL_COLORS[index % TRAIL_COLORS.length];
       const valid = track.points.map((point, frame) => [point, frame]).filter(([point]) => point && [point.x, point.y, point.z].every(Number.isFinite));

@@ -1422,7 +1422,7 @@ function drawPlot() {
         path += `${pen ? "L" : "M"}${px(samples[i].time).toFixed(1)},${py(data[i]).toFixed(1)}`;
         pen = true;
       }
-      return `<path d="${path}" fill="none" stroke="${PLOT_COLORS[index]}" stroke-width="1.7" ${index ? `stroke-dasharray="${index === 1 ? "6 3" : "2 3"}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
+      return `<path class="plot-curve" d="${path}" fill="none" stroke="${PLOT_COLORS[index]}" stroke-width="1.7" ${index ? `stroke-dasharray="${index === 1 ? "6 3" : "2 3"}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
     })
     .join("");
   let grid = "";
@@ -1911,6 +1911,7 @@ function currentViewState() {
     target: view?.controls.target.toArray(),
     trails: Boolean(state.trails),
     trailWindow: Number($("trailWindow").value) || 0,
+    trailPoint: $("trailPoint").value,
     ...(state.trailPreset && $("trailBodies").value === "preset" ? { trailBodies: state.trailPreset } : {}),
   };
 }
@@ -2027,6 +2028,7 @@ function applyDisplayPreset(preset) {
     }
     $("trailWindow").value = [...$("trailWindow").options].find((option) => Number(option.value) === window).value;
   } else $("trailWindow").value = "0";
+  $("trailPoint").value = preset?.trailPoint === "tip" ? "tip" : "auto";
   if (typeof preset?.trails === "boolean") setTrails(preset.trails);
 }
 // Keep the previous document and its live reference geometry until the new view is complete.
@@ -2357,7 +2359,7 @@ $("loopButton").onclick = () => {
 function trailOptions() {
   const choice = $("trailBodies").value;
   const bodies = choice === "preset" ? state.trailPreset : choice === "selected" ? [state.selection === "body" ? state.result?.model?.bodies?.[0]?.id : state.selection.replace(/^node-/, "")] : null;
-  return { window: Number($("trailWindow").value) || 0, bodies };
+  return { window: Number($("trailWindow").value) || 0, bodies, point: $("trailPoint").value };
 }
 function refreshTrails() {
   const show = state.trails && workspace === "results" && state.result && !stale();
@@ -2373,6 +2375,7 @@ function setTrails(on) {
 }
 $("trailWindow").onchange = refreshTrails;
 $("trailBodies").onchange = refreshTrails;
+$("trailPoint").onchange = refreshTrails;
 $("trailsButton").onclick = () => setTrails(!state.trails);
 $("trailsToggle").onchange = (event) => setTrails(event.target.checked);
 $("followToggle").onchange = (event) => { view?.setFollow(event.target.checked ? state.selection : null); };

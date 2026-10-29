@@ -158,7 +158,7 @@ def spinning_top():
     table = Fixture().add("cylinder", {"radius": 0.13, "length": 0.012}, (0, 0, -0.006), label="table")
     table.add("cylinder", {"radius": 0.012, "length": 0.006}, (0, 0, 0.0), label="pivot-cup")
     return project("Gyroscopic top: precession and nutation", [top], stand, {"duration": 4.0, "step": 0.0005}, fixture=table,
-                   view={"camera": [0.24, -0.36, 0.42], "target": [0, 0, 0.07], "signal": 3, "selection": "body", "trails": True, "trailWindow": 0})
+                   view={"camera": [0.2, -0.3, 0.5], "target": [0, 0, 0.08], "signal": 3, "selection": "body", "trails": True, "trailWindow": 0, "trailPoint": "tip"})
 
 
 def tumbling_handle():

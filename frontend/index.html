@@ -231,10 +231,11 @@
             <label class="toggle"><input type="checkbox" id="trailsToggle" /> Motion trails</label>
             <div class="field-row display-options">
               <label>Trail length<select id="trailWindow" aria-label="Trail length"><option value="0">Full run</option><option value="3">Last 3 s</option><option value="1.5">Last 1.5 s</option><option value="0.5">Last 0.5 s</option></select></label
-              ><label>Trail bodies<select id="trailBodies" aria-label="Trail bodies"><option value="all">All bodies</option><option value="selected">Selected body</option><option value="preset" hidden>Study preset</option></select></label>
+              ><label>Trail bodies<select id="trailBodies" aria-label="Trail bodies"><option value="all">All bodies</option><option value="selected">Selected body</option><option value="preset" hidden>Study preset</option></select></label
+              ><label>Trail point<select id="trailPoint" aria-label="Trail point"><option value="auto">Centre of mass</option><option value="tip">Farthest point</option></select></label>
             </div>
             <label class="toggle"><input type="checkbox" id="followToggle" /> Keep selected body in view</label>
-            <p class="field-help">Trails follow each body's centre of mass, or its farthest point when the centre barely moves. Select a body in the model tree to plot its motion.</p>
+            <p class="field-help">Trails follow each body's centre of mass (or its farthest point when the centre barely moves), or the farthest point if you choose it. Select a body in the model tree to plot its motion.</p>
           </section>
         </div>
       </aside>

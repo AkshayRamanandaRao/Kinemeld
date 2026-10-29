@@ -103,13 +103,13 @@ try {
       item.quantity,
     );
     assert.equal(
-      await page.locator("#plot polyline").count(),
+      await page.locator("#plot path.plot-curve").count(),
       item.kind === "gear-deployment" ? 1 : 2,
     );
     for (const points of await page
-      .locator("#plot polyline")
+      .locator("#plot path.plot-curve")
       .evaluateAll((nodes) =>
-        nodes.map((node) => node.getAttribute("points")),
+        nodes.map((node) => node.getAttribute("d")),
       )) {
       assert(points.length > 100 && !/NaN|Infinity/.test(points));
     }
@@ -176,6 +176,7 @@ try {
       innerWidth,
     ]);
     assert(sizes[0] <= sizes[1] + 1, `${item.kind} mobile overflow: ${sizes}`);
+    await page.locator('[data-step="results"]').click();
     assert(await page.locator("#signalSelect").isVisible());
     await page.screenshot({
       path: path.join(output, `${item.kind}-mobile.png`),
