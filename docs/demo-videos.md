@@ -29,6 +29,17 @@ solids (steel 7850 kg/m³, rubber 1100 kg/m³), tyre contact, initial conditions
 the MBDyn run and post-processing. Captions name each step and an orange outline marks the
 control being used. Held frames replace waiting time; the playback section runs at 0.25×.
 
+## AI-assisted set-up
+
+[`demos/ai-assistant-setup.mp4`](demos/ai-assistant-setup.mp4) starts from the wheel-end STEP
+parts with mass computed from the solids but no links, contact or drop conditions, and asks the
+assistant — a real `qwen3.5:4b` model in a local Ollama — to add them. The request, the
+proposal, the field-by-field review, Apply, the MBDyn run and the result are shown as they
+happened; the caption states how long the model took on the recording machine (a 4-core CPU
+without a GPU) and that waiting is condensed. While waiting, the recorder holds the page's
+animation frames so the headless browser's software rendering does not compete with the model
+for the CPU. Model output is not edited or scripted.
+
 ## Recreate the recordings
 
 Start the service with a working MBDyn (`python start.py --no-browser`), make sure FFmpeg
@@ -37,6 +48,7 @@ is on `PATH` (or set `FFMPEG`), then run:
 ```bash
 node tests/record-demo-videos.mjs
 node tests/record-workflow-demo.mjs
+AI_MODEL=qwen3.5:4b node tests/record-ai-demo.mjs   # needs Ollama with the model installed
 ```
 
 Append a study name (`quarter-car`, `gear-drop`, `aircraft-nose-gear`, `oleo-strut`,
