@@ -25,7 +25,7 @@ function unique(items,prefix){const ids=new Set(items.map(i=>i.id));let n=1;whil
 function types(){return [{id:'revolute',name:'Revolute'},{id:'prismatic',name:'Prismatic'},{id:'cylindrical',name:'Cylindrical'},{id:'universal',name:'Universal'},{id:'spherical',name:'Spherical'},{id:'weld',name:'Weld'}];}
 
 /** Edit spatial rigid bodies, local joint frames, and additional loop connections. */
-export function renderSpatialEditor({container,model,selection,mutate,notify,createSolid,pickFromCad}) {
+export function renderSpatialEditor({container,model,selection,mutate,notify,createSolid,pickFromCad,pickFrameFromCad}) {
   const body=selection==='body'?model.bodies[0]:model.bodies.find(b=>selection===`node-${b.id}`);
   const joint=model.joints.find(j=>selection===`joint-${j.id}`);
   const rotary=(model.rotationalElements||[]).find(item=>selection===`rotary-${item.id}`);
@@ -131,7 +131,7 @@ export function renderSpatialEditor({container,model,selection,mutate,notify,cre
   addTorque.onclick=()=>{const id=unique(model.jointTorques||[],'torque');mutate(next=>{next.jointTorques??=[];next.jointTorques.push({id,joint:rotaryTarget.value,amplitude:1,frequencyHz:1,offset:0});},`torque-${id}`);};rotaryGroup.append(addTorque);
   const contactGroup=section(container,'Add sphere-plane contact'),contactNote=document.createElement('p');contactNote.textContent='Add a frictionless elastic sphere against a fixed world plane, optionally with compression-only damping. Set the radius and body-local center independently of STEP geometry.';contactGroup.append(contactNote);
   const contactTarget=selectRow(contactGroup,'Body for sphere contact',model.bodies,body?.id||model.bodies[0].id,()=>{}),addContact=document.createElement('button');addContact.type='button';addContact.className='secondary full-width';addContact.textContent='Add sphere-plane contact';addContact.disabled=(model.contacts||[]).length>=32;addContact.onclick=()=>{const id=unique(model.contacts||[],'contact'),target=model.bodies.find(item=>item.id===contactTarget.value);mutate(next=>{next.contacts??=[];next.contacts.push({id,body:target.id,center:{x:0,y:0,z:0},radius:.1,planePoint:{x:0,y:0,z:target.pose.z-.5},planeNormal:{x:0,y:0,z:1},stiffness:1000});},`contact-${id}`);};contactGroup.append(addContact);
-  renderFrameEditor({container,model,mutate,notify});
+  renderFrameEditor({container,model,mutate,notify,pickFromCad:pickFrameFromCad});
   const axial=section(container,'Add axial joint force'),axialNote=document.createElement('p');axialNote.textContent='Apply a constant or sinusoidal force along a prismatic or cylindrical joint axis.';axial.append(axialNote);
   const sliders=model.joints.filter(j=>['prismatic','cylindrical'].includes(j.type)),axialTarget=selectRow(axial,'Joint for axial force',sliders.map(j=>({id:j.id,name:`${j.id} · ${j.a} → ${j.b}`})),['prismatic','cylindrical'].includes(joint?.type)?joint.id:sliders[0]?.id,()=>{});
   const addAxial=document.createElement('button');addAxial.type='button';addAxial.className='secondary full-width';addAxial.textContent='Add axial joint force';addAxial.disabled=!sliders.length||(model.jointForces||[]).length>=32;

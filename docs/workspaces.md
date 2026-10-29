@@ -13,6 +13,32 @@ bodies. The view header shows body and joint counts and, for 3D assemblies, the
 Grübler–Kutzbach mobility estimate. Redundant loop constraints make the true mobility
 higher than this estimate; MBDyn reports a singular assembly when constraints conflict.
 
+### Placing joints and frames from CAD
+
+STEP imports keep each face's analytic geometry: cylinders (bores, shafts, pins) with
+their axis, centre, radius and length, and planes with a point and outward normal. In a 3D
+assembly with imported parts:
+
+- **Place from CAD feature…** (joint inspector) enters pick mode. Hovering a face shows its
+  axis, and for a cylinder its bore circle, with a label such as *Cylinder Ø55.0 mm · axis
+  −x*. Clicking places **both ends** of the joint on the feature, so the anchors coincide
+  and, for revolute, cylindrical and prismatic joints, the axes agree by construction. On a
+  plane, the anchor is the clicked point and the axis is the face normal. Universal joints
+  keep their perpendicular cross axes.
+- **Drag a joint symbol** onto a face to do the same in one gesture: the face under the
+  pointer is previewed while dragging, dropping off a face leaves the joint unchanged, and
+  **Esc** cancels.
+- **Named reference frames → Place from CAD feature…** puts the frame's origin on the
+  feature and its local **+Z** along the cylinder axis or plane normal. Joint ends linked to
+  the frame follow it.
+- **Measure** (ruler in the view header, or **M**) reports the distance between two picked
+  features, its x/y/z components, and the angle between their axes (0° for parallel axes).
+
+Features are evaluated at the initial configuration: a part attached to a body follows the
+body's initial pose, an unattached part stays where the STEP file placed it, and the view
+shows the initial pose while you pick. Every placement is one undo step. Faces that are not
+cylinders or planes (fillets, splines, tori) cannot be picked; enter those anchors by value.
+
 ## 2 · Solve
 
 The right panel holds the transient study settings (duration and time step, with the

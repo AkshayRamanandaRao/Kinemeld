@@ -12,7 +12,8 @@ import { setupKinematics } from "./kinematics.js";
 import { setupPointProbe } from "./point-probe.js";
 import { setupWheelKinematics } from "./wheel-kinematics.js";
 import { parseSolverCsv, fullSeries, seriesStatistics, envelope } from "./full-resolution.js";
-import { faceAt, cadPlacement, worldFeature, jointFromFeature, measureFeatures } from "./cad-features.js";
+import { faceAt, cadPlacement, worldFeature, jointFromFeature, frameFromFeature, measureFeatures } from "./cad-features.js";
+import { syncFrameLinks } from "./frame-editor.js";
 
 const $ = (id) => document.getElementById(id);
 const paths = {
@@ -715,7 +716,7 @@ function showHover(entity, x, y) {
   if (!entity || entity.startsWith("step-part-")) { tip.hidden = true; return; }
   document.querySelector(`#modelTree [data-entity="${CSS.escape(entity)}"]`)?.classList.add("hovered");
   const [name, detail] = describeEntity(entity);
-  placeTooltip(name, detail, x, y);
+  placeTooltip(name, jointDrag.accepts(entity) ? `${detail} · drag onto a CAD face to place it` : detail, x, y);
 }
 function placeTooltip(name, detail, x, y) {
   const tip = $("viewTooltip");
@@ -774,17 +775,78 @@ $("pickCancel").onclick = stopPick;
 function pickJointFromCad(jointId) {
   if ((state.model.frameLinks || []).some((link) => link.joint === jointId)) return notice("This joint follows a linked reference frame; unlink it before placing it from CAD.", "warn");
   startPick(`Joint ${jointId}: click a bore, shaft or pin (cylindrical face) or a planar face.`, (feature) => {
-    const joint = state.model.joints.find((item) => item.id === jointId);
-    if (!joint) return stopPick();
-    const values = jointFromFeature(state.model, joint, feature);
+    stopPick();
+    placeJoint(jointId, feature);
+  });
+}
+function placeJoint(jointId, feature) {
+  const joint = state.model.joints.find((item) => item.id === jointId);
+  if (!joint) return;
+  const values = jointFromFeature(state.model, joint, feature);
+  pushHistory();
+  Object.assign(joint, values);
+  changed();
+  renderTree();
+  renderProperties();
+  view?.setSelection(state.selection);
+  notice(`Joint ${jointId} placed on ${feature.part} · ${feature.label}. Both ends share the anchor${values.axisA ? " and axis" : ""}; Undo restores the previous placement.`);
+}
+/** Drag a joint symbol in Pre-processing and drop it on a CAD face: it snaps to the face's axis or plane. */
+const jointDrag = {
+  accepts(entity) {
+    if (workspace !== "model" || state.busy || state.model.kind !== "spatial-assembly" || !entity.startsWith("joint-")) return false;
+    const id = entity.slice("joint-".length);
+    return Boolean(state.step?.parts?.some((part) => part.faces?.length)) && state.model.joints.some((joint) => joint.id === id)
+      && !(state.model.frameLinks || []).some((link) => link.joint === id);
+  },
+  start(entity) {
+    view.setSample(null);
+    $("viewTooltip").hidden = true;
+    $("pickText").textContent = `Drop joint ${entity.slice("joint-".length)} on a bore, shaft or pin, or on a planar face. Esc cancels.`;
+    $("pickBar").hidden = false;
+  },
+  move(hit, x, y) {
+    const feature = featureFromHit(hit);
+    view.showFeature(feature);
+    if (feature) placeTooltip(feature.label, feature.part, x, y);
+    else $("viewTooltip").hidden = true;
+  },
+  drop(entity, hit) {
+    const feature = featureFromHit(hit), id = entity.slice("joint-".length);
+    jointDrag.cancel();
+    if (feature) placeJoint(id, feature);
+    else notice(`Joint ${id} is unchanged: drop it on a cylindrical or planar STEP face.`, "warn");
+  },
+  cancel() {
+    view.showFeature(null);
+    $("pickBar").hidden = true;
+    $("viewTooltip").hidden = true;
+    if (state.result && !stale()) setFrame(state.frame);
+  },
+};
+/** Put a named frame's origin on a picked feature with local +Z along its axis; linked joints follow. */
+function pickFrameFromCad(frameId) {
+  startPick(`Frame ${frameId}: click a cylindrical or planar face; local +Z follows its axis or normal.`, (feature) => {
+    const frame = (state.model.frames || []).find((item) => item.id === frameId);
+    if (!frame) return stopPick();
+    // Linked joint ends follow the frame; check them on a copy before touching the model.
+    const values = frameFromFeature(state.model, frame, feature), candidate = structuredClone(state.model);
+    Object.assign(candidate.frames.find((item) => item.id === frameId), values);
+    try {
+      syncFrameLinks(candidate);
+    } catch (error) {
+      stopPick();
+      return notice(error.message, "warn");
+    }
     pushHistory();
-    Object.assign(joint, values);
+    Object.assign(frame, values);
+    syncFrameLinks(state.model);
     changed();
     renderTree();
     renderProperties();
     view?.setSelection(state.selection);
     stopPick();
-    notice(`Joint ${jointId} placed on ${feature.part} · ${feature.label}. Both ends share the anchor${values.axisA ? " and axis" : ""}; Undo restores the previous placement.`);
+    notice(`Reference frame ${frame.name} placed on ${feature.part} · ${feature.label}. Undo restores the previous placement.`);
   });
 }
 let measureFirst = null;
@@ -941,7 +1003,8 @@ function renderProperties() {
       return true;
     },
   });
-  if (spatial) renderSpatialEditor({container:$("properties"),model:state.model,selection:state.selection,createSolid:createPrimitiveSolid,pickFromCad:state.step?.parts?.some((part)=>part.faces?.length) ? pickJointFromCad : null,notify:(message,type="warn")=>notice(message,type),mutate:(change,selection)=>{
+  const cadFaces = state.step?.parts?.some((part) => part.faces?.length);
+  if (spatial) renderSpatialEditor({container:$("properties"),model:state.model,selection:state.selection,createSolid:createPrimitiveSolid,pickFromCad:cadFaces ? pickJointFromCad : null,pickFrameFromCad:cadFaces ? pickFrameFromCad : null,notify:(message,type="warn")=>notice(message,type),mutate:(change,selection)=>{
     if(state.busy){notice("Wait for the active simulation before editing the assembly.","warn");return false;}
     pushHistory();change(state.model);if(selection)state.selection=selection;
     changed();renderTree();renderProperties();view?.setSelection(state.selection);return true;
@@ -2840,6 +2903,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key.toLowerCase() === "f") { view?.reset(); return; }
   if (e.key.toLowerCase() === "p") { $("presentButton").click(); return; }
   if (e.key === "Escape" && picking) { stopPick(); return; }
+  if (e.key === "Escape" && view?.dragging) { view.cancelDrag(); return; }
   if (e.key.toLowerCase() === "m" && state.step) { $("measureViewButton").click(); return; }
   if (e.key === "Escape" && document.body.classList.contains("present")) { setPresentation(false); return; }
   if (!state.result || workspace !== "results") return;
@@ -2867,6 +2931,7 @@ async function init() {
         $("stepDialog").showModal();
       } else select(entity);
     }, showHover);
+    view.setDragMode(jointDrag);
   } catch (error) {
     const box = document.createElement("div");
     box.className = "error-box";
