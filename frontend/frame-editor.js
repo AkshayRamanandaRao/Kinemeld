@@ -41,7 +41,7 @@ function button(title,action){const result=document.createElement('button');resu
 function options(select,items,selected){select.replaceChildren(...items.map(item=>{const option=document.createElement('option');option.value=item.id;option.textContent=item.name;return option;}));select.value=selected;}
 
 /** Manage project-local named frames; all coordinates use the selected parent's axes. */
-export function renderFrameEditor({container,model,mutate,notify}) {
+export function renderFrameEditor({container,model,mutate,notify,pickFromCad}) {
   const list=model.frames||[],details=document.createElement('details');details.className='property-group solid-calculator';details.open=framesOpen;
   details.addEventListener('toggle',()=>{framesOpen=details.open;});
   const title=document.createElement('summary');title.textContent=`Named reference frames (${list.length})`;details.append(title);
@@ -63,6 +63,7 @@ export function renderFrameEditor({container,model,mutate,notify}) {
         label(content,`Frame ${category} ${component.toUpperCase()} (${unit})`,input);
         input.onchange=()=>{const value=input.value.trim()===''?null:Number(input.value),linked=(model.frameLinks||[]).some(link=>link.frame===frame.id);try{if(linked){const candidate=structuredClone(model);candidate.frames.find(item=>item.id===frame.id)[category][component]=value;syncFrameLinks(candidate);}mutate(next=>{next.frames.find(item=>item.id===frame.id)[category][component]=value;if(linked)syncFrameLinks(next);});}catch(error){input.value=String(frame[category][component]);notify(error.message);}};
       }
+      if(pickFromCad){const pick=button('Place from CAD feature…',()=>pickFromCad(frame.id));pick.id='reference-frame-pick';pick.title='Click a cylindrical or planar face in the 3D view: the origin goes on it and local +Z follows its axis or normal.';content.append(pick);}
       content.append(button('Remove reference frame',()=>{if((model.frameLinks||[]).some(link=>link.frame===frame.id))return notify('Unlink this frame from its joints before removing it.');activeFrame=null;mutate(next=>{next.frames=next.frames.filter(item=>item.id!==frame.id);});}));
     }
     const add=button('Add reference frame',()=>{

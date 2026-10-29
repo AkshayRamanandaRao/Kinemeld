@@ -84,7 +84,7 @@ try {
   await check('Mass–spring example loading', async () => {
     await page.locator('#examplesButton').click();
     assert(await page.locator('#examplesDialog').isVisible());
-    await page.locator('#exampleCards .example-card').nth(1).getByRole('button', { name: /Open example/ }).click();
+    await page.locator('#exampleCards .example-card').filter({ has: page.getByRole('heading', { name: 'Damped oscillator', exact: true }) }).getByRole('button', { name: /Open example/ }).click();
     await page.waitForSelector('#field-stiffness');
     assert.equal(await value('#field-stiffness'), '100');
     assert.equal(await value('#field-damping'), '0.5');

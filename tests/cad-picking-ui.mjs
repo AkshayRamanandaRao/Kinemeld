@@ -48,6 +48,8 @@ try {
   let target = await aim();
   await page.mouse.move(target.x, target.y);
   await page.waitForFunction(() => /Cylinder Ø55\.0 mm · axis [−+]x/.test(document.querySelector('#viewTooltip')?.textContent || ''), null, { timeout: 10000 });
+  // KINEMELD_SCREENSHOT=docs/images/cad-picking.png captures the documentation image.
+  if (process.env.KINEMELD_SCREENSHOT) await page.screenshot({ path: process.env.KINEMELD_SCREENSHOT });
   await page.mouse.click(target.x, target.y);
   await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('Joint hub_axis placed on'));
   assert(await page.locator('#pickBar').isHidden());
@@ -80,8 +82,45 @@ try {
   assert.match(text, /axes 0\.00° apart/);
   await page.keyboard.press('Escape');
   assert(await page.locator('#pickBar').isHidden());
+
+  // Place a named frame on the knuckle at the same cylinder: origin on the axis, local +Z along it.
+  await page.locator('summary', { hasText: 'Named reference frames' }).click();
+  await page.getByRole('button', { name: 'Add reference frame' }).click();
+  await page.locator('#reference-frame-pick').click();
+  target = await aim();
+  await page.mouse.click(target.x, target.y);
+  await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('Reference frame Frame 1 placed on'));
+  const frame = async (field) => Number(await page.locator(`#reference-frame-${field}`).inputValue());
+  for (const field of ['translation-x', 'translation-y', 'translation-z', 'rotation-rx', 'rotation-rz']) assert(Math.abs(await frame(field)) < 1e-6, `${field} = ${await frame(field)}`);
+  assert(Math.abs(Math.abs(await frame('rotation-ry')) - 90) < 1e-6, `ry = ${await frame('rotation-ry')}`);
+  await page.locator('#undoButton').click();
+  assert.equal(await frame('rotation-ry'), 0);
+
+  // Drag-to-edit: misplace the bearing again, then drag its symbol onto the hub cylinder.
+  for (const field of ['anchorA-x', 'anchorB-x']) {
+    await page.locator(`#spatial-joint-hub_axis-${field}`).fill('0.03');
+    await page.locator(`#spatial-joint-hub_axis-${field}`).dispatchEvent('change');
+  }
+  target = await aim();
+  const glyph = await page.evaluate(() => {
+    const view = window.__view, offset = view.sourceParts.offset;
+    const point = view.camera.position.clone().set(-0.04 + 0.03 + offset.x, -0.0875 + offset.y, 0.6 + offset.z);
+    point.project(view.camera);
+    const rect = view.renderer.domElement.getBoundingClientRect();
+    return { x: rect.left + (point.x + 1) / 2 * rect.width, y: rect.top + (1 - point.y) / 2 * rect.height };
+  });
+  await page.mouse.move(glyph.x, glyph.y);
+  await page.waitForFunction(() => /drag onto a CAD face/.test(document.querySelector('#viewTooltip')?.textContent || ''));
+  await page.mouse.down();
+  await page.mouse.move(target.x, target.y, { steps: 10 });
+  assert(await page.locator('#pickBar').isVisible());
+  await page.waitForFunction(() => /Cylinder Ø55\.0 mm/.test(document.querySelector('#viewTooltip')?.textContent || ''), null, { timeout: 10000 });
+  await page.mouse.up();
+  await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('Joint hub_axis placed on'));
+  assert(await page.locator('#pickBar').isHidden());
+  for (const field of ['anchorA-x', 'anchorB-x']) assert(Math.abs(await value(field)) < 1e-9, `${field} = ${await value(field)} after drag`);
   assert.deepEqual(errors, []);
-  console.log(`CAD picking: hub bearing placed from the hub cylinder, validated, undone and redone; measurement "${text}".`);
+  console.log(`CAD picking: hub bearing placed from the hub cylinder and by dragging its symbol, validated, undone and redone; frame placed on the axis; measurement "${text}".`);
 } finally {
   await browser.close();
 }

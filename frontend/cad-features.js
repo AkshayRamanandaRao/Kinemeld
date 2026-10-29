@@ -79,6 +79,20 @@ export function jointFromFeature(model, joint, feature) {
   return values;
 }
 
+/**
+ * A named frame placed on a picked feature, in its parent's axes: the origin at the feature point
+ * and local +Z along the cylinder axis or plane normal. Rotation is Euler123 in degrees.
+ */
+export function frameFromFeature(model, frame, feature) {
+  const body = model.bodies.find((item) => item.id === frame.body);
+  const local = inBodyFrame(body, feature.point, feature.axis);
+  const turn = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), vector(local.direction).normalize());
+  const euler = new THREE.Euler().setFromQuaternion(turn, "XYZ");
+  // Near ry = ±90° the extraction amplifies the CAD axis tolerance; 1e-5° is far below modelling significance.
+  const degrees = (angle) => Number((angle / DEG).toFixed(5)) || 0;
+  return { translation: local.point, rotation: { rx: degrees(euler.x), ry: degrees(euler.y), rz: degrees(euler.z) } };
+}
+
 /** Distance between two picked features' points and, when both have axes, the angle between them. */
 export function measureFeatures(first, second) {
   const distance = first.point.distanceTo(second.point);

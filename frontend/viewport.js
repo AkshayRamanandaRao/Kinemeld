@@ -61,29 +61,54 @@ export class MechanismView {
     this.labels = [];
     this.raycaster = new THREE.Raycaster();
     let down, hoverQueued = null;
+    // A draggable glyph (see setDragMode) is grabbed before the orbit controls see the press.
+    mount.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || this.pickMode || !this.dragMode) return;
+      const entity = this.pick(e.clientX, e.clientY, true);
+      if (!entity || !this.dragMode.accepts(entity)) return;
+      this.dragging = { entity, x: e.clientX, y: e.clientY, moved: false };
+      this.controls.enabled = false;
+      this.renderer.domElement.setPointerCapture(e.pointerId);
+    }, true);
     this.renderer.domElement.addEventListener("pointerdown", (e) => {
       down = [e.clientX, e.clientY];
     });
     this.renderer.domElement.addEventListener("pointerup", (e) => {
+      if (this.dragging) {
+        const { entity, moved } = this.dragging;
+        this.endDrag();
+        if (moved) { down = null; this.dragMode?.drop(entity, this.pickPart(e.clientX, e.clientY)); return; }
+      }
       if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5)
         return;
       if (this.pickMode) { this.pickMode.select(this.pickPart(e.clientX, e.clientY)); return; }
       const entity = this.pick(e.clientX, e.clientY);
       if (entity) onSelect(entity);
     });
-    // Hover highlighting, throttled to one pick per frame and paused while orbiting.
+    this.renderer.domElement.addEventListener("pointercancel", () => this.cancelDrag());
+    // Hover highlighting and drag previews, throttled to one pick per frame; hover pauses while orbiting.
     this.renderer.domElement.addEventListener("pointermove", (e) => {
-      if (e.buttons) return;
+      const drag = this.dragging;
+      if (drag && !drag.moved) {
+        if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) <= 5) return;
+        drag.moved = true;
+        this.renderer.domElement.style.cursor = "grabbing";
+        this.dragMode.start(drag.entity);
+      }
+      if (e.buttons && !drag) return;
       const queued = !hoverQueued;
       hoverQueued = [e.clientX, e.clientY];
       if (!queued) return;
       requestAnimationFrame(() => {
+        if (!hoverQueued) return;
         const [x, y] = hoverQueued;
         hoverQueued = null;
+        if (this.dragging?.moved) { this.dragMode.move(this.pickPart(x, y), x, y); return; }
         if (this.pickMode) { this.pickMode.hover(this.pickPart(x, y), x, y); return; }
         const entity = this.pick(x, y);
         this.setHover(entity);
-        this.renderer.domElement.style.cursor = entity ? "pointer" : "";
+        const grab = entity && this.dragMode?.accepts(entity) && this.pick(x, y, true) === entity;
+        this.renderer.domElement.style.cursor = grab ? "grab" : entity ? "pointer" : "";
         onHover(entity, x, y);
       });
     });
@@ -102,7 +127,7 @@ export class MechanismView {
     });
   }
   /** Entity under a screen point. Glyphs draw over the geometry, so a glyph under the cursor wins. */
-  pick(clientX, clientY) {
+  pick(clientX, clientY, glyphsOnly = false) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.raycaster.setFromCamera(
       new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, (-(clientY - rect.top) / rect.height) * 2 + 1),
@@ -110,7 +135,7 @@ export class MechanismView {
     );
     const shown = (object) => { for (let o = object; o; o = o.parent) if (!o.visible) return false; return true; };
     const hits = this.raycaster.intersectObjects(this.group.children, true).filter((item) => item.object.userData.entity && shown(item.object));
-    return (hits.find((item) => item.object.userData.glyph) || hits[0])?.object.userData.entity || null;
+    return (hits.find((item) => item.object.userData.glyph) || (glyphsOnly ? null : hits[0]))?.object.userData.entity || null;
   }
   /** STEP part and triangle under a screen point, with the hit in model coordinates (display offset removed). */
   pickPart(clientX, clientY) {
@@ -128,6 +153,25 @@ export class MechanismView {
     this.pickMode = mode;
     this.renderer.domElement.style.cursor = mode ? "crosshair" : "";
     if (!mode) this.showFeature(null);
+  }
+  /**
+   * Let glyphs be dragged: `accepts(entity)` decides which, then `start(entity)`, `move(hit, x, y)`
+   * with the STEP face under the pointer, and `drop(entity, hit)` or `cancel()`. null disables dragging.
+   */
+  setDragMode(mode) {
+    this.cancelDrag();
+    this.dragMode = mode;
+  }
+  endDrag() {
+    if (!this.dragging) return;
+    this.dragging = null;
+    this.controls.enabled = true;
+    this.renderer.domElement.style.cursor = "";
+  }
+  cancelDrag() {
+    const moved = this.dragging?.moved;
+    this.endDrag();
+    if (moved) this.dragMode?.cancel();
   }
   /** Preview a CAD feature (model coordinates): its axis and, for cylinders, the bore circle. */
   showFeature(feature, color = 0xf08c1a) {

@@ -38,6 +38,14 @@ binding pose is retained; subsequent solver output moves and rotates the solid
 with its assigned body. Check geometry-to-body alignment manually before relying
 on the display. Unattached parts stay fixed. Binding or importing a solid does
 not create masses, inertia, joints, contact or forces; supply those separately.
+
+The converter also records each face's analytic surface with the range of display
+triangles it produced: cylinders with axis, centre, radius and length, and planes with
+a point and outward normal, in metres and assembly coordinates. Joint anchors, joint
+axes and named frames can then be placed by picking or dragging onto those faces, and
+features can be measured in the view; see
+[placing joints and frames from CAD](workspaces.md#placing-joints-and-frames-from-cad).
+Other surface types are tessellated for display but cannot be picked.
 Undo and redo include attachments. Other model families show the solids as static
 CAD only: their results do not animate the STEP geometry.
 
