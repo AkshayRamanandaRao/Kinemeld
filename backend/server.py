@@ -26,7 +26,7 @@ import kinematics
 import primitive_step
 
 ROOT = app_paths.RESOURCE_ROOT
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 RUN_LOCK = threading.Lock()
 RUN_CONTROL_LOCK = threading.Lock()
 ACTIVE_RUN = None

@@ -8,6 +8,7 @@ GIF is a smaller 15 fps preview of its MP4.
 
 | Demo | Simulated interval | Playback | What to watch |
 | --- | --- | --- | --- |
+| [Robot arm](demos/robot-arm.mp4) | 6 s | real time | Turret, shoulder and elbow following their drives; shoulder motor torque in the plot |
 | [Quarter-car](demos/quarter-car.mp4) | 2.5 s | 0.5× | Arms swinging through ±60 mm; knuckle camber (X) and toe (Z) in the plot |
 | [Gear drop test](demos/gear-drop.mp4) | 1.2 s | 0.2× | Touchdown, strut stroke and the gas / orifice / stop force components |
 | [Aircraft nose gear](demos/aircraft-nose-gear.mp4) | 2 s | 0.5× | 80 mm strut stroke folding the torque links; slider position in the plot |
@@ -51,7 +52,7 @@ node tests/record-workflow-demo.mjs
 AI_MODEL=qwen3.5:4b node tests/record-ai-demo.mjs   # needs Ollama with the model installed
 ```
 
-Append a study name (`quarter-car`, `gear-drop`, `aircraft-nose-gear`, `oleo-strut`,
+Append a study name (`robot-arm`, `quarter-car`, `gear-drop`, `aircraft-nose-gear`, `oleo-strut`,
 `wheel-end-drop`, `slider-crank`, `gyroscopic-top`, `tumbling-handle` or
 `chaotic-pendulums`) to record one. The recorder opens each featured
 study, runs MBDyn, switches to presentation mode, steps the timeline at the stated rate,

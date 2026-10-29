@@ -49,6 +49,13 @@ without a GPU; the four-minute wait for the model is condensed.
 
 <table>
 <tr>
+<td width="50%"><img src="docs/demos/robot-arm.gif" alt="Three-axis robot arm following prescribed joint motions with motor torque plotted"></td>
+<td width="50%"><b>Robot arm inverse dynamics</b> <i>(new in 0.3)</i> — rotary drives prescribe the turret, shoulder and elbow angles; MBDyn returns the torque, power and energy each motor must deliver. The drive work equals the arm's change in kinetic and potential energy. <a href="docs/demos/robot-arm.mp4">MP4</a> · <a href="docs/rotary-drives.md">rotary drives</a></td>
+</tr>
+</table>
+
+<table>
+<tr>
 <td width="50%"><img src="docs/demos/quarter-car.gif" alt="Double-wishbone quarter-car swept through wheel travel, with knuckle camber and toe plotted"><br>
 <b>Double-wishbone quarter-car</b> — SLA arms, tie rod and coil-over swept through ±60 mm. Camber gain 2.1°, bump steer under 0.7°. <a href="docs/demos/quarter-car.mp4">MP4</a></td>
 <td width="50%"><img src="docs/demos/gear-drop.gif" alt="Landing-gear drop test with oleo strut force components plotted"><br>
@@ -163,9 +170,9 @@ for scope and limitations.
 
 ## Roadmap
 
-Next: prescribed rotary drives with motor torque results, richer post-processing
-(full-resolution plots, multi-quantity overlays, result comparison), interactive joint and
-frame placement, and more validated engineering examples. Longer term:
+Next: richer post-processing (full-resolution plots, multi-quantity overlays, result
+comparison), joint and frame placement by picking CAD features, and more validated
+engineering examples. Longer term:
 broader contact, flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
 and the [changelog](CHANGELOG.md).
 

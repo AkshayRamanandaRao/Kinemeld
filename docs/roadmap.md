@@ -6,7 +6,7 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation (0.2)
+## Current foundation (0.3)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
   forces, springs, dampers, oleo struts, contact and selected prescribed motion.
@@ -22,6 +22,7 @@ appropriate.
 - Six featured studies verified against independent physics, plus the earlier
   suspension, wheel-end, gear and strut demonstrations with documented assumptions.
 - Desktop builds for Linux, macOS and Windows; CI and tagged releases on GitHub.
+- Rotary drives on revolute joints with motor torque, power and work from the solver.
 
 ## Release plan
 
@@ -30,7 +31,7 @@ Each step ships as its own release with an example, documentation and solver evi
 1. **0.2 — Workspaces and studies (released):** Pre-processing, Solve and
    Post-processing workspaces; six verified featured studies; constraint-rank mobility
    and redundancy diagnostics; desktop builds for Linux, macOS and Windows.
-2. **0.3 — Actuation:** prescribed rotary motion for revolute joints (motor speed ramp
+2. **0.3 — Actuation (released):** prescribed rotary motion for revolute joints (motor speed ramp
    and oscillation) with motor torque, power and work from the solver, and an
    inverse-dynamics robot-arm study.
 3. **0.4 — Post-processing II:** statistics and plots from the full-resolution solver
