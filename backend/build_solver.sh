@@ -18,5 +18,5 @@ cd "$base/vendor/mbdyn-1.7.3"
 if [ ! -f Makefile ]; then
     CXX='g++ -std=c++11' FFLAGS='-O2 -fallow-argument-mismatch' ./configure --disable-runtime-loading > "$base/evidence/configure.log" 2>&1
 fi
-make -j4 > "$base/evidence/build.log" 2>&1
+make -j"${MBDYN_JOBS:-4}" > "$base/evidence/build.log" 2>&1
 ./mbdyn/mbdyn -v

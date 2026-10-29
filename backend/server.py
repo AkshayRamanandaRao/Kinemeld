@@ -25,6 +25,7 @@ import kinematics
 import primitive_step
 
 ROOT = app_paths.RESOURCE_ROOT
+VERSION = "0.2.0"
 RUN_LOCK = threading.Lock()
 RUN_CONTROL_LOCK = threading.Lock()
 ACTIVE_RUN = None
@@ -125,7 +126,7 @@ class Handler(SimpleHTTPRequestHandler):
             return
         path = urlsplit(self.path).path
         if path == "/api/health":
-            health = {"application": "mbdyn-studio", "version": "0.1.0"}
+            health = {"application": "mbdyn-studio", "version": VERSION}
             if nonce := getattr(self.server, "startup_nonce", None):
                 health["startupNonce"] = nonce
             self.respond(health)
@@ -133,6 +134,14 @@ class Handler(SimpleHTTPRequestHandler):
             self.respond({"solver": solver.status(), "capabilities": [x["id"] for x in EXAMPLES], "localOnly": True, "projectSchemaVersion": 1})
         elif path == "/api/examples":
             self.respond({"examples": EXAMPLES})
+        elif path == "/api/featured":
+            self.respond({"studies": featured_catalog()})
+        elif match := re.fullmatch(r"/api/featured/([a-z0-9-]{1,64})", path):
+            study = next((item for item in featured_catalog() if item["id"] == match[1]), None)
+            if not study:
+                self.respond({"ok": False, "error": "Unknown featured study."}, 404)
+                return
+            self.send_file(ROOT / "examples" / study["project"])
         elif path == "/api/source-examples":
             self.respond({"examples": source_catalog.catalog()})
         elif path == "/api/agent/status":
@@ -140,7 +149,7 @@ class Handler(SimpleHTTPRequestHandler):
         elif path == "/api/tour-preference":
             try:
                 preference_path = app_paths.existing_config(TOUR_PREFERENCE, app_paths.TOUR_PREFERENCE, app_paths.LEGACY_TOUR_PREFERENCE)
-                preference = json.loads(preference_path.read_text(encoding="utf-8")) if preference_path.exists() else {"enabled": True}
+                preference = json.loads(preference_path.read_text(encoding="utf-8")) if preference_path.exists() else {"enabled": False}
                 if not isinstance(preference, dict) or set(preference) != {"enabled"} or type(preference["enabled"]) is not bool:
                     raise ValueError("Invalid saved tour preference.")
                 self.respond(preference)
@@ -368,6 +377,18 @@ class Handler(SimpleHTTPRequestHandler):
             finally:
                 if started: finish_run_control(token)
                 RUN_LOCK.release()
+
+
+def featured_catalog():
+    """Featured studies are saved projects shipped in examples/, listed by examples/featured.json."""
+    catalog = json.loads((ROOT / "examples" / "featured.json").read_text(encoding="utf-8"))
+    studies = []
+    base = (ROOT / "examples").resolve()
+    for item in catalog["studies"]:
+        project = (base / item["project"]).resolve()
+        if project.is_relative_to(base) and project.suffix == ".mbdyn-studio" and project.is_file():
+            studies.append(item)
+    return studies
 
 
 def main():

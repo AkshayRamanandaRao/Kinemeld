@@ -44,7 +44,7 @@ function validateGeometry(converted) {
 }
 
 /** Attach STEP solids using planar +Y or spatial Euler123 (Rx Ry Rz) body poses. */
-export function createStepView(converted, {initialNodes = [], bindings = {}, offset = [0, 0, 0], entityForBody = id => `node-${id}`, entityForPart = id => `step-part-${id}`} = {}) {
+export function createStepView(converted, {initialNodes = [], bindings = {}, offset = [0, 0, 0], entityForBody = id => `node-${id}`, entityForPart = id => `step-part-${id}`, colorForBody = null} = {}) {
   const partIds = validateGeometry(converted);
   if (!bindings || typeof bindings !== "object" || Array.isArray(bindings) || !Array.isArray(initialNodes))
     throw new Error("Invalid STEP body bindings.");
@@ -76,7 +76,8 @@ export function createStepView(converted, {initialNodes = [], bindings = {}, off
       geometry.setIndex(part.indices);
       geometry.computeVertexNormals(); geometry.computeBoundingBox();
       const name = String(part.name || "").toLowerCase();
-      const color = /tyre|tire/.test(name) ? 0x323b46 : /control arm/.test(name) ? 0x4b8ab1 : /knuckle/.test(name) ? 0xb38b59 : 0xa5b6c6;
+      const boundBody = Object.hasOwn(bindings, part.id) ? bindings[part.id]?.body : null;
+      const color = /tyre|tire/.test(name) ? 0x323b46 : /control arm/.test(name) ? 0x4b8ab1 : /knuckle/.test(name) ? 0xb38b59 : /rim/.test(name) ? 0xb9c2cc : boundBody && colorForBody ? colorForBody(boundBody) : 0xa5b6c6;
       const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color, roughness:0.4, metalness:0.24}));
       mesh.castShadow = true; mesh.receiveShadow = true;
       mesh.name = typeof part.name === "string" ? part.name : part.id;
@@ -122,6 +123,21 @@ export function createStepView(converted, {initialNodes = [], bindings = {}, off
     for (const mesh of partMeshes.values()) { mesh.geometry.dispose(); mesh.material.dispose(); }
     group.clear();
   }
+  /** Farthest attached vertex from a body's origin, in body-local coordinates. */
+  function farthestPoint(bodyId) {
+    let best = null, distance = -1;
+    for (const {body, frame} of attached) {
+      if (body !== bodyId) continue;
+      const mesh = frame.children[0], positions = mesh.geometry.getAttribute("position");
+      const local = new THREE.Vector3();
+      for (let i = 0; i < positions.count; i += Math.max(1, Math.floor(positions.count / 4000))) {
+        local.fromBufferAttribute(positions, i).applyQuaternion(mesh.quaternion).add(mesh.position);
+        const d = local.lengthSq();
+        if (d > distance) { distance = d; best = local.clone(); }
+      }
+    }
+    return best;
+  }
   update(initialNodes);
-  return {group, partMeshes, update, dispose};
+  return {group, partMeshes, update, dispose, farthestPoint};
 }

@@ -27,7 +27,7 @@ class TourPreferenceTest(unittest.TestCase):
                 return result
             first = start()
             try:
-                self.assertEqual(request(first,"GET"),(200,{"enabled":True}))
+                self.assertEqual(request(first,"GET"),(200,{"enabled":False}))
                 self.assertEqual(request(first,"POST",{"enabled":False}),(200,{"enabled":False}))
                 self.assertEqual(request(first,"POST",{"enabled":"false"})[0],400)
             finally:

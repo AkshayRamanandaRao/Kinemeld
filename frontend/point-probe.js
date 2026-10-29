@@ -38,7 +38,7 @@ export function pointCsv(history,a,b) {
 
 /** Add an on-demand probe that does not mutate the project or its solver results. */
 export function setupPointProbe({getResult,getModel,getBindings=()=>({}),getFrame=()=>0,isStale=()=>false,notify}) {
-  const button=document.createElement('button');button.id='pointProbeButton';button.type='button';button.className='text-button';button.textContent='Point probe';button.title='Measure separation and point motion';document.querySelector('#csvButton').before(button);
+  const button=document.createElement('button');button.id='pointProbeButton';button.type='button';button.className='text-button';button.textContent='Point probe';button.title='Measure separation and point motion';(document.querySelector('#measureTools') || document.querySelector('#csvButton').parentElement).append(button);
   const dialog=document.createElement('dialog');dialog.id='pointProbeDialog';dialog.setAttribute('aria-labelledby','pointProbeTitle');
   const head=document.createElement('div');head.className='dialog-heading';head.innerHTML='<h2 id="pointProbeTitle">Measure two points</h2>';
   const close=document.createElement('button');close.type='button';close.className='icon-button';close.setAttribute('aria-label','Close point probe');close.textContent='×';close.onclick=()=>dialog.close();head.append(close);dialog.append(head);

@@ -14,346 +14,231 @@
       { "imports": { "three": "./vendor/three.module.js" } }
     </script>
   </head>
-  <body>
+  <body class="ws-model">
     <header class="appbar">
-      <a class="brand" href="./" aria-label="Kinemeld home"
-        ><span class="brand-mark">K</span
-        ><strong>Kinemeld</strong
-        ><span class="alpha">0.1</span></a
-      >
-      <div class="document-name">
-        <span data-icon="file"></span
-        ><span id="documentName">Gravity pendulum</span
-        ><span id="dirtyMark" title="Changes saved in this browser">●</span>
+      <div class="appbar-left">
+        <a class="brand" href="./" aria-label="Kinemeld home"
+          ><span class="brand-mark">K</span><strong>Kinemeld</strong
+          ><span class="alpha" id="appVersion">0.2</span></a
+        >
+        <div class="document-name" title="Current project">
+          <span data-icon="file"></span
+          ><span id="documentName">Gravity pendulum</span
+          ><span id="dirtyMark" title="Changes saved in this browser">●</span>
+        </div>
       </div>
+      <nav class="steps" aria-label="Simulation workflow">
+        <button data-step="model" class="active" title="Define geometry, bodies, joints and loads (1)"><span>1</span>Pre-processing</button
+        ><button data-step="simulate" title="Study settings, model checks and the MBDyn solver (2)"><span>2</span>Solve</button
+        ><button data-step="results" title="Animate, plot, measure and export results (3)"><span>3</span>Post-processing</button>
+      </nav>
       <div class="appbar-actions">
-        <button
-          class="icon-button"
-          id="themeButton"
-          title="Switch color theme"
-          aria-label="Switch color theme"
-          data-icon="sun"
-        ></button
-        ><button id="tourButton" class="quiet" type="button" aria-controls="guidedTour" aria-expanded="false">Tour</button
-        ><button id="helpButton" class="quiet">
-          <span data-icon="book"></span>Guide</button
-        ><button id="agentButton" class="quiet" aria-expanded="false" aria-controls="agentPanel">
-          <span data-icon="chat"></span>AI agent</button
-        ><button id="saveButton" class="quiet">
-          <span data-icon="save"></span>Save project</button
-        ><button id="saveAsButton" class="quiet" hidden>
-          <span data-icon="save"></span>Save as</button
-        ><button id="cancelRunButton" class="secondary" hidden>Cancel simulation</button><button id="runButton" class="primary">
+        <button id="importButton" class="icon-button" title="Open project (Ctrl+O)" aria-label="Open project" data-icon="folder"></button
+        ><button id="saveButton" class="icon-button" title="Save project (Ctrl+S)" aria-label="Save project" data-icon="save"></button
+        ><button id="saveAsButton" class="icon-button" title="Save project as" aria-label="Save as" data-icon="saveas" hidden></button
+        ><button id="examplesButton" class="quiet"><span data-icon="grid"></span>Examples</button
+        ><span class="appbar-divider" aria-hidden="true"></span
+        ><button id="helpButton" class="icon-button" title="Engineering guide for this model" aria-label="Guide" data-icon="book"></button
+        ><button id="tourButton" class="icon-button" type="button" title="Guided tour" aria-label="Tour" aria-controls="guidedTour" aria-expanded="false" data-icon="compass"></button
+        ><button id="agentButton" class="icon-button" title="AI assistant" aria-label="AI agent" aria-expanded="false" aria-controls="agentPanel" data-icon="chat"></button
+        ><button class="icon-button" id="themeButton" title="Switch color theme" aria-label="Switch color theme" data-icon="sun"></button
+        ><span class="appbar-divider" aria-hidden="true"></span
+        ><button id="cancelRunButton" class="secondary" hidden>Cancel</button
+        ><button id="runButton" class="primary" title="Validate and run MBDyn (F5)">
           <span data-icon="play"></span><span>Run simulation</span>
         </button>
       </div>
     </header>
-    <nav class="workflow" aria-label="Simulation workflow">
-      <div class="steps">
-        <button data-step="model" class="active"><span>01</span>Model</button
-        ><button data-step="validate"><span>02</span>Validate</button
-        ><button data-step="simulate"><span>03</span>Simulate</button
-        ><button data-step="results"><span>04</span>Results</button>
-      </div>
-      <div class="workflow-right">
-        <span class="unit-chip">SI units <b>m · kg · s</b></span
-        ><button id="importButton" class="text-button">
-          <span data-icon="folder"></span>Open project</button
-        ><button id="examplesButton" class="text-button">
-          <span data-icon="grid"></span>Examples
-        </button>
-      </div>
-    </nav>
-    <div
-      id="notice"
-      class="notice"
-      role="status"
-      aria-live="polite"
-      hidden
-    ></div>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
     <main class="workspace">
       <aside class="browser" aria-label="Model browser">
         <div class="panel-heading">
-          <span>MODEL BROWSER</span>
+          <span>Model</span>
           <div>
-            <button
-              id="undoButton"
-              class="icon-button"
-              title="Undo model change"
-              aria-label="Undo model change"
-              data-icon="undo"
-              disabled
-            ></button
-            ><button
-              id="redoButton"
-              class="icon-button"
-              title="Redo model change"
-              aria-label="Redo model change"
-              data-icon="redo"
-              disabled
-            ></button>
+            <button id="undoButton" class="icon-button" title="Undo (Ctrl+Z)" aria-label="Undo model change" data-icon="undo" disabled></button
+            ><button id="redoButton" class="icon-button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo model change" data-icon="redo" disabled></button>
           </div>
         </div>
         <div class="project-label">
           <span class="project-symbol" data-icon="cube"></span>
           <div>
             <strong id="treeProjectName">Gravity pendulum</strong
-            ><span>Parametric mechanism</span>
+            ><span id="treeProjectKind">Parametric mechanism</span>
           </div>
         </div>
-        <div
-          id="modelTree"
-          class="model-tree"
-          role="group"
-          aria-label="Model entities"
-        ></div>
+        <div id="modelTree" class="model-tree" role="group" aria-label="Model entities"></div>
         <div class="browser-bottom">
           <div class="readiness">
-            <span class="eyebrow">MODEL READINESS</span
+            <span class="eyebrow">Model check</span
             ><span id="validationBadge" class="badge">Not checked</span>
           </div>
-          <p id="readinessText">
-            Check units, physical parameters and study settings before solving.
-          </p>
-          <button id="validateButton" class="secondary full-width">
-            <span data-icon="check"></span>Validate model</button
-          ><button id="kinematicsButton" type="button" class="secondary full-width" hidden>Solve assembly position</button
-          ><button id="deckButton" class="text-button full-width">
-            <span data-icon="code"></span>Inspect MBDyn deck
-          </button>
-        </div>
-        <div class="solver-status">
-          <span id="solverDot" class="status-dot"></span>
-          <div>
-            <strong id="solverStatus">Connecting to solver</strong
-            ><small id="solverDetail">Local workspace</small>
-          </div>
+          <p id="readinessText">Check units, physical parameters and study settings before solving.</p>
         </div>
       </aside>
       <section class="center" aria-label="Model and results">
         <div class="view-heading">
           <div class="view-tabs">
-            <button class="active" data-view="scene">
-              <span data-icon="cube"></span>3D model</button
-            ><button data-view="topology">
-              <span data-icon="network"></span>Connections
-            </button>
+            <button class="active" data-view="scene"><span data-icon="cube"></span>3D view</button
+            ><button data-view="topology"><span data-icon="network"></span>Connections</button>
           </div>
           <div class="view-actions">
             <span id="modelKindBadge">1 moving body · 1 joint</span
-            ><button id="stepButton" class="text-button" title="Import STEP solid parts">STEP parts</button
+            ><button id="stepButton" class="text-button" title="Import STEP solid parts"><span data-icon="layers"></span>CAD parts</button
             ><button id="referenceIsolateButton" class="text-button" title="Show only the STL reference" hidden>Isolate STL</button
             ><button id="referenceRemoveButton" class="text-button" title="Remove visual reference" hidden>Remove STL</button
-            ><button
-              id="resetViewButton"
-              class="icon-button"
-              title="Fit model in view"
-              aria-label="Fit model in view"
-              data-icon="fit"
-            ></button
-            ><button
-              id="gridButton"
-              class="icon-button"
-              title="Toggle grid"
-              aria-label="Toggle grid"
-              aria-pressed="true"
-              data-icon="grid"
-            ></button>
+            ><span class="view-divider" aria-hidden="true"></span
+            ><button id="trailsButton" class="icon-button" title="Motion trails" aria-label="Motion trails" aria-pressed="false" data-icon="trail"></button
+            ><button id="labelsButton" class="icon-button" title="Labels" aria-label="Toggle labels" aria-pressed="true" data-icon="tag"></button
+            ><button id="gridButton" class="icon-button" title="Toggle grid" aria-label="Toggle grid" aria-pressed="true" data-icon="grid"></button
+            ><button id="resetViewButton" class="icon-button" title="Fit model in view (F)" aria-label="Fit model in view" data-icon="fit"></button>
           </div>
         </div>
-        <section
-          id="viewport"
-          class="viewport"
-          aria-label="Interactive 3D mechanism. Drag to orbit, scroll to zoom."
-          tabindex="0"
-        >
+        <section id="viewport" class="viewport" aria-label="Interactive 3D mechanism. Drag to orbit, scroll to zoom." tabindex="0">
           <div class="viewport-title">
-            <span class="eyebrow"
-              >MECHANISM / <span id="mechanismType">PENDULUM</span></span
-            >
+            <span class="eyebrow" id="mechanismType">PENDULUM</span>
             <h1 id="viewportName">Gravity pendulum</h1>
-            <p id="viewportDescription">
-              A rigid-body motion study, from setup to response.
-            </p>
+            <p id="viewportDescription">A rigid-body motion study, from setup to response.</p>
           </div>
           <div id="canvasMount" class="canvas-mount"></div>
           <div id="topology" class="topology" hidden></div>
           <div class="viewport-tags">
             <span class="view-label" id="viewSource">Initial configuration</span
-            ><span class="view-label" id="viewTime">t = 0.000 s</span>
-              <span class="view-label" id="stepStatus" hidden></span>
-            <span class="view-label" id="referenceStatus" hidden></span>
+            ><span class="view-label" id="stepStatus" hidden></span
+            ><span class="view-label" id="referenceStatus" hidden></span>
           </div>
-          <div class="axis-key">
-            <span class="x">X</span><span class="y">Y</span
-            ><span class="z">Z ↑</span>
+          <div class="view-clock" id="viewTime">t = 0.000 s</div>
+          <div class="axis-key"><span class="x">X</span><span class="y">Y</span><span class="z">Z ↑</span></div>
+          <div class="viewport-hint" id="viewportHint">Drag to orbit <i>·</i> Right-drag to pan <i>·</i> Scroll to zoom <i>·</i> Click a body to inspect</div>
+        </section>
+        <section class="console-panel" aria-label="Solver output">
+          <div class="console-heading">
+            <div><span class="eyebrow">Solver output</span><strong id="consoleTitle">No run yet</strong></div>
+            <div><button id="logButton" class="text-button"><span data-icon="code"></span>Full log</button></div>
           </div>
-          <div class="viewport-hint" id="viewportHint">
-            Drag to orbit <i>·</i> Scroll to zoom <i>·</i> Click a body to
-            inspect
-          </div>
+          <pre id="solverConsole" class="solver-console" aria-live="polite">Run the model to see MBDyn output here.</pre>
         </section>
         <section class="results-panel" aria-label="Simulation results">
           <div class="results-heading">
             <div>
-              <span class="eyebrow">RESPONSE</span
-              ><strong id="signalTitle">Angular displacement</strong
+              <strong id="signalTitle">Angular displacement</strong
               ><span class="source-badge" id="resultSource">No run yet</span>
             </div>
             <div>
-              <select id="nodeSelect" aria-label="Result node" hidden></select>
-              <select id="forceSelect" aria-label="Result spring or damper" hidden></select>
-              <select id="jointSelect" aria-label="Result slider joint" hidden></select>
-              <select
-                id="signalSelect"
-                aria-label="Response quantity"
-                hidden
-              ></select>
-              <button id="previewButton" class="text-button">
-                <span data-icon="wave"></span>Reference preview</button
-              ><button id="csvButton" class="text-button" disabled>
-                <span data-icon="download"></span>CSV
-              </button><button id="clearResultsButton" class="text-button" disabled>
-                Clear result
-              </button>
+              <select id="signalSelect" aria-label="Response quantity" hidden></select
+              ><select id="nodeSelect" aria-label="Result node" hidden></select
+              ><select id="forceSelect" aria-label="Result spring or damper" hidden></select
+              ><select id="jointSelect" aria-label="Result slider joint" hidden></select
+              ><span class="results-divider" aria-hidden="true"></span
+              ><button id="csvButton" class="text-button" disabled><span data-icon="download"></span>CSV</button
+              ><button id="clearResultsButton" class="text-button" disabled>Clear</button>
             </div>
           </div>
           <div class="results-content">
-            <div
-              class="plot"
-              id="plot"
-              role="img"
-              aria-label="Response plot. Run a simulation to generate data."
-            >
+            <div class="plot" id="plot" role="img" aria-label="Response plot. Run a simulation to generate data.">
               <div class="empty-plot">
-                <span data-icon="wave"></span
-                ><strong>Let the model tell its story.</strong
-                ><span
-                  >Run MBDyn for solver results, or explore an explicitly
-                  labelled reference preview.</span
-                >
+                <span data-icon="wave"></span><strong>No results yet</strong
+                ><span>Run the model in the Solve workspace to plot its response.</span>
               </div>
             </div>
-            <div id="metrics" class="metrics">
-              <div>
-                <small>Simulation time</small
-                ><strong id="durationMetric">5.00 <span>s</span></strong>
-              </div>
-              <div>
-                <small>Time step</small
-                ><strong id="stepMetric">0.010 <span>s</span></strong>
-              </div>
-              <div>
-                <small>Output samples</small
-                ><strong id="samplesMetric">—</strong>
-              </div>
-            </div>
+            <div id="plotStats" class="plot-stats" aria-live="polite"></div>
           </div>
           <div class="transport">
-            <button
-              id="playButton"
-              class="icon-button"
-              aria-label="Play result animation"
-              title="Play result animation"
-              data-icon="play"
-              disabled
-            ></button
-            ><button
-              id="rewindButton"
-              class="icon-button"
-              aria-label="Rewind animation"
-              title="Rewind animation"
-              data-icon="rewind"
-              disabled
-            ></button
+            <button id="rewindButton" class="icon-button" aria-label="Rewind animation" title="Rewind (Home)" data-icon="rewind" disabled></button
+            ><button id="frameBackButton" class="icon-button" aria-label="Previous frame" title="Previous frame (←)" data-icon="stepback" disabled></button
+            ><button id="playButton" class="icon-button play" aria-label="Play result animation" title="Play / pause (Space)" data-icon="play" disabled></button
+            ><button id="frameForwardButton" class="icon-button" aria-label="Next frame" title="Next frame (→)" data-icon="stepforward" disabled></button
             ><output id="timeOutput">0.000 s</output
-            ><input
-              id="timeSlider"
-              type="range"
-              min="0"
-              max="1000"
-              value="0"
-              aria-label="Result time"
-              disabled
-            /><span id="endTime">5.000 s</span
-            ><button
-              id="speedButton"
-              class="speed-button"
-              title="Change animation speed"
-            >
-              1×
-            </button>
+            ><input id="timeSlider" type="range" min="0" max="1000" value="0" aria-label="Result time" disabled /><span id="endTime">5.000 s</span
+            ><button id="speedButton" class="speed-button" title="Playback speed">1×</button
+            ><button id="loopButton" class="icon-button" title="Loop playback" aria-label="Loop playback" aria-pressed="true" data-icon="loop"></button>
           </div>
         </section>
       </section>
       <aside class="inspector" aria-label="Properties inspector">
-        <div class="panel-heading">
-          <span>PROPERTIES</span
-          ><span id="propertyMode" class="badge blue">Editable</span>
-        </div>
-        <div class="inspector-title">
-          <span class="selection-symbol" data-icon="sliders"></span>
-          <div>
-            <h2 id="selectionTitle">Mechanism</h2>
-            <p id="selectionSubtitle">Physical parameters</p>
+        <div class="pane pane-model">
+          <div class="panel-heading">
+            <span>Properties</span><span id="propertyMode" class="badge blue">Editable</span>
+          </div>
+          <div class="inspector-title">
+            <span class="selection-symbol" data-icon="sliders"></span>
+            <div>
+              <h2 id="selectionTitle">Mechanism</h2>
+              <p id="selectionSubtitle">Physical parameters</p>
+            </div>
+          </div>
+          <div id="properties"></div>
+          <details class="advanced">
+            <summary>Model assumptions</summary>
+            <p id="assumptions"></p>
+          </details>
+          <div class="inspector-note">
+            <span data-icon="info"></span>
+            <p id="inspectorNote">The visible mechanism is generated from these parameters.</p>
           </div>
         </div>
-        <div id="properties"></div>
-        <details class="advanced">
-          <summary>Model assumptions</summary>
-          <p id="assumptions"></p>
-        </details>
-        <section class="study-fields">
-          <h3><span data-icon="clock"></span>Study settings</h3>
-          <label
-            >Duration<span class="number-field"
-              ><input
-                id="durationInput"
-                type="number"
-                min="0.01"
-                max="30"
-                step="0.5"
-                aria-label="Simulation duration"
-              /><span>s</span></span
-            ></label
-          ><label
-            >Time step<span class="number-field"
-              ><input
-                id="stepInput"
-                type="number"
-                min="0.0001"
-                step="0.001"
-                aria-label="Simulation time step"
-              /><span>s</span></span
-            ></label
-          >
-          <p class="field-help">
-            Smaller steps capture faster motion and increase solve time.
-          </p>
-        </section>
-        <section id="issuesSection" class="issues-section" hidden>
-          <h3>Model check</h3>
-          <ul id="issuesList"></ul>
-        </section>
-        <div class="inspector-note">
-          <span data-icon="info"></span>
-          <p id="inspectorNote">
-            The visible mechanism is generated from these parameters. Advanced
-            assemblies are planned; this release edits verified templates.
-          </p>
+        <div class="pane pane-simulate">
+          <div class="panel-heading"><span>Solve</span><span id="solveBadge" class="badge">Transient</span></div>
+          <section class="study-fields card">
+            <h3><span data-icon="clock"></span>Study settings</h3>
+            <div class="field-row">
+              <label>Duration<span class="number-field"><input id="durationInput" type="number" min="0.01" max="30" step="0.5" aria-label="Simulation duration" /><span>s</span></span></label
+              ><label>Time step<span class="number-field"><input id="stepInput" type="number" min="0.0001" step="0.001" aria-label="Simulation time step" /><span>s</span></span></label>
+            </div>
+            <p class="field-help" id="stepSummary">Smaller steps capture faster motion and increase solve time.</p>
+          </section>
+          <section class="card checks">
+            <h3><span data-icon="check"></span>Pre-run checks</h3>
+            <ul class="checklist" id="checklist"></ul>
+            <section id="issuesSection" class="issues-section" hidden>
+              <ul id="issuesList"></ul>
+            </section>
+            <div class="card-actions">
+              <button id="validateButton" class="secondary"><span data-icon="check"></span>Validate model</button
+              ><button id="deckButton" class="text-button"><span data-icon="code"></span>Inspect deck</button>
+            </div>
+            <button id="kinematicsButton" type="button" class="secondary full-width" hidden>Solve assembly position</button>
+          </section>
+          <section class="card solver-card">
+            <h3><span data-icon="cpu"></span>Solver</h3>
+            <div class="solver-status">
+              <span id="solverDot" class="status-dot"></span>
+              <div><strong id="solverStatus">Connecting to solver</strong><small id="solverDetail">Local workspace</small></div>
+            </div>
+            <button id="solveRunButton" class="primary full-width"><span data-icon="play"></span>Run MBDyn</button>
+            <button id="previewButton" class="text-button full-width"><span data-icon="wave"></span>Reference preview (independent check)</button>
+          </section>
+        </div>
+        <div class="pane pane-results">
+          <div class="panel-heading"><span>Results</span><span id="resultsBadge" class="badge">Empty</span></div>
+          <section class="card">
+            <h3><span data-icon="chart"></span>Run summary</h3>
+            <div id="metrics" class="metrics">
+              <div><small>Simulated</small><strong id="durationMetric">5.00 <span>s</span></strong></div>
+              <div><small>Time step</small><strong id="stepMetric">0.010 <span>s</span></strong></div>
+              <div><small>Samples</small><strong id="samplesMetric">—</strong></div>
+              <div><small>Run</small><strong id="runId" class="run-id">No solver run</strong></div>
+            </div>
+          </section>
+          <section class="card">
+            <h3><span data-icon="ruler"></span>Measure</h3>
+            <p class="field-help">Derived from displayed solver samples.</p>
+            <div class="tool-list" id="measureTools"></div>
+          </section>
+          <section class="card">
+            <h3><span data-icon="eye"></span>Display</h3>
+            <label class="toggle"><input type="checkbox" id="trailsToggle" /> Motion trails</label>
+            <label class="toggle"><input type="checkbox" id="followToggle" /> Keep selected body in view</label>
+            <p class="field-help">Trails trace each body origin over the full run. Select a body in the model tree to plot its motion.</p>
+          </section>
         </div>
       </aside>
     </main>
     <footer class="statusbar">
+      <div><span class="status-dot blue" id="statusDot"></span><span id="statusText">Independent, open-source multibody workbench</span></div>
       <div>
-        <span class="status-dot blue"></span
-        ><span id="statusText"
-          >Independent, open-source multibody workbench</span
-        >
-      </div>
-      <div>
-        <button id="logButton" class="status-link">Run log</button
-        ><span id="runId">No solver run</span><span>LOCAL</span>
+        <span id="solverChip" class="status-chip">MBDyn</span
+        ><span class="status-chip">SI · m kg s</span
+        ><span class="status-chip">LOCAL</span>
       </div>
     </footer>
     <dialog id="stepDialog">
@@ -381,28 +266,19 @@
       </section>
       <p class="dialog-footnote">Attachments use the part's current CAD coordinates and the body's initial pose. Alignment is your responsibility; unattached parts do not move. The provided suspension exports do not include joints or verified assembly placement.</p>
     </dialog>
-    <dialog id="examplesDialog">
+    <dialog id="examplesDialog" class="examples-dialog">
       <div class="dialog-heading">
         <div>
-          <span class="eyebrow">LEARN BY DOING</span>
-          <h2>A small model. A real answer.</h2>
+          <span class="eyebrow">EXAMPLES</span>
+          <h2>Start from a worked model</h2>
         </div>
-        <button
-          class="icon-button"
-          data-close
-          aria-label="Close examples"
-          data-icon="close"
-        ></button>
+        <button class="icon-button" data-close aria-label="Close examples" data-icon="close"></button>
       </div>
-      <p class="dialog-intro">
-        Start with a validated model, change a physical parameter, and see how
-        the response changes.
-      </p>
+      <div class="example-filters" id="exampleFilters" role="tablist" aria-label="Example categories"></div>
       <div id="exampleCards" class="example-cards"></div>
       <p class="dialog-footnote">
-        Editable templates and pinned upstream models have separate licenses and
-        clearly stated solver compatibility. Planar revolute trees are editable;
-        general 3D assemblies, flexible bodies and co-simulation remain future work.
+        Featured studies are editable 3D assemblies solved by MBDyn. Templates and pinned upstream decks keep
+        their own licenses and stated solver compatibility. Examples are teaching models, not validated hardware.
       </p>
     </dialog>
     <dialog id="documentDialog">
@@ -411,17 +287,11 @@
           <span id="documentEyebrow" class="eyebrow">WORKSPACE</span>
           <h2 id="documentTitle">MBDyn deck</h2>
         </div>
-        <button
-          class="icon-button"
-          data-close
-          aria-label="Close document"
-          data-icon="close"
-        ></button>
+        <button class="icon-button" data-close aria-label="Close document" data-icon="close"></button>
       </div>
       <div id="documentBody" class="document-body"></div>
       <div class="dialog-actions">
-        <button id="documentDownload" class="secondary">
-          <span data-icon="download"></span>Download</button
+        <button id="documentDownload" class="secondary"><span data-icon="download"></span>Download</button
         ><button class="primary" data-close>Done</button>
       </div>
     </dialog>

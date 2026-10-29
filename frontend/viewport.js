@@ -4,6 +4,10 @@ import { buildIndustry, sampleIndustry } from "./industry-view.js";
 import { buildSourceView, sampleSourceView } from "./source-view.js";
 import { createStepView } from "./step-view.js";
 
+const DEG = Math.PI / 180;
+const BODY_COLORS = [0x5b8fd0, 0xd99a4e, 0x5aae8a, 0xa982c9, 0xcf6d6d, 0x8fa54e, 0x4fb0c6, 0xc7a64a];
+const TRAIL_COLORS = [0x2f74d0, 0xe0821e, 0x13998f, 0xb04fc9, 0xd2453f, 0x6c8f1f, 0x8a6a3f, 0x3fa0d8];
+
 /** Parameter-driven visualization only; motion samples always come from the selected run. */
 export class MechanismView {
   constructor(mount, onSelect) {
@@ -173,6 +177,8 @@ export class MechanismView {
   setModel(model, reset = false, sourceExample = null) {
     this.model = structuredClone(model);
     this.sourceMetadata = sourceExample;
+    this.setTrails(null);
+    this.followLast = null;
     this.clear();
     if (["source-example", "planar-assembly", "spatial-assembly"].includes(model.kind)) buildSourceView(this, sourceExample);
     else if (model.kind === "double-pendulum") this.buildDoublePendulum();
@@ -361,6 +367,10 @@ export class MechanismView {
     this.setSample(null);
   }
   setSample(sample) {
+    this.applySample(sample);
+    if (this.followEntity) this.applyFollow();
+  }
+  applySample(sample) {
     if (!this.model || !this.bob) return;
     if (["source-example", "planar-assembly", "spatial-assembly"].includes(this.model.kind)) {
       sampleSourceView(
@@ -481,10 +491,12 @@ export class MechanismView {
     const nodes = assembly ? this.sourceMetadata.initialNodes.filter(n => this.model.bodies.some(b => b.id === n.id)) : [];
     const ids = new Set(nodes.map(n => n.id));
     const bindings = Object.fromEntries(Object.entries(this.stepAsset.metadata.bindings).filter(([,binding]) => ids.has(binding.body)));
+    const bodyOrder = (this.model.bodies || []).map(body => body.id);
     this.stepView = createStepView(this.stepAsset, {
       initialNodes: nodes, bindings,
       offset: assembly ? this.sourceParts.offset : [0, 0, 0],
       entityForBody: id => id === this.model.bodies[0]?.id ? "body" : `node-${id}`,
+      colorForBody: id => BODY_COLORS[Math.max(0, bodyOrder.indexOf(id)) % BODY_COLORS.length],
     });
     this.group.add(this.stepView.group);
     if (assembly) {
@@ -581,6 +593,107 @@ export class MechanismView {
   }
   setGrid(visible) {
     this.grid.visible = visible;
+  }
+  /** World-space display position of a body's characteristic point for each sample. */
+  bodyTracks(result) {
+    const samples = result?.samples;
+    if (!samples?.length || !this.model) return [];
+    const kind = this.model.kind;
+    if (["source-example", "planar-assembly", "spatial-assembly"].includes(kind)) {
+      const offset = this.sourceParts.offset;
+      const bodies = this.model.bodies || [];
+      const ids = (samples[0].nodes || []).map((node) => String(node.id));
+      const scale = this.scale || 1;
+      return ids.map((id, index) => {
+        const body = bodies.find((item) => item.id === id);
+        const centre = body?.centerOfMass ? new THREE.Vector3(body.centerOfMass.x, body.centerOfMass.y, body.centerOfMass.z) : new THREE.Vector3();
+        const track = (local) => samples.map((sample) => {
+          const node = sample.nodes?.find((item) => String(item.id) === id);
+          if (!node) return null;
+          const point = local.clone();
+          if (kind === "spatial-assembly") point.applyEuler(new THREE.Euler(node.rx * DEG, node.ry * DEG, node.rz * DEG, "XYZ"));
+          else if (kind === "planar-assembly") point.applyAxisAngle(new THREE.Vector3(0, 1, 0), (node.angleDeg ?? node.ry ?? 0) * DEG);
+          return point.add(new THREE.Vector3(node.x, node.y, node.z)).add(offset);
+        });
+        let points = track(centre);
+        // A body spinning about a fixed centre traces nothing useful; follow its farthest geometry point instead.
+        const extent = new THREE.Box3().setFromPoints(points.filter(Boolean)).getSize(new THREE.Vector3()).length();
+        const tip = this.stepView?.farthestPoint?.(id);
+        if (extent < scale * 0.03 && tip) points = track(tip);
+        return { id, entity: index ? `node-${id}` : "body", points };
+      });
+    }
+    const pivot = this.pivot || new THREE.Vector3();
+    if (kind === "pendulum") return [{ id: "body", entity: "body", points: samples.map((s) => new THREE.Vector3(s.x, s.y, pivot.z + s.z)) }];
+    if (kind === "double-pendulum")
+      return [
+        { id: "body", entity: "body", points: samples.map((s) => new THREE.Vector3(s.x, s.y, pivot.z + s.z)) },
+        { id: "body2", entity: "body2", points: samples.map((s) => new THREE.Vector3(s.x2, s.y2, pivot.z + s.z2)) },
+      ];
+    return [];
+  }
+  setTrails(result) {
+    if (this.trails) {
+      for (const trail of this.trails) {
+        this.scene.remove(trail.ghost, trail.tube);
+        trail.ghost.geometry.dispose(); trail.ghost.material.dispose();
+        trail.tube.geometry.dispose(); trail.tube.material.dispose();
+      }
+    }
+    this.trails = null;
+    if (!result) return;
+    const radius = (this.scale || 1) * 0.0045;
+    this.trails = this.bodyTracks(result).map((track, index) => {
+      const color = TRAIL_COLORS[index % TRAIL_COLORS.length];
+      const valid = track.points.map((point, frame) => [point, frame]).filter(([point]) => point && [point.x, point.y, point.z].every(Number.isFinite));
+      if (valid.length < 2) return null;
+      const ghost = new THREE.Line(new THREE.BufferGeometry().setFromPoints(valid.map(([point]) => point)), new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.28, depthWrite: false }));
+      const stride = Math.max(1, Math.ceil(valid.length / 700));
+      const kept = valid.filter((_, i) => i % stride === 0 || i === valid.length - 1);
+      const radial = 6;
+      const curve = new THREE.CatmullRomCurve3(kept.map(([point]) => point), false, "centripetal");
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, kept.length - 1, radius, radial, false), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92 }));
+      tube.renderOrder = 2;
+      this.scene.add(ghost, tube);
+      // Map each result frame to the number of tube segments drawn up to it.
+      const segmentsAt = new Int32Array(result.samples.length);
+      let k = 0;
+      for (let frame = 0; frame < segmentsAt.length; frame++) {
+        while (k < kept.length - 1 && kept[k + 1][1] <= frame) k++;
+        segmentsAt[frame] = k;
+      }
+      return { ghost, tube, segmentsAt, perSegment: radial * 6 };
+    }).filter(Boolean);
+    this.setTrailFrame(0);
+  }
+  setTrailFrame(frame) {
+    for (const trail of this.trails || []) {
+      const segments = trail.segmentsAt[Math.max(0, Math.min(frame, trail.segmentsAt.length - 1))];
+      trail.tube.geometry.setDrawRange(0, segments * trail.perSegment);
+    }
+  }
+  setFollow(entity) {
+    this.followEntity = entity || null;
+    this.followLast = null;
+  }
+  followPoint() {
+    if (!this.followEntity || !this.model) return null;
+    const meshes = [];
+    this.group.traverse((obj) => { if (obj.isMesh && obj.userData.entity === this.followEntity) meshes.push(obj); });
+    if (!meshes.length) return null;
+    const box = new THREE.Box3();
+    for (const mesh of meshes) box.expandByObject(mesh);
+    return box.isEmpty() ? null : box.getCenter(new THREE.Vector3());
+  }
+  applyFollow() {
+    const point = this.followPoint();
+    if (!point) return;
+    if (this.followLast) {
+      const delta = point.clone().sub(this.followLast);
+      this.camera.position.add(delta);
+      this.controls.target.add(delta);
+    }
+    this.followLast = point;
   }
   setTheme(dark) {
     this.grid.material.color?.set(dark ? 0x596579 : 0xc2cedd);

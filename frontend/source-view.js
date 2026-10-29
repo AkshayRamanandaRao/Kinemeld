@@ -55,6 +55,25 @@ export function buildSourceView(view, example) {
     );
     view.sourceParts.links.push({ line, a, b });
   }
+  // Contact planes are part of the solver model, so draw them where MBDyn places them.
+  const drawnPlanes = new Set();
+  for (const contact of view.model?.contacts || []) {
+    const key = JSON.stringify([contact.planePoint, contact.planeNormal]);
+    if (drawnPlanes.has(key)) continue;
+    drawnPlanes.add(key);
+    const normal = new THREE.Vector3(contact.planeNormal.x, contact.planeNormal.y, contact.planeNormal.z).normalize();
+    const size = scale * 2.2;
+    const plane = new THREE.Mesh(
+      new THREE.BoxGeometry(size, size, scale * 0.012),
+      new THREE.MeshStandardMaterial({ color: 0x8a96a8, roughness: 0.85, metalness: 0, transparent: true, opacity: 0.55 }),
+    );
+    plane.receiveShadow = true;
+    plane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+    plane.position.set(contact.planePoint.x, contact.planePoint.y, contact.planePoint.z).add(offset).addScaledVector(normal, -scale * 0.006);
+    plane.userData.entity = `contact-${contact.id}`;
+    plane.userData.baseColor = 0x8a96a8;
+    view.group.add(plane);
+  }
   sampleSourceView(view, { nodes });
 }
 

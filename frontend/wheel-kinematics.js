@@ -47,7 +47,7 @@ export function wheelPlotBreak(previous,current,quantity){return previous===null
 
 /** Install a non-mutating suspension measurement for current spatial MBDyn results. */
 export function setupWheelKinematics({getResult,getModel,getBindings=()=>({}),getFrame=()=>0,isStale=()=>false,notify}) {
-  const button=document.createElement('button');button.id='wheelKinematicsButton';button.type='button';button.className='text-button';button.textContent='Wheel kinematics';document.querySelector('#csvButton').before(button);
+  const button=document.createElement('button');button.id='wheelKinematicsButton';button.type='button';button.className='text-button';button.textContent='Wheel kinematics';(document.querySelector('#measureTools') || document.querySelector('#csvButton').parentElement).append(button);
   const dialog=document.createElement('dialog');dialog.id='wheelKinematicsDialog';dialog.setAttribute('aria-labelledby','wheelKinematicsTitle');
   const head=document.createElement('div');head.className='dialog-heading';head.innerHTML='<h2 id="wheelKinematicsTitle">Wheel kinematics</h2>';
   const close=document.createElement('button');close.type='button';close.className='icon-button';close.setAttribute('aria-label','Close wheel kinematics');close.textContent='×';close.onclick=()=>dialog.close();head.append(close);dialog.append(head);

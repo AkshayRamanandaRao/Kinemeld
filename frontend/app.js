@@ -41,6 +41,18 @@ const paths = {
   joint: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0 M3 12h6 M15 12h6 M12 3v6 M12 15v6",
   gravity: "M12 2v16 M6 12l6 6 6-6 M4 22h16",
   chart: "M3 3v18h18 M5 15l5-5 4 3 6-8",
+  saveas: "M4 3h11l3 3v6 M7 3v5h8V3 M3 3v18h8 M15 15l5 5 M20 15l-5 5 M14 22h8",
+  compass: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M15.5 8.5l-2 5-5 2 2-5z",
+  layers: "M12 3l9 5-9 5-9-5z M3 13l9 5 9-5 M3 17l9 5 9-5",
+  trail: "M4 19c3-1 4-6 7-8s6 1 9-6 M18 4h3v3 M4 19h.01 M8 14h.01 M12 10h.01",
+  tag: "M3 12V3h9l9 9-9 9z M8 8h.01",
+  stepback: "M6 5v14 M18 5l-9 7 9 7z",
+  stepforward: "M18 5v14 M6 5l9 7-9 7z",
+  loop: "M17 2l4 4-4 4 M3 11V9a3 3 0 0 1 3-3h15 M7 22l-4-4 4-4 M21 13v2a3 3 0 0 1-3 3H3",
+  cpu: "M6 6h12v12H6z M9 9h6v6H9z M9 2v4 M15 2v4 M9 18v4 M15 18v4 M2 9h4 M2 15h4 M18 9h4 M18 15h4",
+  ruler: "M3 17L17 3l4 4L7 21z M7 13l2 2 M10 10l2 2 M13 7l2 2",
+  eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
+  force: "M12 3v14 M7 12l5 5 5-5 M5 21h14",
 };
 function icon(name) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.cube}"/></svg>`;
@@ -107,6 +119,8 @@ const state = {
   playing: false,
   frame: 0,
   speed: 1,
+  loop: true,
+  trails: false,
   busy: false,
   saving: false,
   signal: 0,
@@ -154,11 +168,16 @@ const escapeHtml = (value) =>
   );
 const stale = () => state.result && state.resultSignature !== signature();
 const format = (n, d = 3) => (Number.isFinite(n) ? n.toFixed(d) : "—");
+let noticeTimer;
 function notice(message, type = "") {
+  clearTimeout(noticeTimer);
   $("notice").textContent = message;
   $("notice").className = `notice ${type}`;
   $("notice").hidden = !message;
+  // Informational toasts fade; warnings and errors stay until replaced or dismissed.
+  if (message && !type) noticeTimer = setTimeout(() => { $("notice").hidden = true; }, 6000);
 }
+$("notice").onclick = () => { $("notice").hidden = true; };
 function status(message) {
   $("statusText").textContent = message;
 }
@@ -434,10 +453,10 @@ function renderMetadata() {
     : pendulum
       ? "Angular displacement"
       : "Linear displacement";
-  $("durationMetric").innerHTML =
-    `${format(m.simulation.duration, 2)} <span>s</span>`;
-  $("stepMetric").innerHTML =
-    `${Number.isFinite(m.simulation.step) ? String(m.simulation.step) : "—"} <span>s</span>`;
+  if (!state.result) {
+    $("durationMetric").innerHTML = `${format(m.simulation.duration, 2)} <span>s</span>`;
+    $("stepMetric").innerHTML = `${Number.isFinite(m.simulation.step) ? String(m.simulation.step) : "—"} <span>s</span>`;
+  }
   $("endTime").textContent = `${format(m.simulation.duration)} s`;
   $("modelKindBadge").textContent = double
     ? "2 moving bodies · 2 joints"
@@ -475,10 +494,40 @@ function renderMetadata() {
   if (m.kind === "spatial-assembly") {
     $("mechanismType").textContent = "3D RIGID-BODY ASSEMBLY";
     $("viewportDescription").textContent = "Edit 3D bodies and local-frame joints; loop constraints are solved by MBDyn.";
-    $("modelKindBadge").textContent = `${m.bodies.length} bodies · ${m.joints.length} joints`;
+    const dof = spatialMobility(m);
+    $("modelKindBadge").textContent = `${m.bodies.length} bodies · ${m.joints.length} joints · ${dof} DOF (Grübler)`;
     $("assumptions").textContent = "3D rigid bodies may be free or joined with revolute, prismatic, cylindrical, universal, spherical or weld joints, with optional 3D spring-dampers. Loop solvability and nonredundant constraints must be verified by the solver. STEP mass properties can be calculated at an explicit density and applied when body-frame requirements are met.";
     $("signalTitle").textContent = "Body position · X / Y / Z";
   }
+  $("treeProjectKind").textContent = m.kind === "spatial-assembly" ? "3D rigid-body assembly" : m.kind === "planar-assembly" ? "Planar rigid-body assembly" : m.kind === "source-example" ? "Upstream MBDyn deck" : industrial ? "Engineering template" : "Parametric mechanism";
+  renderChecklist();
+}
+// Grübler–Kutzbach mobility estimate; redundant loop constraints make the true value larger.
+const CONSTRAINED = { revolute: 5, prismatic: 5, cylindrical: 4, spherical: 3, universal: 4, weld: 6 };
+function spatialMobility(model) {
+  return 6 * model.bodies.length - model.joints.reduce((sum, joint) => sum + (CONSTRAINED[joint.type] || 0) + (joint.motion ? 1 : 0), 0);
+}
+function renderChecklist() {
+  const m = state.model, items = [];
+  const valid = state.validation?.valid;
+  items.push([valid === true ? "ok" : valid === false ? "bad" : "", "Model inputs", valid === true ? "passed" : valid === false ? `${(state.validation.issues || []).length} issue(s)` : "not checked"]);
+  const solverReady = state.solver?.available;
+  items.push([solverReady ? "ok" : state.solver ? "bad" : "", "MBDyn solver", solverReady ? state.solver.version || "ready" : state.solver ? "not configured" : "checking"]);
+  const steps = Number.isFinite(m.simulation?.duration / m.simulation?.step) ? Math.ceil(m.simulation.duration / m.simulation.step) : NaN;
+  items.push([Number.isFinite(steps) ? (steps > 20000 ? "bad" : "ok") : "bad", "Time steps", Number.isFinite(steps) ? steps.toLocaleString() : "—"]);
+  if (m.kind === "spatial-assembly") {
+    const dof = spatialMobility(m);
+    items.push([dof >= 0 ? "ok" : "warn", "Mobility (Grübler)", `${dof} DOF`]);
+  }
+  items.push([state.result ? (stale() ? "warn" : "ok") : "", "Result", state.result ? (stale() ? "stale · rerun" : "current") : "none"]);
+  $("checklist").replaceChildren(...items.map(([cls, label, detail]) => {
+    const li = document.createElement("li");
+    li.className = cls;
+    li.innerHTML = `<span class="mark">${cls === "ok" ? "✓" : cls === "bad" ? "!" : cls === "warn" ? "~" : "·"}</span><span>${escapeHtml(label)}</span><small>${escapeHtml(detail)}</small>`;
+    return li;
+  }));
+  const seconds = m.simulation?.duration, dt = m.simulation?.step;
+  $("stepSummary").textContent = Number.isFinite(steps) ? `${steps.toLocaleString()} implicit steps of ${dt} s cover ${seconds} s. Smaller steps capture faster motion and take longer.` : "Enter a positive duration and time step.";
 }
 function renderTree() {
   const pendulum = state.model.kind !== "mass-spring";
@@ -614,7 +663,8 @@ function select(entity) {
   renderTree();
   renderProperties();
   view?.setSelection(entity);
-  if (entity === "study") $("durationInput").focus();
+  if ($("followToggle").checked) view?.setFollow(entity);
+  if (entity === "study") { switchStep("simulate"); $("durationInput").focus(); }
 }
 function renderProperties() {
   const pendulum = state.model.kind !== "mass-spring";
@@ -823,6 +873,7 @@ function showIssues(issues) {
       "Model";
     button.textContent = `${label}: ${issue.message}`;
     button.onclick = () => {
+      switchStep(["duration", "step"].includes(key) ? "simulate" : "model");
       if (state.model.kind === "spatial-assembly") {
         const parts=(issue.field || "").split(".");
         if(parts[0] === "bodies" && state.model.bodies[Number(parts[1])]){const body=state.model.bodies[Number(parts[1])];select(Number(parts[1])===0?"body":`node-${body.id}`);$(`spatial-body-${body.id}-${parts.slice(2).join("-")}`)?.focus();return;}
@@ -889,6 +940,7 @@ async function validate(show = true) {
     if (request !== signature()) return result;
     state.validation = result;
     showIssues(result.issues || []);
+    renderChecklist();
     $("validationBadge").textContent = result.valid
       ? "Ready"
       : "Needs attention";
@@ -936,28 +988,30 @@ function applyModel(model, remember = true) {
   changed();
   renderStepControls();
 }
+let workspace = "model";
 function switchStep(step) {
+  const validating = step === "validate";
+  if (validating) step = "simulate";
+  const changedWorkspace = workspace !== step;
+  workspace = step;
+  document.body.classList.remove("ws-model", "ws-simulate", "ws-results");
+  document.body.classList.add(`ws-${step}`);
   document
     .querySelectorAll("[data-step]")
     .forEach((b) => b.classList.toggle("active", b.dataset.step === step));
-  if (step === "validate") validate();
   if (step === "simulate") {
-    if (sourceInfo())
-      notice(
-        "The source deck controls duration and time step. Run the preserved upstream model or inspect its input.",
-      );
-    else {
-      $("durationInput").focus();
-      notice(
-        "Set the study duration and time step, then choose Run simulation.",
-      );
-    }
+    renderChecklist();
+    if (validating) validate();
+    else validate(false).then(renderChecklist);
+    if (sourceInfo() && changedWorkspace)
+      notice("The source deck controls duration and time step. Run the preserved upstream model or inspect its input.");
   }
-  if (step === "results" && !state.result)
-    notice(
-      "No result is loaded. Run MBDyn or choose Reference preview to generate a response.",
-    );
-  if (step === "model" && !stale()) notice("");
+  if (step === "results") {
+    if (!state.result && changedWorkspace) notice("No result is loaded. Run the model from the Solve workspace to generate a response.");
+    if (state.result) requestAnimationFrame(drawPlot);
+  }
+  if (step === "model" && !stale() && changedWorkspace) notice("");
+  view?.setTrails(step === "results" && state.trails && state.result && !stale() ? state.result : null);
 }
 function setBusy(busy) {
   state.busy = busy;
@@ -966,6 +1020,7 @@ function setBusy(busy) {
   document.body.classList.toggle("busy", busy);
   for (const id of [
     "runButton",
+    "solveRunButton",
     "previewButton",
     "examplesButton",
     "importButton",
@@ -983,6 +1038,7 @@ function setBusy(busy) {
   $("runButton").querySelector("span:last-child").textContent = busy
     ? "Solving…"
     : "Run simulation";
+  $("solveRunButton").lastChild.textContent = busy ? "Solving…" : "Run MBDyn";
 }
 async function run(preview = false) {
   if (state.busy || state.saving || state.opening) return;
@@ -994,7 +1050,7 @@ async function run(preview = false) {
       "The model needs attention before it can run. Review the highlighted fields.",
       "error",
     );
-    switchStep("validate");
+    switchStep("simulate");
     return;
   }
   const snapshot = structuredClone(state.model);
@@ -1007,6 +1063,7 @@ async function run(preview = false) {
       ? "Computing an independent reference response…"
       : "MBDyn is solving the model. The log and response will appear when the process finishes.",
   );
+  showConsole(preview ? "Reference preview" : "Solving…", preview ? "Computing an independent reference response (not MBDyn output)…" : `MBDyn job started ${new Date().toLocaleTimeString()}\n${snapshot.kind === "source-example" ? "Upstream deck" : `${Math.ceil(snapshot.simulation.duration / snapshot.simulation.step).toLocaleString()} steps · Δt ${snapshot.simulation.step} s · ${snapshot.simulation.duration} s`}\nWaiting for the solver process…`);
   status(preview ? "Reference calculation in progress" : "Solver job running");
   try {
     const result =
@@ -1042,6 +1099,7 @@ async function run(preview = false) {
       preview ? "Reference preview · not MBDyn output" : "MBDyn run completed",
     );
     $("runId").textContent = result.runId || "Reference calculation";
+    showConsole(preview ? "Reference preview complete" : `Completed · ${result.samples.length.toLocaleString()} samples`, result.log || "Reference preview computed independently; MBDyn was not launched.");
   } catch (error) {
     notice(error.message, "error");
     showIssues(error.issues || []);
@@ -1050,6 +1108,8 @@ async function run(preview = false) {
     status(cancelled ? "Run cancelled · partial log retained" : "Run failed · inspect the reported error");
     if (error.details?.runId)
       $("runId").textContent = `${cancelled ? "Cancelled" : "Failed"} · ${error.details.runId}`;
+    showConsole(cancelled ? "Cancelled" : "Failed", [error.message, error.details?.log].filter(Boolean).join("\n\n"));
+    if (workspace !== "simulate") switchStep("simulate");
   } finally {
     activeRunToken = null;
     setBusy(false);
@@ -1234,79 +1294,182 @@ function renderResult() {
     );
     $("nodeSelect").value = String(state.selectedNode);
   }
-  for (const id of ["playButton", "rewindButton", "timeSlider", "csvButton", "clearResultsButton"])
+  for (const id of ["playButton", "rewindButton", "frameBackButton", "frameForwardButton", "timeSlider", "csvButton", "clearResultsButton"])
     $(id).disabled = false;
   $("playButton").disabled = Boolean(isStale);
+  $("resultsBadge").textContent = isStale ? "Stale" : real ? "MBDyn" : "Preview";
+  $("resultsBadge").className = `badge ${isStale ? "warn" : real ? "green" : "blue"}`;
+  $("durationMetric").innerHTML = `${format(result.samples.at(-1).time, 3)} <span>s</span>`;
+  const resultStep = result.model?.simulation?.step ?? state.model.simulation.step;
+  $("stepMetric").innerHTML = `${Number.isFinite(resultStep) ? String(resultStep) : "—"} <span>s</span>`;
+  view?.setTrails(workspace === "results" && state.trails && !isStale ? result : null);
   $("timeSlider").max = String(result.samples.length - 1);
   $("endTime").textContent = `${format(result.samples.at(-1).time)} s`;
   drawPlot();
 }
-const PLOT_LEFT = 80;
+function showConsole(title, text) {
+  $("consoleTitle").textContent = title;
+  const lines = String(text || "").split(/\r?\n/);
+  $("solverConsole").textContent = lines.length > 400 ? [`… ${lines.length - 400} earlier lines in the full log`, ...lines.slice(-400)].join("\n") : lines.join("\n");
+  $("solverConsole").scrollTop = $("solverConsole").scrollHeight;
+}
+// Nice tick spacing (1, 2, 2.5, 5 × 10^n) for readable engineering axes.
+function niceTicks(min, max, count) {
+  const span = max - min;
+  if (!(span > 0)) return [min];
+  const raw = span / Math.max(1, count), power = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * power).find((m) => m >= raw) || 10 * power;
+  const ticks = [];
+  for (let v = Math.ceil(min / step - 1e-9) * step; v <= max + step * 1e-9; v += step) ticks.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+  return ticks;
+}
+function formatTick(value, span) {
+  if (value === 0) return "0";
+  const magnitude = Math.abs(value);
+  if (magnitude >= 1e5 || magnitude < 1e-3) return value.toExponential(2);
+  const digits = Math.max(0, Math.min(5, 2 - Math.floor(Math.log10(span || 1))));
+  return value.toFixed(digits);
+}
+function formatValue(value) {
+  if (!Number.isFinite(value)) return "—";
+  const magnitude = Math.abs(value);
+  return magnitude !== 0 && (magnitude >= 1e5 || magnitude < 1e-3) ? value.toExponential(4) : value.toPrecision(5);
+}
+const PLOT_COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)"];
+let plotGeometry = null;
 function drawPlot() {
   const samples = state.result?.samples;
   if (!samples?.length) return;
   const w = Math.max($("plot").clientWidth, 300),
     h = Math.max($("plot").clientHeight, 110),
-    left = PLOT_LEFT,
-    right = 12,
-    top = 12,
-    bottom = 25;
+    left = 64,
+    right = 14,
+    top = 14,
+    bottom = 28;
   const signal = resultSignal();
-  const values = samples
-    .flatMap((s) => signal.channels.map(([key]) => channelValue(s, key)))
-    .filter(Number.isFinite);
-  if (!values.length) return;
+  const series = signal.channels.map(([key, label]) => ({ key, label, values: samples.map((s) => channelValue(s, key)) }));
+  const values = series.flatMap((item) => item.values).filter(Number.isFinite);
+  if (!values.length) {
+    plotGeometry = null;
+    $("plot").innerHTML = `<div class="empty-plot">${icon("wave")}<strong>No values for this quantity</strong><span>Choose another response or entity.</span></div>`;
+    $("plotStats").replaceChildren();
+    return;
+  }
   let min = Math.min(...values),
     max = Math.max(...values);
-  const padding = (max - min) * 0.13 || 0.1;
+  const padding = (max - min) * 0.08 || Math.max(Math.abs(max) * 0.1, 1e-6);
   min -= padding;
   max += padding;
-  const last = samples.at(-1).time || 1;
-  const px = (t) => left + (t / last) * (w - left - right),
+  const first = samples[0].time, last = samples.at(-1).time;
+  const duration = last - first || 1;
+  const px = (t) => left + ((t - first) / duration) * (w - left - right),
     py = (y) => top + ((max - y) / (max - min)) * (h - top - bottom);
-  const stride = Math.max(1, Math.floor(samples.length / 1500));
-  const colors = ["var(--accent)", "#159aa4", "#c58318"];
-  const curves = signal.channels
-    .map(([key], index) => {
-      const points = samples
-        .filter(
-          (s, i) =>
-            Number.isFinite(channelValue(s, key)) &&
-            (i % stride === 0 || i === samples.length - 1),
-        )
-        .map(
-          (s) =>
-            `${px(s.time).toFixed(2)},${py(channelValue(s, key)).toFixed(2)}`,
-        )
-        .join(" ");
-      return `<polyline points="${points}" fill="none" stroke="${colors[index]}" stroke-width="1.8" ${index ? 'stroke-dasharray="5 3"' : ""} stroke-linecap="round"/>`;
+  plotGeometry = { left, right, top, bottom, w, h, first, duration, px, py, series };
+  const stride = Math.max(1, Math.floor(samples.length / 2000));
+  const curves = series
+    .map(({ values: data }, index) => {
+      let path = "", pen = false;
+      for (let i = 0; i < samples.length; i++) {
+        if (i % stride && i !== samples.length - 1) continue;
+        if (!Number.isFinite(data[i])) { pen = false; continue; }
+        path += `${pen ? "L" : "M"}${px(samples[i].time).toFixed(1)},${py(data[i]).toFixed(1)}`;
+        pen = true;
+      }
+      return `<path d="${path}" fill="none" stroke="${PLOT_COLORS[index]}" stroke-width="1.7" ${index ? `stroke-dasharray="${index === 1 ? "6 3" : "2 3"}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
     })
     .join("");
   let grid = "";
-  for (let i = 0; i < 4; i++) {
-    const val = min + ((max - min) * i) / 3;
+  const yTicks = niceTicks(min, max, Math.max(2, Math.floor((h - top - bottom) / 34)));
+  for (const val of yTicks) {
     const y = py(val);
-    const tick =
-      Math.abs(val) > 0 && (Math.abs(val) < 0.0001 || Math.abs(val) >= 1000000)
-        ? val.toExponential(4)
-        : format(val, Math.abs(val) < 1 ? 3 : 1);
-    grid += `<line x1="${left}" x2="${w - right}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 4"/><text x="${left - 7}" y="${y + 3}" text-anchor="end">${tick}</text>`;
+    grid += `<line x1="${left}" x2="${w - right}" y1="${y}" y2="${y}" stroke="var(--line)" ${val === 0 ? "" : 'stroke-dasharray="2 3"'}/><text x="${left - 7}" y="${y + 3}" text-anchor="end">${formatTick(val, max - min)}</text>`;
   }
-  for (let i = 0; i < 6; i++)
-    grid += `<text x="${px((last * i) / 5)}" y="${h - 5}" text-anchor="${i === 5 ? "end" : "middle"}">${format((last * i) / 5, 1)}${i === 5 ? " s" : ""}</text>`;
-  const legend = signal.channels
-    .map(
-      ([, label], i) =>
-        `<text x="${w - signal.channels.length * 65 + i * 65}" y="10" fill="${colors[i]}">${escapeHtml(label)} ${i ? "--" : "—"}</text>`,
-    )
-    .join("");
+  for (const t of niceTicks(first, last, Math.max(2, Math.floor((w - left - right) / 80)))) {
+    const x = px(t);
+    grid += `<line x1="${x}" x2="${x}" y1="${top}" y2="${h - bottom}" stroke="var(--line)" stroke-dasharray="2 3"/><text x="${x}" y="${h - bottom + 14}" text-anchor="middle">${formatTick(t, duration)}</text>`;
+  }
+  const axes = `<line x1="${left}" x2="${left}" y1="${top}" y2="${h - bottom}" stroke="var(--line-strong)"/><line x1="${left}" x2="${w - right}" y1="${h - bottom}" y2="${h - bottom}" stroke="var(--line-strong)"/><text x="${w - right}" y="${h - 4}" text-anchor="end">time · s</text><text transform="translate(12 ${(top + h - bottom) / 2}) rotate(-90)" text-anchor="middle">${escapeHtml(signal.unit)}</text>`;
+  const legend = series.map(({ label }, i) => `<g transform="translate(${left + 10 + i * 78} ${top + 4})"><line x1="0" x2="16" y1="0" y2="0" stroke="${PLOT_COLORS[i]}" stroke-width="2" ${i ? `stroke-dasharray="${i === 1 ? "6 3" : "2 3"}"` : ""}/><text x="21" y="3" fill="var(--text)">${escapeHtml(label)}</text></g>`).join("");
+  const markers = series.map((_, i) => `<circle class="plot-marker" data-index="${i}" r="3.5" fill="var(--surface)" stroke="${PLOT_COLORS[i]}" stroke-width="2" cx="-10" cy="-10"/>`).join("");
   $("plot").innerHTML =
-    `<svg viewBox="0 0 ${w} ${h}" role="presentation"><g fill="var(--dim)" font-family="PlexMono" font-size="9">${grid}<text x="${left}" y="9">${signal.unit}</text>${legend}</g>${curves}<line id="plotCursor" x1="${px(samples[state.frame]?.time || 0)}" x2="${px(samples[state.frame]?.time || 0)}" y1="${top}" y2="${h - bottom}" stroke="var(--dim)" stroke-width="1" stroke-dasharray="2 3"/></svg>`;
+    `<svg viewBox="0 0 ${w} ${h}" role="presentation"><g fill="var(--dim)" font-family="PlexMono" font-size="9.5">${grid}${axes}</g>${curves}<line id="plotHover" y1="${top}" y2="${h - bottom}" x1="-10" x2="-10" stroke="var(--faint)" stroke-width="1"/><line id="plotCursor" x1="${px(samples[state.frame]?.time ?? first)}" x2="${px(samples[state.frame]?.time ?? first)}" y1="${top}" y2="${h - bottom}" stroke="var(--accent)" stroke-width="1.2"/>${markers}<g font-family="Plex" font-size="10.5">${legend}</g></svg><div class="plot-readout" id="plotReadout" hidden></div>`;
   $("plot").setAttribute(
     "aria-label",
     `${signal.title} in ${signal.unit} versus time. ${signal.channels.map(([, label], i) => `${label} ${["solid blue", "dashed teal", "dashed gold"][i]}`).join("; ")}. ${state.result.source}. ${samples.length} samples. Range ${format(Math.min(...values), 3)} to ${format(Math.max(...values), 3)}.`,
   );
+  renderPlotStats();
+  placePlotCursor();
 }
+function renderPlotStats() {
+  const geometry = plotGeometry;
+  if (!geometry) return;
+  const samples = state.result.samples, frame = Math.min(state.frame, samples.length - 1);
+  const signal = resultSignal();
+  $("plotStats").innerHTML = `<div class="stat-title">${escapeHtml(signal.unit)} · t = ${format(samples[frame].time)} s</div>` + geometry.series.map(({ label, values }, i) => {
+    const finite = values.filter(Number.isFinite);
+    const lo = Math.min(...finite), hi = Math.max(...finite);
+    const rms = Math.sqrt(finite.reduce((sum, v) => sum + v * v, 0) / (finite.length || 1));
+    return `<div class="stat-channel"><b><i style="background:${PLOT_COLORS[i]}"></i>${escapeHtml(label)}</b><dl><dt>value</dt><dd data-live="${i}">${formatValue(values[frame])}</dd><dt>min</dt><dd>${formatValue(lo)}</dd><dt>max</dt><dd>${formatValue(hi)}</dd><dt>range</dt><dd>${formatValue(hi - lo)}</dd><dt>rms</dt><dd>${formatValue(rms)}</dd></dl></div>`;
+  }).join("");
+}
+function placePlotCursor() {
+  const geometry = plotGeometry, samples = state.result?.samples;
+  if (!geometry || !samples) return;
+  const sample = samples[state.frame];
+  const x = geometry.px(sample.time);
+  $("plotCursor")?.setAttribute("x1", String(x));
+  $("plotCursor")?.setAttribute("x2", String(x));
+  document.querySelectorAll("#plot .plot-marker").forEach((marker) => {
+    const value = geometry.series[Number(marker.dataset.index)]?.values[state.frame];
+    marker.setAttribute("cx", Number.isFinite(value) ? String(x) : "-10");
+    marker.setAttribute("cy", Number.isFinite(value) ? String(geometry.py(value)) : "-10");
+  });
+  document.querySelectorAll("#plotStats [data-live]").forEach((cell) => {
+    cell.textContent = formatValue(geometry.series[Number(cell.dataset.live)]?.values[state.frame]);
+  });
+  const title = document.querySelector("#plotStats .stat-title");
+  if (title) title.textContent = `${resultSignal().unit} · t = ${format(sample.time)} s`;
+}
+function plotFrameAt(event) {
+  const geometry = plotGeometry, samples = state.result?.samples;
+  if (!geometry || !samples) return null;
+  const rect = $("plot").getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / rect.width) * geometry.w;
+  if (x < geometry.left - 4 || x > geometry.w - geometry.right + 4) return null;
+  const t = geometry.first + ((x - geometry.left) / (geometry.w - geometry.left - geometry.right)) * geometry.duration;
+  let lo = 0, hi = samples.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (samples[mid].time < t) lo = mid; else hi = mid; }
+  return Math.abs(samples[lo].time - t) <= Math.abs(samples[hi].time - t) ? lo : hi;
+}
+let plotDragging = false;
+$("plot").addEventListener("pointermove", (event) => {
+  const index = plotFrameAt(event), geometry = plotGeometry;
+  const hover = $("plotHover"), readout = $("plotReadout");
+  if (index === null || !hover || !readout) { if (hover) hover.setAttribute("x1", "-10"), hover.setAttribute("x2", "-10"); if (readout) readout.hidden = true; return; }
+  const sample = state.result.samples[index], x = geometry.px(sample.time);
+  hover.setAttribute("x1", String(x));
+  hover.setAttribute("x2", String(x));
+  readout.innerHTML = `t = ${format(sample.time, 4)} s<br>${geometry.series.map(({ label, values }, i) => `<i style="background:${PLOT_COLORS[i]}"></i>${escapeHtml(label)} ${formatValue(values[index])}`).join("<br>")}`;
+  readout.hidden = false;
+  const rect = $("plot").getBoundingClientRect(), left = (x / geometry.w) * rect.width;
+  readout.style.left = `${left + 12 + readout.offsetWidth > rect.width ? left - readout.offsetWidth - 12 : left + 12}px`;
+  readout.style.top = "18px";
+  if (plotDragging && !stale()) { state.playing = false; setFrame(index); }
+});
+$("plot").addEventListener("pointerleave", () => {
+  plotDragging = false;
+  $("plotHover")?.setAttribute("x1", "-10");
+  $("plotHover")?.setAttribute("x2", "-10");
+  if ($("plotReadout")) $("plotReadout").hidden = true;
+});
+$("plot").addEventListener("pointerdown", (event) => {
+  const index = plotFrameAt(event);
+  if (index === null || stale()) return;
+  plotDragging = true;
+  state.playing = false;
+  setFrame(index);
+});
+window.addEventListener("pointerup", () => { plotDragging = false; });
 function setFrame(index) {
   const samples = state.result?.samples;
   if (!samples?.length) return;
@@ -1315,22 +1478,22 @@ function setFrame(index) {
   $("timeSlider").value = String(state.frame);
   $("timeOutput").textContent = `${format(sample.time)} s`;
   $("viewTime").textContent = `t = ${format(sample.time)} s`;
-  if (!stale()) view?.setSample(sample);
-  updateSourceProbe();
-  const cursor = $("plotCursor");
-  if (cursor) {
-    const width = Math.max($("plot").clientWidth, 300);
-    const x = PLOT_LEFT + (sample.time / (samples.at(-1).time || 1)) * (width - PLOT_LEFT - 12);
-    cursor.setAttribute("x1", String(x));
-    cursor.setAttribute("x2", String(x));
+  if (!stale()) {
+    view?.setSample(sample);
+    view?.setTrailFrame(state.frame);
   }
+  updateSourceProbe();
+  placePlotCursor();
 }
 function animate(time) {
   if (state.playing && state.result && !stale()) {
     playTime += ((time - lastFrame) / 1000) * state.speed;
     const samples = state.result.samples;
     const end = samples.at(-1).time;
-    if (playTime > end) playTime = 0;
+    if (playTime > end) {
+      if (state.loop) playTime = samples[0].time;
+      else { playTime = end; state.playing = false; }
+    }
     let index = state.frame;
     if (samples[index].time > playTime) index = 0;
     while (index < samples.length - 1 && samples[index + 1].time <= playTime)
@@ -1393,9 +1556,52 @@ function exampleArt(kind) {
     ? '<svg viewBox="0 0 180 100" fill="none"><path d="M35 14h90M80 14l44 63" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><circle cx="124" cy="77" r="13" fill="currentColor"/><path d="M38 76Q77 105 132 82" stroke="currentColor" stroke-dasharray="3 5" opacity=".3"/></svg>'
     : '<svg viewBox="0 0 180 100" fill="none"><path d="M23 25v55M23 52h12l6-14 12 28 12-28 12 28 12-28 6 14h12M20 83h145" stroke="currentColor" stroke-width="3"/><rect x="107" y="32" width="40" height="40" rx="5" fill="currentColor"/></svg>';
 }
+const EXAMPLE_GROUPS = [["featured", "Featured studies"], ["assembly", "3D & planar assemblies"], ["template", "Templates"], ["upstream", "Upstream MBDyn decks"]];
+let exampleGroup = "featured";
+function exampleCard(art, category, title, description, action, featured = false) {
+  const card = document.createElement("article");
+  card.className = "example-card";
+  card.innerHTML = `<div class="example-art">${featured ? '<span class="featured">FEATURED</span>' : ""}${art}</div><div class="example-card-body"><span class="eyebrow"></span><h3></h3><p></p><button class="secondary">Open →</button></div>`;
+  card.querySelector(".eyebrow").textContent = category;
+  card.querySelector("h3").textContent = title;
+  card.querySelector("p").textContent = description;
+  const button = card.querySelector("button");
+  if (action.label) button.textContent = action.label;
+  button.onclick = action.run;
+  return card;
+}
 function renderExamples() {
   const root = $("exampleCards");
   root.replaceChildren();
+  const groups = EXAMPLE_GROUPS.filter(([id]) => id !== "featured" || state.featured?.length);
+  if (!groups.some(([id]) => id === exampleGroup)) exampleGroup = groups[0][0];
+  $("exampleFilters").replaceChildren(...groups.map(([id, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.className = id === exampleGroup ? "active" : "";
+    button.onclick = () => {
+      exampleGroup = id;
+      $("exampleFilters").querySelectorAll("button").forEach((item) => item.classList.toggle("active", item === button));
+      root.querySelector(`[data-group="${id}"]`)?.scrollIntoView({ block: "start", behavior: "smooth" });
+    };
+    return button;
+  }));
+  const sections = Object.fromEntries(groups.map(([id, label]) => {
+    const heading = document.createElement("h3");
+    heading.className = "example-group";
+    heading.dataset.group = id;
+    heading.textContent = label;
+    root.append(heading);
+    return [id, heading];
+  }));
+  const place = (group, card) => {
+    let anchor = sections[group];
+    while (anchor.nextElementSibling && !anchor.nextElementSibling.classList.contains("example-group")) anchor = anchor.nextElementSibling;
+    anchor.after(card);
+  };
+  for (const study of state.featured || [])
+    place("featured", exampleCard(study.art || exampleArt("spatial-assembly"), study.category, study.title, study.description, { label: "Open study →", run: () => openFeatured(study) }, true));
   for (const ex of [
     ...state.examples,
     ...state.sourceExamples.map((source) => ({
@@ -1403,10 +1609,9 @@ function renderExamples() {
       model: sourceModel(source),
     })),
   ]) {
-    const card = document.createElement("article");
-    card.className = "example-card";
+    const group = assemblyKind(ex.model) ? "assembly" : ex.model.kind === "source-example" ? "upstream" : "template";
     const category =
-      assemblyKind(ex.model) ? "RIGID BODY · EDITABLE GRAPH" : ex.model.kind === "source-example"
+      assemblyKind(ex.model) ? (ex.model.kind === "spatial-assembly" ? "3D RIGID BODIES · EDITABLE" : "PLANAR · EDITABLE") : ex.model.kind === "source-example"
         ? `${ex.category} · ${ex.license.spdx} · UPSTREAM`
         : industry[ex.model.kind]?.category ||
           (ex.model.kind === "double-pendulum"
@@ -1414,21 +1619,15 @@ function renderExamples() {
             : ex.model.kind === "pendulum"
               ? "RIGID BODY · GRAVITY"
               : "ELASTICITY · DAMPING");
-    card.innerHTML = `<div class="example-art">${exampleArt(ex.model.kind)}</div><div class="example-card-body"><span class="eyebrow">${escapeHtml(category)}</span><h3></h3><p></p><button class="secondary">Open example →</button></div>`;
-    card.querySelector("h3").textContent = ex.title;
-    card.querySelector("p").textContent = ex.description;
-    const button = card.querySelector("button");
     if (ex.model.kind === "source-example" && !ex.enabled) {
-      button.textContent = "Why unavailable?";
-      button.onclick = () =>
+      place(group, exampleCard(exampleArt(ex.model.kind), category, ex.title, ex.description, { label: "Why unavailable?", run: () =>
         showDocument(
           ex.title,
           `${ex.description}\n\n${ex.validation.error}\n\n${ex.validation.remediation}\n\nSource: ${ex.source.url}\nLicense: ${ex.license.spdx}`,
-        );
-      root.append(card);
+        ) }));
       continue;
     }
-    button.onclick = () => {
+    place(group, exampleCard(exampleArt(ex.model.kind), category, ex.title, ex.description, { label: "Open example →", run: () => {
       applyModel(ex.model);
       $("examplesDialog").close();
       switchStep("model");
@@ -1437,8 +1636,7 @@ function renderExamples() {
           ? "Original upstream example loaded. Its input is read-only; inspect the deck, run it, and explore native node trajectories."
           : "Example loaded. Edit its parameters, validate, and run. Undo restores your previous model.",
       );
-    };
-    root.append(card);
+    } }));
   }
 }
 
@@ -1730,8 +1928,13 @@ function clearResult() {
   state.resultSignature = null;
   state.playing = false;
   state.frame = 0;
-  for (const id of ["playButton", "rewindButton", "timeSlider", "csvButton", "clearResultsButton"])
+  for (const id of ["playButton", "rewindButton", "frameBackButton", "frameForwardButton", "timeSlider", "csvButton", "clearResultsButton"])
     $(id).disabled = true;
+  plotGeometry = null;
+  $("plotStats").replaceChildren();
+  $("resultsBadge").textContent = "Empty";
+  $("resultsBadge").className = "badge";
+  view?.setTrails(null);
   $("nodeSelect").hidden = true;
   $("forceSelect").hidden = true;
   $("jointSelect").hidden = true;
@@ -1741,7 +1944,7 @@ function clearResult() {
   $("samplesMetric").textContent = "—";
   $("timeOutput").textContent = "0.000 s";
   $("plot").innerHTML =
-    `<div class="empty-plot">${icon("wave")}<strong>Let the model tell its story.</strong><span>Run MBDyn to generate a response.</span></div>`;
+    `<div class="empty-plot">${icon("wave")}<strong>No results yet</strong><span>Run the model in the Solve workspace to plot its response.</span></div>`;
 }
 $("clearResultsButton").onclick = () => {
   clearResult(); markNativeDirty();
@@ -1933,16 +2136,14 @@ $("saveButton").onclick = async () => {
 };
 $("importButton").onclick = () =>
   nativeDesktop ? nativeOpen() : $("projectFile").click();
-$("projectFile").onchange = async (e) => {
-  const file = e.target.files[0];
+async function openProjectText(readText, size) {
   const revision = projectRevision;
   let nextReference;
   let nextStep;
   try {
-    if (!file) return;
-    if (browserDirty && !window.confirm("Opening this project replaces the current unsaved model, geometry and results. Export the current project first if you need to keep them. Continue?")) return;
-    if (file.size > 32 * 1024 * 1024) throw new Error("Project file exceeds 32 MiB.");
-    const project = JSON.parse(await file.text());
+    if (browserDirty && !window.confirm("Opening this project replaces the current unsaved model, geometry and results. Export the current project first if you need to keep them. Continue?")) return false;
+    if (size > 32 * 1024 * 1024) throw new Error("Project file exceeds 32 MiB.");
+    const project = JSON.parse(await readText());
     if (project.format !== "mbdyn-studio/1" || !project.model)
       throw new Error("Unsupported project format. Expected mbdyn-studio/1.");
     const check = await checkModel(project.model);
@@ -1959,14 +2160,35 @@ $("projectFile").onchange = async (e) => {
     if (revision !== projectRevision) throw new Error("The current project changed while the file was loading; your edits were kept. Open it again to retry.");
     commitOpenedProject(project,nextReference,nextStep);
     nextReference = null;
+    switchStep(state.result ? "results" : "model");
     notice("Project imported and validated." + (Object.keys(state.step?.metadata.unverifiedBindings || {}).length ? " Review saved STEP attachments before using them." : ""));
+    return true;
   } catch (error) {
     nextReference?.dispose();
     notice(`Project was not opened: ${error.message}`, "error");
+    return false;
+  }
+}
+$("projectFile").onchange = async (e) => {
+  const file = e.target.files[0];
+  try {
+    if (file) await openProjectText(() => file.text(), file.size);
   } finally {
     e.target.value = "";
   }
 };
+async function openFeatured(study) {
+  if (state.busy || state.saving || state.opening) return;
+  const response = await fetch(`/api/featured/${encodeURIComponent(study.id)}`);
+  if (!response.ok) return notice(`The featured study could not be loaded (${response.status}).`, "error");
+  const text = await response.text();
+  if (await openProjectText(async () => text, text.length)) {
+    $("examplesDialog").close();
+    browserDirty = false;
+    view?.reset();
+    notice(`${study.title} loaded. ${study.next || "Open Solve and run MBDyn, then explore the motion in Post-processing."}`);
+  }
+}
 $("deckButton").onclick = async () => {
   try {
     const result = await api("deck", state.model);
@@ -2033,6 +2255,29 @@ document.querySelectorAll("[data-view]").forEach(
     }),
 );
 $("resetViewButton").onclick = () => view?.reset();
+$("solveRunButton").onclick = () => run();
+$("frameBackButton").onclick = () => { state.playing = false; setFrame(state.frame - 1); };
+$("frameForwardButton").onclick = () => { state.playing = false; setFrame(state.frame + 1); };
+$("loopButton").onclick = () => {
+  state.loop = !state.loop;
+  $("loopButton").setAttribute("aria-pressed", String(state.loop));
+};
+function setTrails(on) {
+  state.trails = on;
+  $("trailsButton").setAttribute("aria-pressed", String(on));
+  $("trailsToggle").checked = on;
+  view?.setTrails(on && state.result && !stale() ? state.result : null);
+  if (on && state.result && !stale()) view?.setTrailFrame(state.frame);
+  if (on && workspace !== "results" && state.result) switchStep("results");
+}
+$("trailsButton").onclick = () => setTrails(!state.trails);
+$("trailsToggle").onchange = (event) => setTrails(event.target.checked);
+$("followToggle").onchange = (event) => { view?.setFollow(event.target.checked ? state.selection : null); };
+$("labelsButton").onclick = () => {
+  const show = $("labelsButton").getAttribute("aria-pressed") !== "true";
+  $("labelsButton").setAttribute("aria-pressed", String(show));
+  $("viewport").classList.toggle("hide-labels", !show);
+};
 $("gridButton").onclick = () => {
   const next = $("gridButton").getAttribute("aria-pressed") !== "true";
   $("gridButton").setAttribute("aria-pressed", String(next));
@@ -2064,7 +2309,7 @@ $("timeSlider").oninput = (e) => {
   setFrame(Number(e.target.value));
 };
 $("speedButton").onclick = () => {
-  const speeds = [0.25, 0.5, 1, 2];
+  const speeds = [0.1, 0.25, 0.5, 1, 2];
   state.speed = speeds[(speeds.indexOf(state.speed) + 1) % speeds.length];
   $("speedButton").textContent = `${state.speed}×`;
 };
@@ -2166,7 +2411,24 @@ document.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
     e.preventDefault();
     $(e.shiftKey ? "redoButton" : "undoButton").click();
+    return;
   }
+  if ((e.ctrlKey || e.metaKey) && ["s", "o"].includes(e.key.toLowerCase())) {
+    e.preventDefault();
+    $(e.key.toLowerCase() === "s" ? "saveButton" : "importButton").click();
+    return;
+  }
+  if (e.target.closest("select,button") && [" ", "Enter"].includes(e.key)) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === "F5") { e.preventDefault(); if (!state.busy) run(); return; }
+  if (["1", "2", "3"].includes(e.key)) { switchStep(["model", "simulate", "results"][Number(e.key) - 1]); return; }
+  if (e.key.toLowerCase() === "f") { view?.reset(); return; }
+  if (!state.result || workspace !== "results") return;
+  if (e.key === " ") { e.preventDefault(); $("playButton").click(); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); $("frameBackButton").click(); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); $("frameForwardButton").click(); }
+  else if (e.key === "Home") { e.preventDefault(); $("rewindButton").click(); }
+  else if (e.key === "End") { e.preventDefault(); state.playing = false; setFrame(state.result.samples.length - 1); }
 });
 new ResizeObserver(() => {
   if (state.result) drawPlot();
@@ -2197,11 +2459,13 @@ async function init() {
   renderProperties();
   view?.setModel(state.model, true);
   try {
-    const [solver, examples, sourceExamples] = await Promise.all([
+    const [solver, examples, sourceExamples, featured] = await Promise.all([
       api("status"),
       api("examples"),
       api("source-examples").catch(() => ({ examples: [] })),
+      api("featured").catch(() => ({ studies: [] })),
     ]);
+    state.featured = featured.studies;
     state.solver = solver.solver;
     state.examples = examples.examples;
     state.sourceExamples = sourceExamples.examples;
@@ -2214,6 +2478,9 @@ async function init() {
     $("solverDetail").textContent = solver.solver.available
       ? solver.solver.version || "Local solver"
       : "Reference previews and deck export available";
+    $("solverChip").textContent = solver.solver.available ? `MBDyn ${solver.solver.version || "ready"}` : "MBDyn not configured";
+    $("solverChip").className = `status-chip ${solver.solver.available ? "ok" : ""}`;
+    renderChecklist();
     if (!solver.solver.available)
       notice(
         "MBDyn is unavailable. You can edit models, export decks and use Reference preview. Run simulation will report the solver configuration error.",
