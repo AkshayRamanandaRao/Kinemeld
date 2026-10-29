@@ -11,6 +11,7 @@ import { setupStepMass } from "./step-mass.js";
 import { setupKinematics } from "./kinematics.js";
 import { setupPointProbe } from "./point-probe.js";
 import { setupWheelKinematics } from "./wheel-kinematics.js";
+import { parseSolverCsv, fullSeries, seriesStatistics, envelope } from "./full-resolution.js";
 
 const $ = (id) => document.getElementById(id);
 const paths = {
@@ -54,6 +55,8 @@ const paths = {
   eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
   force: "M12 3v14 M7 12l5 5 5-5 M5 21h14",
   present: "M3 4h18v12H3z M8 20h8 M12 16v4 M10 8l4 2-4 2z",
+  pin: "M9 3h6l-1 6 4 4H6l4-4z M12 13v8",
+  compare: "M3 17l5-6 4 3 4-7 5 4 M3 20h18 M3 9l5 3 4-5 4 4 5-6",
 };
 function icon(name) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.cube}"/></svg>`;
@@ -122,6 +125,8 @@ const state = {
   speed: 1,
   loop: true,
   trails: false,
+  overlays: [],
+  compareRun: null,
   busy: false,
   saving: false,
   signal: 0,
@@ -1340,7 +1345,7 @@ function renderResult() {
     );
     $("nodeSelect").value = String(state.selectedNode);
   }
-  for (const id of ["playButton", "rewindButton", "frameBackButton", "frameForwardButton", "timeSlider", "csvButton", "clearResultsButton"])
+  for (const id of ["playButton", "rewindButton", "frameBackButton", "frameForwardButton", "timeSlider", "csvButton", "clearResultsButton", "pinTraceButton", "plotSvgButton", "plotPngButton", "compareButton"])
     $(id).disabled = false;
   $("playButton").disabled = Boolean(isStale);
   $("resultsBadge").textContent = isStale ? "Stale" : real ? "MBDyn" : "Preview";
@@ -1382,11 +1387,65 @@ function formatValue(value) {
   const magnitude = Math.abs(value);
   return magnitude !== 0 && (magnitude >= 1e5 || magnitude < 1e-3) ? value.toExponential(4) : value.toPrecision(5);
 }
-const PLOT_COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)"];
+const PLOT_COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "#d2453f", "#6c8f1f", "#8a6a3f", "#3fa0d8"];
+const DASHES = ["", "6 3", "2 3", "8 3 2 3"];
 let plotGeometry = null;
+// Parsed solver CSVs, keyed by result object so saving or cloning a result never copies them.
+const fullResolution = new WeakMap();
+const fullResolutionLoading = new WeakSet();
+async function loadFullResolution(result) {
+  if (!result || result.source !== "MBDyn" || fullResolution.has(result) || fullResolutionLoading.has(result)) return;
+  const csv = result.files?.csv;
+  if (!result.csvText && !(typeof csv === "string" && /^\/api\/runs\/[0-9a-f]{32}\/results\.csv$/.test(csv))) return;
+  fullResolutionLoading.add(result);
+  try {
+    const text = result.csvText || (await (await fetch(csv)).text());
+    fullResolution.set(result, parseSolverCsv(text));
+    if (state.result === result) drawPlot();
+  } catch (error) {
+    console.warn("Full-resolution results unavailable:", error);
+  } finally {
+    fullResolutionLoading.delete(result);
+  }
+}
+function seriesFor(result, key) {
+  const full = fullResolution.get(result);
+  const values = full ? fullSeries(full, key, bodyAngularVelocity) : null;
+  if (values && values.length === full.times.length) return { times: full.times, values, full: true };
+  return { times: result.samples.map((sample) => sample.time), values: result.samples.map((sample) => channelValue(sample, key)), full: false };
+}
+function nearestIndex(times, t) {
+  let lo = 0, hi = times.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (times[mid] < t) lo = mid; else hi = mid; }
+  return Math.abs(times[lo] - t) <= Math.abs(times[hi] - t) ? lo : hi;
+}
+/** Current channels, pinned traces with the same unit, and the comparison run's matching channels. */
+function plotSeries() {
+  const signal = resultSignal();
+  const series = signal.channels.map(([key, label], i) => ({ key, label, color: PLOT_COLORS[i], dash: DASHES[i] || "", ...seriesFor(state.result, key) }));
+  let color = signal.channels.length;
+  for (const overlay of state.overlays) {
+    if (overlay.unit !== signal.unit) continue;
+    for (const [key, label] of overlay.channels) {
+      if (signal.channels.some(([own]) => own === key)) continue;
+      const data = seriesFor(state.result, key);
+      if (!data.values.some(Number.isFinite)) continue;
+      series.push({ key, label: `${overlay.name} ${label}`, color: PLOT_COLORS[color++ % PLOT_COLORS.length], dash: "", overlay: true, ...data });
+    }
+  }
+  const compare = state.compareRun;
+  if (compare && compare.result !== state.result) {
+    for (const [key, label] of signal.channels) {
+      const data = seriesFor(compare.result, key);
+      if (data.values.some(Number.isFinite)) series.push({ key, label: `${label} · ${compare.name}`, color: "var(--faint)", dash: "4 3", reference: true, ...data });
+    }
+  }
+  return series;
+}
 function drawPlot() {
   const samples = state.result?.samples;
   if (!samples?.length) return;
+  loadFullResolution(state.result);
   const w = Math.max($("plot").clientWidth, 300),
     h = Math.max($("plot").clientHeight, 110),
     left = 64,
@@ -1394,7 +1453,7 @@ function drawPlot() {
     top = 14,
     bottom = 28;
   const signal = resultSignal();
-  const series = signal.channels.map(([key, label]) => ({ key, label, values: samples.map((s) => channelValue(s, key)) }));
+  const series = plotSeries();
   const values = series.flatMap((item) => item.values).filter(Number.isFinite);
   if (!values.length) {
     plotGeometry = null;
@@ -1402,8 +1461,8 @@ function drawPlot() {
     $("plotStats").replaceChildren();
     return;
   }
-  let min = Math.min(...values),
-    max = Math.max(...values);
+  let min = Infinity, max = -Infinity;
+  for (const value of values) { if (value < min) min = value; if (value > max) max = value; }
   const padding = (max - min) * 0.08 || Math.max(Math.abs(max) * 0.1, 1e-6);
   min -= padding;
   max += padding;
@@ -1412,17 +1471,19 @@ function drawPlot() {
   const px = (t) => left + ((t - first) / duration) * (w - left - right),
     py = (y) => top + ((max - y) / (max - min)) * (h - top - bottom);
   plotGeometry = { left, right, top, bottom, w, h, first, duration, px, py, series };
-  const stride = Math.max(1, Math.floor(samples.length / 2000));
+  const buckets = Math.max(50, Math.round(w - left - right));
   const curves = series
-    .map(({ values: data }, index) => {
+    .map((item, index) => {
+      // Min/max per pixel column keeps every peak of a long full-resolution series visible.
+      const points = envelope(item.times, item.values, first, last, buckets);
       let path = "", pen = false;
-      for (let i = 0; i < samples.length; i++) {
-        if (i % stride && i !== samples.length - 1) continue;
-        if (!Number.isFinite(data[i])) { pen = false; continue; }
-        path += `${pen ? "L" : "M"}${px(samples[i].time).toFixed(1)},${py(data[i]).toFixed(1)}`;
+      for (const point of points) {
+        if (!point || point.t > last + 1e-12) { pen = false; continue; }
+        path += `${pen ? "L" : "M"}${px(point.t).toFixed(1)},${py(point.v).toFixed(1)}`;
         pen = true;
       }
-      return `<path class="plot-curve" d="${path}" fill="none" stroke="${PLOT_COLORS[index]}" stroke-width="1.7" ${index ? `stroke-dasharray="${index === 1 ? "6 3" : "2 3"}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
+      const role = item.reference ? "plot-reference" : item.overlay ? "plot-overlay" : "plot-curve";
+      return `<path class="${role}" d="${path}" fill="none" stroke="${item.color}" stroke-width="${item.reference ? 1.4 : 1.7}" ${item.dash ? `stroke-dasharray="${item.dash}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
     })
     .join("");
   let grid = "";
@@ -1436,11 +1497,12 @@ function drawPlot() {
     grid += `<line x1="${x}" x2="${x}" y1="${top}" y2="${h - bottom}" stroke="var(--line)" stroke-dasharray="2 3"/><text x="${x}" y="${h - bottom + 14}" text-anchor="middle">${formatTick(t, duration)}</text>`;
   }
   const axes = `<line x1="${left}" x2="${left}" y1="${top}" y2="${h - bottom}" stroke="var(--line-strong)"/><line x1="${left}" x2="${w - right}" y1="${h - bottom}" y2="${h - bottom}" stroke="var(--line-strong)"/><text x="${w - right}" y="${h - 4}" text-anchor="end">time · s</text><text transform="translate(12 ${(top + h - bottom) / 2}) rotate(-90)" text-anchor="middle">${escapeHtml(signal.unit)}</text>`;
-  const legendWidth = series.length * 78 + 6;
-  const legend = `<rect x="${left + 4}" y="${top - 6}" width="${legendWidth}" height="18" rx="4" fill="var(--surface)" opacity="0.88"/>` + series.map(({ label }, i) => `<g transform="translate(${left + 10 + i * 78} ${top + 4})"><line x1="0" x2="16" y1="0" y2="0" stroke="${PLOT_COLORS[i]}" stroke-width="2" ${i ? `stroke-dasharray="${i === 1 ? "6 3" : "2 3"}"` : ""}/><text x="21" y="3" fill="var(--text)">${escapeHtml(label)}</text></g>`).join("");
-  const markers = series.map((_, i) => `<circle class="plot-marker" data-index="${i}" r="3.5" fill="var(--surface)" stroke="${PLOT_COLORS[i]}" stroke-width="2" cx="-10" cy="-10"/>`).join("");
+  const step = Math.min(150, Math.max(78, ...series.map((item) => 30 + item.label.length * 6)));
+  const legendWidth = Math.min(w - left - right - 8, series.length * step + 6);
+  const legend = `<rect x="${left + 4}" y="${top - 6}" width="${legendWidth}" height="18" rx="4" fill="var(--surface)" opacity="0.88"/>` + series.map(({ label, color, dash }, i) => `<g transform="translate(${left + 10 + i * step} ${top + 4})"><line x1="0" x2="16" y1="0" y2="0" stroke="${color}" stroke-width="2" ${dash ? `stroke-dasharray="${dash}"` : ""}/><text x="21" y="3" fill="var(--text)">${escapeHtml(label)}</text></g>`).join("");
+  const markers = series.map((item, i) => `<circle class="plot-marker" data-index="${i}" r="3.5" fill="var(--surface)" stroke="${item.color}" stroke-width="2" cx="-10" cy="-10"/>`).join("");
   $("plot").innerHTML =
-    `<svg viewBox="0 0 ${w} ${h}" role="presentation"><g fill="var(--dim)" font-family="PlexMono" font-size="9.5">${grid}${axes}</g>${curves}<line id="plotHover" y1="${top}" y2="${h - bottom}" x1="-10" x2="-10" stroke="var(--faint)" stroke-width="1"/><line id="plotCursor" x1="${px(samples[state.frame]?.time ?? first)}" x2="${px(samples[state.frame]?.time ?? first)}" y1="${top}" y2="${h - bottom}" stroke="var(--accent)" stroke-width="1.2"/>${markers}<g font-family="Plex" font-size="10.5">${legend}</g></svg><div class="plot-readout" id="plotReadout" hidden></div>`;
+    `<svg viewBox="0 0 ${w} ${h}" role="presentation" xmlns="http://www.w3.org/2000/svg"><g fill="var(--dim)" font-family="PlexMono" font-size="9.5">${grid}${axes}</g>${curves}<line id="plotHover" y1="${top}" y2="${h - bottom}" x1="-10" x2="-10" stroke="var(--faint)" stroke-width="1"/><line id="plotCursor" x1="${px(samples[state.frame]?.time ?? first)}" x2="${px(samples[state.frame]?.time ?? first)}" y1="${top}" y2="${h - bottom}" stroke="var(--accent)" stroke-width="1.2"/>${markers}<g font-family="Plex" font-size="10.5">${legend}</g></svg><div class="plot-readout" id="plotReadout" hidden></div>`;
   $("plot").setAttribute(
     "aria-label",
     `${signal.title} in ${signal.unit} versus time. ${signal.channels.map(([, label], i) => `${label} ${["solid blue", "dashed teal", "dashed gold"][i]}`).join("; ")}. ${state.result.source}. ${samples.length} samples. Range ${format(Math.min(...values), 3)} to ${format(Math.max(...values), 3)}.`,
@@ -1453,12 +1515,20 @@ function renderPlotStats() {
   if (!geometry) return;
   const samples = state.result.samples, frame = Math.min(state.frame, samples.length - 1);
   const signal = resultSignal();
-  $("plotStats").innerHTML = `<div class="stat-title">${escapeHtml(signal.unit)} · t = ${format(samples[frame].time)} s</div>` + geometry.series.map(({ label, values }, i) => {
-    const finite = values.filter(Number.isFinite);
-    const lo = Math.min(...finite), hi = Math.max(...finite);
-    const rms = Math.sqrt(finite.reduce((sum, v) => sum + v * v, 0) / (finite.length || 1));
-    return `<div class="stat-channel"><b><i style="background:${PLOT_COLORS[i]}"></i>${escapeHtml(label)}</b><dl><dt>value</dt><dd data-live="${i}">${formatValue(values[frame])}</dd><dt>min</dt><dd>${formatValue(lo)}</dd><dt>max</dt><dd>${formatValue(hi)}</dd><dt>range</dt><dd>${formatValue(hi - lo)}</dd><dt>rms</dt><dd>${formatValue(rms)}</dd></dl></div>`;
+  const full = geometry.series.some((item) => item.full);
+  const steps = full ? fullResolution.get(state.result).times.length : samples.length;
+  const pinned = state.overlays.length || state.compareRun
+    ? `<div class="stat-pins">${state.overlays.map((overlay, i) => `<button type="button" data-overlay="${i}" title="Remove pinned trace">${escapeHtml(overlay.name)} · ${escapeHtml(overlay.title)} ×</button>`).join("")}${state.compareRun ? `<button type="button" data-compare title="Stop comparing">vs ${escapeHtml(state.compareRun.name)} ×</button>` : ""}</div>`
+    : "";
+  $("plotStats").innerHTML = `<div class="stat-title">${escapeHtml(signal.unit)} · t = ${format(samples[frame].time)} s</div><div class="stat-source">${full ? `Full resolution · ${steps.toLocaleString()} steps` : `Displayed samples · ${steps.toLocaleString()}`}</div>${pinned}` + geometry.series.map((item, i) => {
+    const stats = seriesStatistics(item.times, item.values);
+    return `<div class="stat-channel"><b><i style="background:${item.color}"></i>${escapeHtml(item.label)}</b><dl><dt>value</dt><dd data-live="${i}">—</dd><dt>min</dt><dd title="at ${format(stats.minAt, 4)} s">${formatValue(stats.min)}</dd><dt>max</dt><dd title="at ${format(stats.maxAt, 4)} s">${formatValue(stats.max)}</dd><dt>peak at</dt><dd>${format(Math.abs(stats.max) >= Math.abs(stats.min) ? stats.maxAt : stats.minAt, 4)} s</dd><dt>range</dt><dd>${formatValue(stats.max - stats.min)}</dd><dt>rms</dt><dd>${formatValue(stats.rms)}</dd></dl></div>`;
   }).join("");
+  $("plotStats").querySelectorAll("[data-overlay]").forEach((button) => { button.onclick = () => { state.overlays.splice(Number(button.dataset.overlay), 1); drawPlot(); }; });
+  $("plotStats").querySelector("[data-compare]")?.addEventListener("click", () => { state.compareRun = null; renderCompareControls(); drawPlot(); });
+}
+function seriesValueAt(item, t) {
+  return item.values[nearestIndex(item.times, t)];
 }
 function placePlotCursor() {
   const geometry = plotGeometry, samples = state.result?.samples;
@@ -1468,41 +1538,43 @@ function placePlotCursor() {
   $("plotCursor")?.setAttribute("x1", String(x));
   $("plotCursor")?.setAttribute("x2", String(x));
   document.querySelectorAll("#plot .plot-marker").forEach((marker) => {
-    const value = geometry.series[Number(marker.dataset.index)]?.values[state.frame];
+    const value = seriesValueAt(geometry.series[Number(marker.dataset.index)], sample.time);
     marker.setAttribute("cx", Number.isFinite(value) ? String(x) : "-10");
     marker.setAttribute("cy", Number.isFinite(value) ? String(geometry.py(value)) : "-10");
   });
   document.querySelectorAll("#plotStats [data-live]").forEach((cell) => {
-    cell.textContent = formatValue(geometry.series[Number(cell.dataset.live)]?.values[state.frame]);
+    cell.textContent = formatValue(seriesValueAt(geometry.series[Number(cell.dataset.live)], sample.time));
   });
   const title = document.querySelector("#plotStats .stat-title");
   if (title) title.textContent = `${resultSignal().unit} · t = ${format(sample.time)} s`;
 }
-function plotFrameAt(event) {
-  const geometry = plotGeometry, samples = state.result?.samples;
-  if (!geometry || !samples) return null;
+function plotTimeAt(event) {
+  const geometry = plotGeometry;
+  if (!geometry) return null;
   const rect = $("plot").getBoundingClientRect();
   const x = ((event.clientX - rect.left) / rect.width) * geometry.w;
   if (x < geometry.left - 4 || x > geometry.w - geometry.right + 4) return null;
-  const t = geometry.first + ((x - geometry.left) / (geometry.w - geometry.left - geometry.right)) * geometry.duration;
-  let lo = 0, hi = samples.length - 1;
-  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (samples[mid].time < t) lo = mid; else hi = mid; }
-  return Math.abs(samples[lo].time - t) <= Math.abs(samples[hi].time - t) ? lo : hi;
+  return Math.max(geometry.first, Math.min(geometry.first + geometry.duration, geometry.first + ((x - geometry.left) / (geometry.w - geometry.left - geometry.right)) * geometry.duration));
+}
+function plotFrameAt(event) {
+  const t = plotTimeAt(event), samples = state.result?.samples;
+  return t === null || !samples ? null : nearestIndex(samples.map((sample) => sample.time), t);
 }
 let plotDragging = false;
 $("plot").addEventListener("pointermove", (event) => {
-  const index = plotFrameAt(event), geometry = plotGeometry;
+  const t = plotTimeAt(event), geometry = plotGeometry;
   const hover = $("plotHover"), readout = $("plotReadout");
-  if (index === null || !hover || !readout) { if (hover) hover.setAttribute("x1", "-10"), hover.setAttribute("x2", "-10"); if (readout) readout.hidden = true; return; }
-  const sample = state.result.samples[index], x = geometry.px(sample.time);
+  if (t === null || !hover || !readout) { if (hover) hover.setAttribute("x1", "-10"), hover.setAttribute("x2", "-10"); if (readout) readout.hidden = true; return; }
+  // The readout uses each series' own resolution, so it can show values between displayed samples.
+  const x = geometry.px(t);
   hover.setAttribute("x1", String(x));
   hover.setAttribute("x2", String(x));
-  readout.innerHTML = `t = ${format(sample.time, 4)} s<br>${geometry.series.map(({ label, values }, i) => `<i style="background:${PLOT_COLORS[i]}"></i>${escapeHtml(label)} ${formatValue(values[index])}`).join("<br>")}`;
+  readout.innerHTML = `t = ${format(t, 4)} s<br>${geometry.series.map((item) => `<i style="background:${item.color}"></i>${escapeHtml(item.label)} ${formatValue(seriesValueAt(item, t))}`).join("<br>")}`;
   readout.hidden = false;
   const rect = $("plot").getBoundingClientRect(), left = (x / geometry.w) * rect.width;
   readout.style.left = `${left + 12 + readout.offsetWidth > rect.width ? left - readout.offsetWidth - 12 : left + 12}px`;
   readout.style.top = "18px";
-  if (plotDragging && !stale()) { state.playing = false; setFrame(index); }
+  if (plotDragging && !stale()) { state.playing = false; setFrame(plotFrameAt(event)); }
 });
 $("plot").addEventListener("pointerleave", () => {
   plotDragging = false;
@@ -1518,6 +1590,78 @@ $("plot").addEventListener("pointerdown", (event) => {
   setFrame(index);
 });
 window.addEventListener("pointerup", () => { plotDragging = false; });
+function entityName() {
+  const signal = resultSignal(), key = signal.channels[0]?.[0] || "";
+  const [kind, id] = key.split(":");
+  if (kind === "node") return visualInfo(state.result.model)?.nodes.find((node) => String(node.id) === id)?.label || id;
+  return id && kind !== key ? id : signal.title;
+}
+$("pinTraceButton").onclick = () => {
+  if (!state.result) return;
+  const signal = resultSignal();
+  const name = entityName();
+  if (state.overlays.some((overlay) => overlay.name === name && overlay.title === signal.title)) return notice("This trace is already pinned.");
+  state.overlays.push({ name, title: signal.title, unit: signal.unit, channels: signal.channels.map(([key, label]) => [key, label]) });
+  notice(`Pinned ${name} · ${signal.title}. Choose another body or element with the same unit to compare it on one plot.`);
+  drawPlot();
+};
+function renderCompareControls() {
+  const compare = state.compareRun;
+  $("compareStatus").textContent = compare ? `Comparing with ${compare.name} (${compare.label}).` : "Pin this run, change the model and run again to overlay both responses.";
+  $("compareButton").textContent = compare ? "Pin the current run instead" : "Pin run for comparison";
+  $("compareClearButton").hidden = !compare;
+}
+$("compareButton").onclick = () => {
+  if (!state.result) return;
+  state.compareCount = (state.compareCount || 0) + 1;
+  state.compareRun = { result: state.result, name: `Run ${state.compareCount}`, label: `${state.result.samples.at(-1).time.toFixed(3)} s, ${state.result.source}` };
+  renderCompareControls();
+  drawPlot();
+  notice(`${state.compareRun.name} pinned. Edit the model and run again; the pinned response stays on the plot as a grey dashed line.`);
+};
+$("compareClearButton").onclick = () => { state.compareRun = null; renderCompareControls(); drawPlot(); };
+function exportablePlot() {
+  const svg = $("plot").querySelector("svg");
+  if (!svg) return null;
+  const clone = svg.cloneNode(true);
+  const style = getComputedStyle(document.documentElement);
+  const resolve = (text) => text.replace(/var\((--[a-z0-9-]+)\)/g, (_, name) => style.getPropertyValue(name).trim() || "#888");
+  clone.querySelectorAll("*").forEach((element) => {
+    for (const attribute of ["fill", "stroke"]) if (element.getAttribute(attribute)?.includes("var(")) element.setAttribute(attribute, resolve(element.getAttribute(attribute)));
+  });
+  clone.querySelectorAll("#plotHover, .plot-marker").forEach((element) => element.remove());
+  const [, , w, h] = clone.getAttribute("viewBox").split(" ").map(Number);
+  const background = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  background.setAttribute("width", w); background.setAttribute("height", h); background.setAttribute("fill", resolve("var(--surface)"));
+  clone.insertBefore(background, clone.firstChild);
+  const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+  title.textContent = `${state.model.name} · ${resultSignal().title} (${state.result.source})`;
+  clone.insertBefore(title, clone.firstChild);
+  clone.setAttribute("width", w); clone.setAttribute("height", h);
+  clone.querySelectorAll("text").forEach((text) => text.setAttribute("font-family", "IBM Plex Sans, Helvetica, Arial, sans-serif"));
+  return { text: new XMLSerializer().serializeToString(clone), w, h };
+}
+function plotFileName(extension) {
+  return `${state.model.name}-${resultSignal().title}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) + `.${extension}`;
+}
+$("plotSvgButton").onclick = () => {
+  const plot = exportablePlot();
+  if (plot) download(plotFileName("svg"), plot.text, "image/svg+xml");
+};
+$("plotPngButton").onclick = () => {
+  const plot = exportablePlot();
+  if (!plot) return;
+  const image = new Image(), scale = 2;
+  image.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = plot.w * scale; canvas.height = plot.h * scale;
+    const context = canvas.getContext("2d");
+    context.scale(scale, scale);
+    context.drawImage(image, 0, 0);
+    canvas.toBlob((blob) => { if (blob) download(plotFileName("png"), blob, "image/png"); });
+  };
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(plot.text)}`;
+};
 function setFrame(index) {
   const samples = state.result?.samples;
   if (!samples?.length) return;
@@ -1686,6 +1830,9 @@ function renderExamples() {
     }
     place(group, exampleCard(exampleArt(ex.model.kind), category, ex.title, ex.description, { label: "Open example →", run: () => {
       applyModel(ex.model);
+      state.overlays = [];
+      state.compareRun = null;
+      renderCompareControls();
       $("examplesDialog").close();
       switchStep("model");
       notice(
@@ -1992,7 +2139,7 @@ function clearResult() {
   state.resultSignature = null;
   state.playing = false;
   state.frame = 0;
-  for (const id of ["playButton", "rewindButton", "frameBackButton", "frameForwardButton", "timeSlider", "csvButton", "clearResultsButton"])
+  for (const id of ["playButton", "rewindButton", "frameBackButton", "frameForwardButton", "timeSlider", "csvButton", "clearResultsButton", "pinTraceButton", "plotSvgButton", "plotPngButton", "compareButton"])
     $(id).disabled = true;
   plotGeometry = null;
   $("plotStats").replaceChildren();
@@ -2064,6 +2211,9 @@ function commitOpenedProject(project, reference, step) {
       for (const key of ["selectedNode", "selectedForce", "selectedJoint"]) if (typeof project.view?.[key] === "string") state[key] = project.view[key];
     }
     applyDisplayPreset(project.view);
+    state.overlays = [];
+    state.compareRun = null;
+    renderCompareControls();
     if(typeof project.view?.selection === "string" && document.querySelector(`[data-entity="${CSS.escape(project.view.selection)}"]`)) select(project.view.selection);
     if(view && [project.view?.camera,project.view?.target].every(point=>Array.isArray(point) && point.length===3 && point.every(value=>Number.isFinite(value) && Math.abs(value)<1e6))) {
       view.camera.position.fromArray(project.view.camera);view.controls.target.fromArray(project.view.target);view.controls.update();

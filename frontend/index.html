@@ -130,7 +130,10 @@
               ><select id="nodeSelect" aria-label="Result node" hidden></select
               ><select id="forceSelect" aria-label="Result spring or damper" hidden></select
               ><select id="jointSelect" aria-label="Result slider joint" hidden></select
+              ><button id="pinTraceButton" class="text-button" disabled title="Keep this trace on the plot while you choose another body or element"><span data-icon="pin"></span>Pin trace</button
               ><span class="results-divider" aria-hidden="true"></span
+              ><button id="plotSvgButton" class="text-button" disabled title="Download the plot as SVG">SVG</button
+              ><button id="plotPngButton" class="text-button" disabled title="Download the plot as PNG">PNG</button
               ><button id="csvButton" class="text-button" disabled><span data-icon="download"></span>CSV</button
               ><button id="clearResultsButton" class="text-button" disabled>Clear</button>
             </div>
@@ -220,6 +223,11 @@
               <div><small>Samples</small><strong id="samplesMetric">—</strong></div>
               <div><small>Run</small><strong id="runId" class="run-id">No solver run</strong></div>
             </div>
+          </section>
+          <section class="card">
+            <h3><span data-icon="compare"></span>Compare runs</h3>
+            <p class="field-help" id="compareStatus">Pin this run, change the model and run again to overlay both responses.</p>
+            <div class="card-actions"><button id="compareButton" class="secondary" type="button" disabled>Pin run for comparison</button><button id="compareClearButton" class="text-button" type="button" hidden>Clear</button></div>
           </section>
           <section class="card">
             <h3><span data-icon="ruler"></span>Measure</h3>

@@ -48,8 +48,37 @@ stops it and retains partial output.
   toe and travel from the displayed solver samples.
 - **Export:** CSV contains the full-resolution solver output with units in the header.
 
-Derived quantities use the displayed samples (at most about 2,000 per run) and can
-miss peaks between them; the CSV export retains every solver step.
+### Full resolution
+
+The animation uses at most about 2,000 displayed samples per run, but MBDyn writes every
+integration step. After a run Kinemeld loads the run's full CSV in the background; the
+statistics panel then reads **Full resolution · N steps**, and the plot, hover readout,
+minimum, maximum, time of the peak and RMS use every step. Long series are drawn with a
+minimum/maximum per pixel column, so a one-step spike stays visible instead of falling
+between decimated samples. RMS is time-weighted (trapezoidal). Body-axes angular velocity
+is reconstructed per step from the solver's orientation and angular velocity. Quantities
+the CSV does not contain (for example a commanded drive angle) fall back to displayed
+samples, and the panel says which source it used.
+
+### Pinned traces
+
+**Pin trace** keeps the current quantity for the current body or element on the plot.
+Choose another body, joint or element — or another quantity with the same unit — and
+both appear together, each with its own statistics. Pins are listed in the statistics
+panel; select one to remove it. Traces with a different unit are not drawn.
+
+### Compare runs
+
+**Results → Compare runs → Pin run for comparison** keeps the current solution. Edit the
+model, run again, and the pinned run's matching channels appear as grey dashed curves
+with their own statistics. Pin the newest run to move the reference forward; **Clear**
+removes it. Pinned runs live in memory for the session and are not saved in projects.
+
+### Export
+
+**SVG** and **PNG** download the plot as shown, including pinned traces and comparison
+curves, with colours resolved for the current theme. **CSV** exports the full-resolution
+solver output.
 
 ## Presentation mode
 
