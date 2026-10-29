@@ -261,7 +261,7 @@ try {
   await page.locator('#resetViewButton').click();
   await page.waitForTimeout(500);
   await shot(2.2);
-  await caption('3 · POST-PROCESSING', 'Playback at 0.25× real time: free fall, tyre impact, rebound and a second bounce.');
+  await caption('3 · POST-PROCESSING', 'Playback at 0.25× real time: free fall, then three tyre impacts of decreasing height.');
   const rate = 0.25, fps = 30, duration = result.samples.at(-1).time;
   const times = result.samples.map((sample) => sample.time);
   let index = 0;
