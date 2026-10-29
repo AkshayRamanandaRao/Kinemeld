@@ -3,6 +3,35 @@
 All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/) while the project is in preview (0.x).
 
+## 0.5.0 — Interaction: CAD feature picking
+
+### Pre-processing
+- The STEP converter records each face's **analytic geometry** with its triangle range:
+  cylinders (axis, centre, radius, length) and planes (point, outward normal), in metres.
+- **Place from CAD feature…** in the joint inspector: hover previews a face's axis and bore
+  circle with a label such as *Cylinder Ø55.0 mm · axis −x*; a click puts both joint ends on
+  the feature, so anchors coincide and revolute, cylindrical and prismatic axes agree by
+  construction.
+- **Drag-to-edit:** drag a joint symbol in the 3D view and drop it on a face; it snaps to
+  that face's axis or plane. Dropping elsewhere leaves the joint unchanged; Esc cancels.
+- **Named frames from CAD:** a frame's origin goes on the picked feature with local +Z along
+  its axis or normal; linked joint ends follow.
+- **Measure** (ruler button or M): distance, x/y/z components and axis angle between two
+  picked features.
+- Undo and Redo keep the selected entity when it still exists.
+
+### Fixes
+- Phone-width layout: the app bar collapses to icons and the view toolbar wraps, so no
+  control sits off-screen and the page no longer scrolls sideways at 390 px.
+- The run button keeps an accessible name when its label is hidden.
+
+### Tests
+- `tests/cad-features.test.mjs` covers face lookup, CAD-to-body placement, joint and frame
+  placement and measurement; `tests/cad-picking-ui.mjs` picks, drags, measures and places a
+  frame on the wheel-end hub in the browser. `backend/test_step_geometry.py` checks the
+  reported cylinder and plane geometry. The UI smoke test is current with the example
+  gallery and guide again and passes in full.
+
 ## 0.4.0 — Post-processing II
 
 - Plots and statistics read the **full-resolution** solver CSV in the background: every

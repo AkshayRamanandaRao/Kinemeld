@@ -213,8 +213,8 @@ try {
     await page.locator('#helpButton').click();
     const text = await page.locator('#documentBody').textContent();
     assert.match(text, /Reference preview/);
-    assert.match(text, /not a general assembly editor/);
-    assert.match(text, /RK4/);
+    assert.match(text, /MBDyn decides whether a model is solvable/);
+    assert.match(text, /not engineering certification/);
     await page.locator('#documentDialog [data-close]').last().click();
   });
   await check('Dark theme and browser model recovery', async () => {

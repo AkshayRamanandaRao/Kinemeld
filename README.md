@@ -100,7 +100,8 @@ Kinemeld separates the work into three workspaces (keys **1**, **2**, **3**):
 1. **Pre-processing** — model tree and property editor for bodies, joints (revolute,
    prismatic, cylindrical, universal, spherical, weld), springs, dampers, oleo struts,
    loads, drives, contact and named frames; STEP import, attachment and measured mass
-   properties; Grübler mobility estimate.
+   properties; joints and frames placed by picking or dragging onto CAD bores, shafts and
+   faces, and in-view distance and angle measurement; Grübler mobility estimate.
 2. **Solve** — study settings, pre-run checks, linked validation issues, the generated
    MBDyn deck, solver status and a live console with the solver log.
 3. **Post-processing** — animation with frame stepping and speed control, interactive
@@ -171,8 +172,8 @@ for scope and limitations.
 
 ## Roadmap
 
-Next: joint and frame placement by picking CAD features, crash-safe autosave and support for
-the current OpenCascade runtime, and more validated engineering examples. Longer term:
+Next: crash-safe autosave and recovery, support for the current OpenCascade runtime,
+clean-machine installation checks, and more validated engineering examples. Longer term:
 broader contact, flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
 and the [changelog](CHANGELOG.md).
 
