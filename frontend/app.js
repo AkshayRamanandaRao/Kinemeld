@@ -664,6 +664,7 @@ function select(entity) {
   renderProperties();
   view?.setSelection(entity);
   if ($("followToggle").checked) view?.setFollow(entity);
+  if ($("trailBodies").value === "selected") refreshTrails();
   if (entity === "study") { switchStep("simulate"); $("durationInput").focus(); }
 }
 function renderProperties() {
@@ -1011,7 +1012,7 @@ function switchStep(step) {
     if (state.result) requestAnimationFrame(drawPlot);
   }
   if (step === "model" && !stale() && changedWorkspace) notice("");
-  view?.setTrails(step === "results" && state.trails && state.result && !stale() ? state.result : null);
+  refreshTrails();
 }
 function setBusy(busy) {
   state.busy = busy;
@@ -1178,7 +1179,7 @@ function elementSignals(model, result) {
 }
 function resultSignal() {
   if (["source-example", "planar-assembly", "spatial-assembly"].includes(state.result?.model?.kind)) {
-    const extra=elementSignals(state.result.model,state.result)[state.signal-4];
+    const extra=elementSignals(state.result.model,state.result)[state.signal-NODE_SIGNALS];
     if (extra) {
       if(extra.type==="system")return extra;
       const selected=["slider","cylinder","reaction"].includes(extra.type) ? state.selectedJoint : state.selectedForce;
@@ -1196,6 +1197,7 @@ function resultSignal() {
         unit: "rad/s",
         prefix: "w",
       },
+      { title: "Angular velocity in body axes · x / y / z", unit: "rad/s", prefix: "bw" },
     ];
     const signal = signals[state.signal] || signals[0];
     return {
@@ -1222,7 +1224,23 @@ function channelValue(sample, key) {
   if (key.startsWith("slider:")) {const [,id,field]=key.split(":");return sample.sliders?.find(item=>item.id===id)?.[field];}
   if (!key.startsWith("node:")) return sample[key];
   const [, node, field] = key.split(":");
-  return sample.nodes?.find((item) => String(item.id) === node)?.[field];
+  const entry = sample.nodes?.find((item) => String(item.id) === node);
+  if (field?.startsWith("bw") && entry) return bodyAngularVelocity(entry)["xyz".indexOf(field[2])];
+  return entry?.[field];
+}
+const NODE_SIGNALS = 5;
+// MBDyn reports world-frame angular velocity; rotate it into body axes with the Euler 1-2-3 orientation.
+function bodyAngularVelocity(node) {
+  const [a, b, c] = [node.rx, node.ry, node.rz].map((deg) => (deg * Math.PI) / 180);
+  if (![a, b, c, node.wx, node.wy, node.wz].every(Number.isFinite)) return [NaN, NaN, NaN];
+  const [ca, sa, cb, sb, cc, sc] = [Math.cos(a), Math.sin(a), Math.cos(b), Math.sin(b), Math.cos(c), Math.sin(c)];
+  const R = [
+    [cb * cc, -cb * sc, sb],
+    [ca * sc + sa * sb * cc, ca * cc - sa * sb * sc, -sa * cb],
+    [sa * sc - ca * sb * cc, sa * cc + ca * sb * sc, ca * cb],
+  ];
+  const w = [node.wx, node.wy, node.wz];
+  return [0, 1, 2].map((i) => R[0][i] * w[0] + R[1][i] * w[1] + R[2][i] * w[2]);
 }
 function renderResult() {
   const result = state.result;
@@ -1252,6 +1270,7 @@ function renderResult() {
         "Node velocity · X / Y / Z",
         "Node Euler 1–2–3 · X / Y / Z",
         "Node angular velocity · X / Y / Z",
+        "Angular velocity in body axes · x / y / z",
       ].concat(extraSignals.map(signal=>signal.title)).map((title) => ({ title }))
     : signalsFor(kind);
   if (
@@ -1260,7 +1279,7 @@ function renderResult() {
   )
     state.selectedNode = source.nodes[0]?.id;
   if (state.signal >= signals.length) state.signal = 0;
-  const selectedExtra=extraSignals[state.signal-4];
+  const selectedExtra=extraSignals[state.signal-NODE_SIGNALS];
   const selectedElements=selectedExtra?.type === "rotary" ? result.model.rotationalElements || [] : selectedExtra?.type === "torque" ? result.model.jointTorques || [] : selectedExtra?.type === "joint-force" ? result.model.jointForces || [] : selectedExtra?.type === "contact" ? result.model.contacts || [] : selectedExtra?.type === "load" ? result.model.loads || [] : selectedExtra?.type === "oleo" ? forces.filter(force=>force.type==="oleo-strut") : forces;
   if (!selectedElements.some(item=>item.id===state.selectedForce)) state.selectedForce=selectedElements[0]?.id ?? null;
   const availableReactions=new Set((result.samples[0]?.jointReactions || []).map(item=>item.id));
@@ -1302,7 +1321,8 @@ function renderResult() {
   $("durationMetric").innerHTML = `${format(result.samples.at(-1).time, 3)} <span>s</span>`;
   const resultStep = result.model?.simulation?.step ?? state.model.simulation.step;
   $("stepMetric").innerHTML = `${Number.isFinite(resultStep) ? String(resultStep) : "—"} <span>s</span>`;
-  view?.setTrails(workspace === "results" && state.trails && !isStale ? result : null);
+  refreshTrails();
+  if (!isStale && view && assemblyKind(result.model)) view.placeGround(view.resultEnvelopeMinZ(result));
   $("timeSlider").max = String(result.samples.length - 1);
   $("endTime").textContent = `${format(result.samples.at(-1).time)} s`;
   drawPlot();
@@ -1541,7 +1561,16 @@ function showGuide() {
   $("documentDownload").hidden = true;
   $("documentDialog").showModal();
 }
+const FEATURED_ART = {
+  "quarter-car": '<svg viewBox="0 0 180 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 30l55 6M20 70l55 4M78 30l4 46"/><circle cx="120" cy="54" r="34"/><circle cx="120" cy="54" r="20" stroke="#13998f"/><path d="M40 18l12 10-10 4 12 6-10 4 12 6" stroke="#d0821b"/></svg>',
+  "gear-drop": '<svg viewBox="0 0 180 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><rect x="55" y="8" width="70" height="18" rx="3"/><path d="M90 26v26M84 30h12v22H84z"/><circle cx="90" cy="70" r="18"/><path d="M30 92h120" stroke="#13998f"/><path d="M150 20v28m-6-6 6 6 6-6" stroke="#d0821b"/></svg>',
+  "slider-crank": '<svg viewBox="0 0 180 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="60" cy="70" r="24"/><path d="M60 70l14-16 40-34"/><rect x="104" y="6" width="24" height="18" rx="2" stroke="#13998f"/><path d="M100 4v30M132 4v30" stroke-dasharray="3 4"/><path d="M28 70a32 32 0 0 1 8-22" stroke="#d0821b"/></svg>',
+  "gyroscopic-top": '<svg viewBox="0 0 180 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M90 92L112 24"/><ellipse cx="106" cy="40" rx="30" ry="9" transform="rotate(-18 106 40)"/><path d="M60 22c10-12 50-16 72-4" stroke="#d0821b" stroke-dasharray="4 4"/><path d="M60 92h60" stroke="#13998f"/></svg>',
+  "tumbling-handle": '<svg viewBox="0 0 180 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M58 40h64M90 40v34"/><circle cx="90" cy="80" r="6"/><path d="M40 70a50 30 0 0 0 100 0" stroke="#d0821b" stroke-dasharray="4 4"/><path d="M134 66l6 4-2 7" stroke="#d0821b"/></svg>',
+  "chaotic-pendulums": '<svg viewBox="0 0 180 100" fill="none" stroke-width="3" stroke-linecap="round"><path d="M40 8h100" stroke="currentColor"/><path d="M80 8l-24 30-6 34" stroke="currentColor"/><circle cx="50" cy="72" r="7" fill="currentColor"/><path d="M100 8l24 30 10 32" stroke="#13998f"/><circle cx="134" cy="70" r="7" fill="#13998f"/><path d="M30 60c20 30 40-20 60 10s40 10 60-20" stroke="#d0821b" stroke-dasharray="3 4"/></svg>',
+};
 function exampleArt(kind) {
+  if (FEATURED_ART[kind]) return FEATURED_ART[kind];
   if (["source-example", "planar-assembly", "spatial-assembly"].includes(kind))
     return '<svg viewBox="0 0 180 100" fill="none"><path d="M28 68L65 26l47 10 35 38H28M65 26l13 54m34-44-34 44" stroke="currentColor" stroke-width="3"/><circle cx="28" cy="68" r="6" fill="currentColor"/><circle cx="65" cy="26" r="6" fill="currentColor"/><circle cx="112" cy="36" r="6" fill="currentColor"/><circle cx="147" cy="74" r="6" fill="currentColor"/><circle cx="78" cy="80" r="6" fill="#159aa4"/></svg>';
   if (kind === "suspension")
@@ -1601,7 +1630,7 @@ function renderExamples() {
     anchor.after(card);
   };
   for (const study of state.featured || [])
-    place("featured", exampleCard(study.art || exampleArt("spatial-assembly"), study.category, study.title, study.description, { label: "Open study →", run: () => openFeatured(study) }, true));
+    place("featured", exampleCard(exampleArt(study.id) || exampleArt("spatial-assembly"), study.category, study.title, study.description, { label: "Open study →", run: () => openFeatured(study) }, true));
   for (const ex of [
     ...state.examples,
     ...state.sourceExamples.map((source) => ({
@@ -1811,17 +1840,7 @@ async function nativeSave(saveAs) {
         );
       result.csvText = await response.text();
     }
-    const viewState = {
-      selection: state.selection,
-      selectedNode: state.selectedNode,
-      selectedForce: state.selectedForce,
-      selectedJoint: state.selectedJoint,
-      measureNode: state.measureNode,
-      signal: state.signal,
-      frame: state.frame,
-      camera: view?.camera.position.toArray(),
-      target: view?.controls.target.toArray(),
-    };
+    const viewState = currentViewState();
     const payload = {
       model,
       result,
@@ -1850,6 +1869,22 @@ async function nativeSave(saveAs) {
     $("saveButton").disabled = state.busy;
     $("saveAsButton").disabled = state.busy;
   }
+}
+function currentViewState() {
+  return {
+    selection: state.selection,
+    selectedNode: state.selectedNode,
+    selectedForce: state.selectedForce,
+    selectedJoint: state.selectedJoint,
+    measureNode: state.measureNode,
+    signal: state.signal,
+    frame: state.frame,
+    camera: view?.camera.position.toArray(),
+    target: view?.controls.target.toArray(),
+    trails: Boolean(state.trails),
+    trailWindow: Number($("trailWindow").value) || 0,
+    ...(state.trailPreset && $("trailBodies").value === "preset" ? { trailBodies: state.trailPreset } : {}),
+  };
 }
 function validSavedResult(result) {
   if (
@@ -1950,6 +1985,22 @@ $("clearResultsButton").onclick = () => {
   clearResult(); markNativeDirty();
   notice("Loaded result cleared. Generated run files remain in the runs folder.");
 };
+function applyDisplayPreset(preset) {
+  state.trailPreset = Array.isArray(preset?.trailBodies) && preset.trailBodies.every((id) => typeof id === "string") ? preset.trailBodies : null;
+  $("trailBodies").querySelector('[value="preset"]').hidden = !state.trailPreset;
+  $("trailBodies").value = state.trailPreset ? "preset" : "all";
+  const window = Number(preset?.trailWindow);
+  if (Number.isFinite(window) && window >= 0 && window <= 60) {
+    if (![...$("trailWindow").options].some((option) => Number(option.value) === window)) {
+      const option = document.createElement("option");
+      option.value = String(window);
+      option.textContent = `Last ${window} s`;
+      $("trailWindow").append(option);
+    }
+    $("trailWindow").value = [...$("trailWindow").options].find((option) => Number(option.value) === window).value;
+  } else $("trailWindow").value = "0";
+  if (typeof preset?.trails === "boolean") setTrails(preset.trails);
+}
 // Keep the previous document and its live reference geometry until the new view is complete.
 function commitOpenedProject(project, reference, step) {
   const keys = ["model","selection","history","future","result","resultSignature","validation","selectedNode","selectedForce","selectedJoint","measureNode","reference","step","playing","frame","signal"];
@@ -1977,7 +2028,11 @@ function commitOpenedProject(project, reference, step) {
       state.signal=Number.isInteger(project.view?.signal) ? Math.max(0,project.view.signal) : 0;
       state.frame=Number.isInteger(project.view?.frame) ? Math.max(0,Math.min(project.view.frame,project.result.samples.length-1)) : 0;
       renderResult();setFrame(state.frame);
-    } else clearResult();
+    } else {
+      clearResult();
+      if (Number.isInteger(project.view?.signal)) state.signal = Math.max(0, project.view.signal);
+    }
+    applyDisplayPreset(project.view);
     if(typeof project.view?.selection === "string" && document.querySelector(`[data-entity="${CSS.escape(project.view.selection)}"]`)) select(project.view.selection);
     if(view && [project.view?.camera,project.view?.target].every(point=>Array.isArray(point) && point.length===3 && point.every(value=>Number.isFinite(value) && Math.abs(value)<1e6))) {
       view.camera.position.fromArray(project.view.camera);view.controls.target.fromArray(project.view.target);view.controls.update();
@@ -2127,7 +2182,7 @@ $("saveButton").onclick = async () => {
     if (!response.ok) throw new Error("The full solver CSV is unavailable; the project was not exported.");
     result.csvText = await response.text();
   }
-  const contents = JSON.stringify({ format: "mbdyn-studio/1", model, result, assets:reference || step ? {...(reference ? {reference:reference.metadata} : {}), ...(step ? {step} : {})} : null }, null, 2);
+  const contents = JSON.stringify({ format: "mbdyn-studio/1", model, result, view: currentViewState(), assets:reference || step ? {...(reference ? {reference:reference.metadata} : {}), ...(step ? {step} : {})} : null }, null, 2);
   if (new Blob([contents]).size > 32 * 1024 * 1024) throw new Error("Project exceeds 32 MiB; export large results or reference geometry separately.");
   download(`${model.kind}.mbdyn-studio`, contents, "application/json");
   if (revision === projectRevision) browserDirty = false;
@@ -2179,13 +2234,13 @@ $("projectFile").onchange = async (e) => {
 };
 async function openFeatured(study) {
   if (state.busy || state.saving || state.opening) return;
+  notice(`Loading ${study.title} and converting its CAD geometry…`, "warn");
   const response = await fetch(`/api/featured/${encodeURIComponent(study.id)}`);
   if (!response.ok) return notice(`The featured study could not be loaded (${response.status}).`, "error");
   const text = await response.text();
   if (await openProjectText(async () => text, text.length)) {
     $("examplesDialog").close();
     browserDirty = false;
-    view?.reset();
     notice(`${study.title} loaded. ${study.next || "Open Solve and run MBDyn, then explore the motion in Post-processing."}`);
   }
 }
@@ -2262,14 +2317,25 @@ $("loopButton").onclick = () => {
   state.loop = !state.loop;
   $("loopButton").setAttribute("aria-pressed", String(state.loop));
 };
+function trailOptions() {
+  const choice = $("trailBodies").value;
+  const bodies = choice === "preset" ? state.trailPreset : choice === "selected" ? [state.selection === "body" ? state.result?.model?.bodies?.[0]?.id : state.selection.replace(/^node-/, "")] : null;
+  return { window: Number($("trailWindow").value) || 0, bodies };
+}
+function refreshTrails() {
+  const show = state.trails && workspace === "results" && state.result && !stale();
+  view?.setTrails(show ? state.result : null, trailOptions());
+  if (show) view?.setTrailFrame(state.frame);
+}
 function setTrails(on) {
   state.trails = on;
   $("trailsButton").setAttribute("aria-pressed", String(on));
   $("trailsToggle").checked = on;
-  view?.setTrails(on && state.result && !stale() ? state.result : null);
-  if (on && state.result && !stale()) view?.setTrailFrame(state.frame);
   if (on && workspace !== "results" && state.result) switchStep("results");
+  refreshTrails();
 }
+$("trailWindow").onchange = refreshTrails;
+$("trailBodies").onchange = refreshTrails;
 $("trailsButton").onclick = () => setTrails(!state.trails);
 $("trailsToggle").onchange = (event) => setTrails(event.target.checked);
 $("followToggle").onchange = (event) => { view?.setFollow(event.target.checked ? state.selection : null); };

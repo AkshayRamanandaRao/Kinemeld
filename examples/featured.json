@@ -1,8 +1,66 @@
 {
   "studies": [
-    {"id": "double-wishbone", "category": "AUTOMOTIVE · STEP GEOMETRY", "title": "Double-wishbone suspension", "description": "Closed spatial loop built from original STEP control arms, knuckle, hub and tyre; observe wheel travel, camber and toe.", "project": "open-suspension/suspension.mbdyn-studio"},
-    {"id": "aircraft-nose-gear", "category": "AEROSPACE · STEP GEOMETRY", "title": "Aircraft nose-gear kinematics", "description": "Open-source STEP nose-gear assembly with six modelled bodies and a prescribed strut stroke.", "project": "open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio"},
-    {"id": "oleo-strut", "category": "AEROSPACE · NONLINEAR FORCE", "title": "Nonlinear oleo strut", "description": "Gas spring, asymmetric orifice damping and stroke stops on a STEP wheel-end fixture.", "project": "oleo-strut/wheel-oleo.mbdyn-studio"},
-    {"id": "wheel-end", "category": "AUTOMOTIVE · STEP GEOMETRY", "title": "Wheel-end torque response", "description": "Knuckle, hub and tyre STEP parts with an idealized wheel-bearing torque case.", "project": "open-wheel-end/wheel-end.mbdyn-studio"}
+    {
+      "id": "quarter-car",
+      "category": "AUTOMOTIVE · KINEMATICS & COMPLIANCE",
+      "title": "Double-wishbone quarter-car",
+      "description": "SLA suspension on a wheel-pad rig swept through ±60 mm of travel. Watch camber gain and bump steer from the arm and tie-rod geometry.",
+      "project": "quarter-car/quarter-car.mbdyn-studio",
+      "next": "Run it from Solve, then open Measure → Wheel kinematics to plot camber and toe against wheel travel."
+    },
+    {
+      "id": "gear-drop",
+      "category": "AEROSPACE · NONLINEAR FORCES & CONTACT",
+      "title": "Oleo-pneumatic gear drop test",
+      "description": "A 290 kg carriage drops at 2 m/s onto an oleo-pneumatic strut and damped tyre. Compare gas, orifice and tyre forces through the stroke.",
+      "project": "gear-drop-test/gear-drop-test.mbdyn-studio",
+      "next": "Run it, then compare oleo force components with the tyre contact force in Post-processing."
+    },
+    {
+      "id": "slider-crank",
+      "category": "MACHINERY · CLOSED LOOP",
+      "title": "Slider-crank engine run-up",
+      "description": "A flywheel, connecting rod and piston closed by spherical, universal and prismatic joints, driven by constant torque against a pumping load.",
+      "project": "slider-crank/slider-crank.mbdyn-studio",
+      "next": "Run it, then plot crank speed, piston travel and the joint reaction forces."
+    },
+    {
+      "id": "gyroscopic-top",
+      "category": "RIGID-BODY DYNAMICS · GYROSCOPICS",
+      "title": "Gyroscopic top",
+      "description": "A heavy top spinning at 120 rad/s on a spherical tip. Gravity torque drives slow precession with nutation loops traced by the axis.",
+      "project": "gyroscopic-top/gyroscopic-top.mbdyn-studio",
+      "next": "Run it and enable motion trails in Post-processing to see the nutation cusps."
+    },
+    {
+      "id": "tumbling-handle",
+      "category": "RIGID-BODY DYNAMICS · FREE BODY",
+      "title": "Tumbling T-handle",
+      "description": "A free T-handle in zero gravity spun about its intermediate principal axis flips every few seconds: the Dzhanibekov effect.",
+      "project": "tumbling-handle/tumbling-handle.mbdyn-studio",
+      "next": "Run it and plot angular velocity in body axes: the spin component reverses with each flip."
+    },
+    {
+      "id": "chaotic-pendulums",
+      "category": "NONLINEAR DYNAMICS · CHAOS",
+      "title": "Chaotic double pendulums",
+      "description": "Two identical double pendulums released 0.001° apart stay together for seconds, then diverge completely: sensitive dependence on initial conditions.",
+      "project": "chaotic-pendulums/chaotic-pendulums.mbdyn-studio",
+      "next": "Run it with motion trails on and watch the two bobs separate after about three seconds."
+    },
+    {
+      "id": "aircraft-nose-gear",
+      "category": "AEROSPACE · ORIGINAL STEP ASSEMBLY",
+      "title": "Aircraft nose-gear kinematics",
+      "description": "Open-source STEP nose-gear assembly with six modelled bodies and a prescribed strut stroke. Inferred linkage; kinematic illustration only.",
+      "project": "open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio"
+    },
+    {
+      "id": "oleo-strut",
+      "category": "AEROSPACE · ORIGINAL STEP PARTS",
+      "title": "Oleo strut on a wheel-end fixture",
+      "description": "Gas spring, asymmetric orifice damping and stroke stops on original STEP knuckle, hub and tyre parts under imposed motion.",
+      "project": "oleo-strut/wheel-oleo.mbdyn-studio"
+    }
   ]
 }

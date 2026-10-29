@@ -2019,3 +2019,16 @@ dialog::backdrop {
 .example-cards .example-group:first-child {
   margin-top: 0;
 }
+.display-options {
+  margin: 6px 0 4px;
+}
+.display-options label {
+  font-size: 11px;
+  color: var(--dim);
+  display: block;
+}
+.display-options select {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+}
