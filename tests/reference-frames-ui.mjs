@@ -28,7 +28,7 @@ try{
  const bad=structuredClone(saved.model);bad.frames[0].body='missing';const check=await (await page.request.post(base+'/api/validate',{data:{model:bad}})).json();assert.equal(check.valid,false);assert(check.issues.some(issue=>issue.field==='frames.0.body'));
  await page.locator('#projectFile').setInputFiles(await file.path());await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('Project imported and validated'),null,{timeout:120000});assert.match(await page.locator('#stepStatus').textContent(),/1 attached/);
  await page.locator('[data-entity="joint-hinge"]').click();await page.locator('summary').filter({hasText:'Named reference frames'}).click().catch(()=>{});
- if(!await page.locator('#reference-frame-translation-x').isVisible())await page.locator('summary').filter({hasText:'Named reference frames'}).click();
+ await page.locator('[data-step="model"]').click();if(!await page.locator('#reference-frame-translation-x').isVisible())await page.locator('summary').filter({hasText:'Named reference frames'}).click();
  await change('#reference-frame-translation-x',-.3);assert(Math.abs(Number(await page.locator('#spatial-joint-hinge-anchorB-x').inputValue())+.5)<1e-12);
  assert.deepEqual(errors,[]);console.log('Named frame, rotated local joint axis, STEP, real MBDyn, save/reopen and snapshot semantics passed.');
 }finally{await browser.close();}

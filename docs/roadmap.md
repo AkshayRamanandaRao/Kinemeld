@@ -14,6 +14,7 @@ appropriate.
   project save/reopen, MBDyn deck inspection, simulation and result playback.
 - Pre-processing, Solve and Post-processing workspaces with interactive plots,
   statistics, motion trails, follow camera and presentation mode.
+- Constraint-rank mobility and named redundant constraints before the solver runs.
 - Six featured studies verified against independent physics, plus the earlier
   suspension, wheel-end, gear and strut demonstrations with documented assumptions.
 - Desktop builds for Linux, macOS and Windows; CI and tagged releases on GitHub.
@@ -22,16 +23,19 @@ appropriate.
 
 Each step ships as its own release with an example, documentation and solver evidence.
 
-1. **0.3 — Post-processing II:** overlay several quantities and bodies in one plot,
-   compare a result with a pinned earlier run, derive statistics from the full-resolution
-   solver output instead of displayed samples, and export plots as SVG/PNG.
-2. **0.4 — Actuation and diagnostics:** prescribed rotary motion for revolute joints
-   (angle, speed and ramp laws), and a pre-solve constraint check that reports redundant
-   or conflicting joints by name before MBDyn rejects the assembly.
-3. **0.5 — Interaction:** joint and frame glyphs in the 3D view (axes, anchors, force
+1. **0.2 — Workspaces and studies (released):** Pre-processing, Solve and
+   Post-processing workspaces; six verified featured studies; constraint-rank mobility
+   and redundancy diagnostics; desktop builds for Linux, macOS and Windows.
+2. **0.3 — Actuation:** prescribed rotary motion for revolute joints (motor speed ramp
+   and oscillation) with motor torque, power and work from the solver, and an
+   inverse-dynamics robot-arm study.
+3. **0.4 — Post-processing II:** statistics and plots from the full-resolution solver
+   output with peak-preserving decimation, overlays of several quantities and bodies,
+   comparison with a pinned earlier run, and SVG/PNG plot export.
+4. **0.5 — Interaction:** joint and frame glyphs in the 3D view (axes, anchors, force
    element lines), hover highlighting between tree, view and properties, and direct
    selection of joints and force elements in the viewport.
-4. **0.6 — Reliability and CAD:** support for the current OpenCascade runtime
+5. **0.6 — Reliability and CAD:** support for the current OpenCascade runtime
    (`cadquery-ocp` 8), crash-safe autosave and recovery in the desktop app, and
    clean-machine installation checks for every platform package.
 

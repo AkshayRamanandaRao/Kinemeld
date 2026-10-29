@@ -24,6 +24,12 @@ All notable changes to Kinemeld are recorded here. Versions follow
   projects (geometry, camera, plot and trail presets) in one click.
 - Projects now save the camera, selection, plot and trail settings, including browser exports.
 
+### Modelling diagnostics
+- Constraint-rank analysis of 3D assemblies before the solver runs: true mobility at the
+  initial configuration and each redundant constraint named by joint and component, shown in
+  the Solve checklist and appended to MBDyn failures (`docs/constraint-diagnostics.md`,
+  verified by `backend/verify_constraint_analysis.py`).
+
 ### Studies
 - Six new MBDyn studies with measured STEP mass properties: double-wishbone quarter-car,
   oleo-pneumatic gear drop test, slider-crank engine run-up, gyroscopic top, tumbling

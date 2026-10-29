@@ -95,7 +95,7 @@ try {
   await check('Reference preview is labelled and drives chart/timeline', async () => {
     await page.locator('#previewButton').click();
     await waitText('#resultSource', 'Reference preview', 30000);
-    assert.equal(await page.locator('#plot polyline').count(), 1);
+    assert.equal(await page.locator('#plot path.plot-curve').count(), 1);
     assert.equal(await page.locator('#playButton').isEnabled(), true);
     await page.locator('#timeSlider').fill('100');
     assert.notEqual((await page.locator('#timeOutput').textContent()).trim(), '0.000 s');
@@ -282,8 +282,8 @@ try {
       for (const key of ['x', 'y', 'z', 'angle', 'velocity', 'x2', 'y2', 'z2', 'angle2', 'velocity2']) assert(Number.isFinite(sample[key]), `Non-finite coupled channel: ${key}`);
     }
     await waitText('#resultSource', 'MBDyn solver');
-    assert.equal(await page.locator('#plot polyline').count(), 2);
-    assert.notEqual(await page.locator('#plot polyline').nth(0).getAttribute('points'), await page.locator('#plot polyline').nth(1).getAttribute('points'));
+    assert.equal(await page.locator('#plot path.plot-curve').count(), 2);
+    assert.notEqual(await page.locator('#plot path.plot-curve').nth(0).getAttribute('d'), await page.locator('#plot path.plot-curve').nth(1).getAttribute('d'));
     await page.locator('[data-entity="body2"]').click();
     await waitText('#selectionTitle', 'Mass 2');
     await page.evaluate(async () => {
@@ -321,8 +321,8 @@ try {
   });
   await check('Editing the second link changes both coupled solver responses', async () => {
     assert(coupledBaseline?.ok, 'The baseline coupled run must succeed first');
-    const originalFirst = await page.locator('#plot polyline').nth(0).getAttribute('points');
-    const originalSecond = await page.locator('#plot polyline').nth(1).getAttribute('points');
+    const originalFirst = await page.locator('#plot path.plot-curve').nth(0).getAttribute('d');
+    const originalSecond = await page.locator('#plot path.plot-curve').nth(1).getAttribute('d');
     await number('#field-length2', '1.4');
     await waitText('#resultSource', 'Stale');
     assert.equal(await page.locator('#playButton').isEnabled(), false);
@@ -332,9 +332,9 @@ try {
     assert.equal(changed.ok, true, JSON.stringify(changed));
     assert.equal(changed.model.parameters.length2, 1.4);
     await waitText('#resultSource', 'MBDyn solver');
-    assert.equal(await page.locator('#plot polyline').count(), 2);
-    assert.notEqual(await page.locator('#plot polyline').nth(0).getAttribute('points'), originalFirst);
-    assert.notEqual(await page.locator('#plot polyline').nth(1).getAttribute('points'), originalSecond);
+    assert.equal(await page.locator('#plot path.plot-curve').count(), 2);
+    assert.notEqual(await page.locator('#plot path.plot-curve').nth(0).getAttribute('d'), originalFirst);
+    assert.notEqual(await page.locator('#plot path.plot-curve').nth(1).getAttribute('d'), originalSecond);
     const paired = Math.min(coupledBaseline.samples.length, changed.samples.length);
     let firstDifference = 0, secondDifference = 0;
     for (let i = 0; i < paired; i++) {
