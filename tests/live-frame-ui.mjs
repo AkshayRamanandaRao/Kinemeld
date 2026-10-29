@@ -7,7 +7,7 @@ const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swifts
 const page=await browser.newPage({viewport:{width:1440,height:1200},acceptDownloads:true}),errors=[];
 page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.accept());await page.route('**/api/tour-preference',route=>route.fulfill({json:{enabled:false}}));
 const change=async(id,value)=>{await page.locator(id).fill(String(value));await page.locator(id).dispatchEvent('change');};
-const openFrames=async()=>{if(!await page.locator('#reference-frame-select').isVisible())await page.locator('summary').filter({hasText:'Named reference frames'}).click();};
+const openFrames=async()=>{await page.locator('[data-step="model"]').click();if(!await page.locator('#reference-frame-select').isVisible())await page.locator('summary').filter({hasText:'Named reference frames'}).click();};
 try{
  await page.goto(base);await page.waitForFunction(()=>document.querySelector('#solverStatus')?.textContent.includes('MBDyn ready'));
  await page.locator('#examplesButton').click();await page.locator('.example-card').filter({has:page.getByRole('heading',{name:'3D revolute pendulum',exact:true})}).getByRole('button',{name:/Open example/}).click();
