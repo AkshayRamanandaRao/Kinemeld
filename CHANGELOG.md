@@ -13,6 +13,8 @@ All notable changes to Kinemeld are recorded here. Versions follow
 - **SVG and PNG export** of the plot with theme colours resolved.
 - Hover readouts use each series' own resolution, so they report values between displayed
   samples.
+- `tests/post-processing-ui.mjs` checks full-resolution statistics, pinned traces, run
+  comparison and plot export in the browser.
 
 ## 0.3.0 — Rotary drives and inverse dynamics
 

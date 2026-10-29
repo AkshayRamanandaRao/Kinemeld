@@ -106,7 +106,8 @@ Kinemeld separates the work into three workspaces (keys **1**, **2**, **3**):
 3. **Post-processing** — animation with frame stepping and speed control, interactive
    plots with hover readout, scrubbing and channel statistics, body-axes angular velocity,
    joint reactions, motion trails, follow camera, point and wheel-kinematics measurements,
-   full-resolution CSV, and a presentation mode for reviews and recordings.
+   full-resolution plots and statistics from every solver step, pinned traces, comparison
+   with an earlier run, SVG/PNG plot export, full-resolution CSV, and a presentation mode.
 
 See [workspaces and post-processing](docs/workspaces.md) for details and shortcuts.
 
@@ -170,9 +171,8 @@ for scope and limitations.
 
 ## Roadmap
 
-Next: richer post-processing (full-resolution plots, multi-quantity overlays, result
-comparison), joint and frame placement by picking CAD features, and more validated
-engineering examples. Longer term:
+Next: joint and frame placement by picking CAD features, crash-safe autosave and support for
+the current OpenCascade runtime, and more validated engineering examples. Longer term:
 broader contact, flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
 and the [changelog](CHANGELOG.md).
 
