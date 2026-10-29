@@ -19,13 +19,14 @@ import solver
 import source_catalog
 import agent
 import app_paths
+import featured
 import step_geometry
 import step_mass
 import kinematics
 import primitive_step
 
 ROOT = app_paths.RESOURCE_ROOT
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 RUN_LOCK = threading.Lock()
 RUN_CONTROL_LOCK = threading.Lock()
 ACTIVE_RUN = None
@@ -141,7 +142,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not study:
                 self.respond({"ok": False, "error": "Unknown featured study."}, 404)
                 return
-            self.send_file(ROOT / "examples" / study["project"])
+            self.respond(featured.project(study))
         elif path == "/api/source-examples":
             self.respond({"examples": source_catalog.catalog()})
         elif path == "/api/agent/status":
@@ -381,14 +382,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 def featured_catalog():
     """Featured studies are saved projects shipped in examples/, listed by examples/featured.json."""
-    catalog = json.loads((ROOT / "examples" / "featured.json").read_text(encoding="utf-8"))
-    studies = []
-    base = (ROOT / "examples").resolve()
-    for item in catalog["studies"]:
-        project = (base / item["project"]).resolve()
-        if project.is_relative_to(base) and project.suffix == ".mbdyn-studio" and project.is_file():
-            studies.append(item)
-    return studies
+    return featured.catalog()
 
 
 def main():

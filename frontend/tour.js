@@ -1,50 +1,57 @@
 const KEY = "mbdyn-studio.guided-tour.auto";
 
+// An industry walkthrough: build a wheel-end drop test from original STEP parts, solve it and read the results.
 const steps = [
   {
     title: "Welcome to Kinemeld",
-    text: "This tour introduces a STEP-based planar mechanism: geometry, bodies, revolute hinges, a solver run and results. You can use the app while this guide is open; choose Next when you are ready.",
-    target: () => "#stepButton",
+    text: "This tour builds an automotive wheel-end drop test from original STEP parts: import the CAD, define bodies and links, add contact and initial conditions, solve with MBDyn and review the results. You can use the app while the guide is open. To see finished industry studies first, open Featured studies.",
+    target: () => "#examplesButton",
+    action: { label: "Open featured studies", run: (actions) => actions.openFeaturedStudies?.() },
   },
   {
-    title: "Start with STEP geometry",
-    text: "Choose STEP parts, then Load moving STEP pendulum. Wait for it to finish. This example loads a solid and its matching planar body model. You can instead import your own STEP files, but their physical properties and connections must be entered separately.",
-    target: () => document.querySelector("#stepDialog")?.open ? "#stepPendulum" : "#stepButton",
-    hint: "Open STEP parts and load the moving STEP pendulum to follow the remaining steps.",
+    title: "1 · Start a 3D assembly",
+    text: "Pre-processing (key 1) holds the model tree on the left and the properties of the selection on the right. Start a new 3D assembly; it contains one body to build from.",
+    target: () => "#newButton",
+    action: { label: "New 3D assembly", run: (actions) => actions.newAssembly?.() },
   },
   {
-    title: "Inspect the body",
-    text: "Select Upper Link in the model browser. Properties include mass, inertia, initial position, angle and velocity. You can calculate mass and principal inertia from uniform brick, cylinder, sphere or ellipsoid dimensions and density. This does not create CAD geometry.",
+    title: "2 · Import the CAD",
+    text: "Open STEP parts and import the knuckle, hub and tyre from the original wheel-end assembly. Parts keep their CAD units and coordinates; they are display geometry until you attach them to bodies.",
+    target: () => document.querySelector("#stepDialog")?.open ? "#stepImport" : "#stepButton",
+    action: { label: "Import wheel-end STEP parts", run: (actions) => actions.importWheelEnd?.() },
+  },
+  {
+    title: "3 · Bodies and links",
+    text: "Rename Body 1 to Knuckle and place its frame at the bearing centre (x −0.04 m, y −0.0875 m). Under Add 3D body and joint, add the Hub to the Knuckle with a Revolute joint, then the Tyre to the Hub with a Weld. Select each joint to set anchors and the bearing axis (x). Joint symbols in the 3D view show each anchor and axis.",
     target: () => "#properties",
-    hint: "The body editor appears after the planar STEP pendulum example is loaded.",
+    hint: "Select a body in the model tree to show its properties and the Add 3D body and joint tools.",
   },
   {
-    title: "Add a body and hinge",
-    text: "In Properties, find Build assembly. Choose a parent and a joint type, then add a body with a revolute hinge or prismatic slider. The body and joint appear in the model browser. The editor supports rooted planar trees.",
-    target: () => "#properties",
-    hint: "Select a planar body in the model browser to show Build assembly.",
-  },
-  {
-    title: "Set joint anchors",
-    text: "Under JOINTS, select a hinge to edit its anchors. Body anchors are local; ground anchors use world coordinates. Their initial positions and velocities must agree. The Properties panel also lets you add a linear spring and damper between ground or bodies.",
-    target: () => "#modelTree",
-    hint: "Select a hinge such as ground_pin or the new hinge to see its anchor fields.",
-  },
-  {
-    title: "Attach a STEP solid",
-    text: "Open STEP parts. Select a STEP part and a planar body, then choose Apply attachment. Check the CAD and body-frame alignment. This links the display to body motion; it does not calculate mass, inertia, joints or contact from the CAD.",
+    title: "4 · Attach CAD and compute mass",
+    text: "In STEP parts, attach each solid to its body; the solid then follows that body. Calculate the mass from the solid with a material density (steel 7850, rubber 1100 kg/m³) and apply it: mass, centre of mass and inertia come from the CAD.",
     target: () => document.querySelector("#stepDialog")?.open ? "#stepBindings" : "#stepButton",
-    hint: "The attachment controls appear when STEP parts and a planar assembly are loaded.",
+    hint: "Attachment and mass controls appear in STEP parts once parts are imported.",
   },
   {
-    title: "Validate and run",
-    text: "Select Validate model and follow any issue back to its field. Check the study duration and time step, then select Run simulation. The configured local MBDyn solver must be available; a validation pass alone does not prove the design is physically correct.",
-    target: () => "#validateButton",
+    title: "5 · Contact and initial conditions",
+    text: "Add a sphere-plane contact to the Tyre (radius 0.208 m, floor through the origin, 20 kN/m, 100 N·s/m), then raise all three bodies to z = 0.6 m with a downward velocity of 1 m/s. The AI assistant can propose these edits for you to review and apply.",
+    target: () => "#agentButton",
   },
   {
-    title: "Explore and save",
-    text: "After the run, scrub the timeline or press Play to see attached solids move. Choose a response quantity and export CSV if needed. Save project retains the model, results, original STEP files and attachments. Reopen the tour from the Tour button whenever you need it.",
-    target: () => "#timeSlider",
+    title: "6 · Solve",
+    text: "Solve (key 2) holds the study settings, pre-run checks and the solver console. Set 1.5 s at 0.5 ms, check the mobility and any linked issues, inspect the MBDyn deck if you wish, then Run simulation (F5).",
+    target: () => '[data-step="simulate"]',
+  },
+  {
+    title: "7 · Post-processing",
+    text: "Post-processing (key 3) plays the motion with frame stepping and speed control. Plot Contact normal force, hover or drag on the plot to scrub, and read min, max and RMS. Trails, follow camera and presentation mode (P) help reviews; CSV export keeps every solver step.",
+    target: () => '[data-step="results"]',
+  },
+  {
+    title: "Compare with the finished study",
+    text: "The Wheel-end drop test featured study is this model, built and verified: free fall, first contact time and the contact energy balance are checked against independent calculations. Save your project to keep the model, CAD, attachments and results together.",
+    target: () => "#examplesButton",
+    action: { label: "Open the finished study", run: (actions) => actions.openStudy?.("wheel-end-drop") },
   },
 ];
 
@@ -53,7 +60,7 @@ function preference() { try { return localStorage.getItem(KEY); } catch { return
 function setPreference(value) { try { localStorage.setItem(KEY, value); } catch { /* Storage can be unavailable in private contexts. */ } }
 
 /** Start the optional, non-blocking first-run guide and expose it through Tour. */
-export async function setupTour() {
+export async function setupTour(actions = {}) {
   const panel=element("guidedTour"), button=element("tourButton"), disable=element("tourDisable");
   let index=0, highlighted=null, autoEnabled=preference()==="on", interacted=false;
   let pendingWrite=Promise.resolve();
@@ -89,6 +96,9 @@ export async function setupTour() {
     element("tourHint").textContent=step.hint || "";
     element("tourBack").disabled=index===0;
     element("tourNext").textContent=index===steps.length-1 ? "Finish" : "Next";
+    const action=element("tourAction");
+    action.hidden=!step.action;
+    action.textContent=step.action?.label || "";
     const rect=highlighted?.getBoundingClientRect();
     panel.classList.toggle("tour-left", Boolean(rect && rect.left+rect.width/2 > innerWidth/2));
   }
@@ -111,6 +121,7 @@ export async function setupTour() {
   }
   button.addEventListener("click",()=>{interacted=true;start();});
   element("tourClose").addEventListener("click",close);
+  element("tourAction").addEventListener("click",()=>{interacted=true;steps[index].action?.run(actions);});
   element("tourBack").addEventListener("click",()=>{if(index){index--;update();element("tourTitle").focus();}});
   element("tourNext").addEventListener("click",()=>{if(index===steps.length-1){close();return;}index++;update();element("tourTitle").focus();});
   disable.addEventListener("change",()=>{interacted=true;persist(!disable.checked);});

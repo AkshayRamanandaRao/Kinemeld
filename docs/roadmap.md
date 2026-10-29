@@ -6,7 +6,7 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation (0.2)
+## Current foundation (0.3)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
   forces, springs, dampers, oleo struts, contact and selected prescribed motion.
@@ -15,9 +15,14 @@ appropriate.
 - Pre-processing, Solve and Post-processing workspaces with interactive plots,
   statistics, motion trails, follow camera and presentation mode.
 - Constraint-rank mobility and named redundant constraints before the solver runs.
+- Joint, force-element and frame symbols in the 3D view; hover highlighting between the
+  view and the model tree.
+- Industry-inspired demos, including an end-to-end STEP-to-results recording, and a guided
+  tour that builds a wheel-end drop test.
 - Six featured studies verified against independent physics, plus the earlier
   suspension, wheel-end, gear and strut demonstrations with documented assumptions.
 - Desktop builds for Linux, macOS and Windows; CI and tagged releases on GitHub.
+- Rotary drives on revolute joints with motor torque, power and work from the solver.
 
 ## Release plan
 
@@ -26,15 +31,15 @@ Each step ships as its own release with an example, documentation and solver evi
 1. **0.2 — Workspaces and studies (released):** Pre-processing, Solve and
    Post-processing workspaces; six verified featured studies; constraint-rank mobility
    and redundancy diagnostics; desktop builds for Linux, macOS and Windows.
-2. **0.3 — Actuation:** prescribed rotary motion for revolute joints (motor speed ramp
+2. **0.3 — Actuation (released):** prescribed rotary motion for revolute joints (motor speed ramp
    and oscillation) with motor torque, power and work from the solver, and an
    inverse-dynamics robot-arm study.
 3. **0.4 — Post-processing II:** statistics and plots from the full-resolution solver
    output with peak-preserving decimation, overlays of several quantities and bodies,
    comparison with a pinned earlier run, and SVG/PNG plot export.
-4. **0.5 — Interaction:** joint and frame glyphs in the 3D view (axes, anchors, force
-   element lines), hover highlighting between tree, view and properties, and direct
-   selection of joints and force elements in the viewport.
+4. **0.5 — Interaction:** place joint anchors and frames directly in the 3D view by
+   picking CAD features (hole axes, cylinder centres, faces), drag-to-edit with snapping,
+   and in-view distance and angle measurement.
 5. **0.6 — Reliability and CAD:** support for the current OpenCascade runtime
    (`cadquery-ocp` 8), crash-safe autosave and recovery in the desktop app, and
    clean-machine installation checks for every platform package.

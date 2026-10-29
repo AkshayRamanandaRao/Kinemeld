@@ -397,6 +397,38 @@ button.quiet {
   box-shadow: var(--shadow);
   border-left: 3px solid var(--accent);
   animation: toast-in 0.18s ease-out;
+  /* Notifications never block the controls underneath; only the close button takes clicks. */
+  pointer-events: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.notice[hidden] {
+  display: none;
+}
+.notice-close {
+  pointer-events: auto;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  margin: 0 -6px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+.notice-close::before {
+  content: "\00d7";
+  font-size: 16px;
+  line-height: 20px;
+}
+.notice-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
 }
 .notice.warn {
   border-left-color: #e3a02b;
@@ -1856,8 +1888,12 @@ dialog::backdrop {
 }
 .tour-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
+}
+.tour-actions .tour-action {
+  margin-right: auto;
 }
 .guided-tour-target {
   outline: 3px solid #ed9a17 !important;
@@ -2109,4 +2145,61 @@ dialog::backdrop {
   border-radius: 10px;
   background: var(--soft);
   color: var(--blue-text);
+}
+
+/* ---------- Grouped fields in dialogs ---------- */
+fieldset {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+}
+legend {
+  padding: 0 6px;
+  margin-left: -6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* ---------- 3D hover tooltip ---------- */
+.view-tooltip {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 280px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: var(--bar);
+  color: var(--bar-text);
+  box-shadow: var(--shadow);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.view-tooltip[hidden] {
+  display: none;
+}
+.view-tooltip span {
+  font-size: 10.5px;
+  opacity: 0.75;
+}
+.tree-item.hovered:not(.active) {
+  background: color-mix(in srgb, var(--soft) 60%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.agent-changes {
+  margin: 6px 0 4px;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.agent-changes li::marker {
+  color: var(--accent);
 }

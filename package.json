@@ -1,11 +1,11 @@
 {
   "name": "mbdyn-studio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "An open-source local workbench for MBDyn multibody simulations",
   "license": "MIT",
   "scripts": {
-    "check": "node --check frontend/app.js && node --check frontend/viewport.js && node --check frontend/industry.js && node --check frontend/industry-view.js && node --check frontend/source-view.js && node --check frontend/assembly-editor.js && node --check frontend/solid-editor.js && node --check frontend/frame-editor.js && node --check frontend/spatial-editor.js && node --check frontend/mass-properties.js && node --check frontend/polygon-extrusion.js && node --check frontend/revolution-profile.js && node --check frontend/point-probe.js && node --check frontend/wheel-kinematics.js && node --check frontend/reference-geometry.js && node --check frontend/step-asset.js && node --check frontend/step-mass.js && node --check frontend/step-view.js && node --check frontend/kinematics.js && node --check frontend/agent.js && node --check frontend/tour.js",
+    "check": "node --check frontend/app.js && node --check frontend/viewport.js && node --check frontend/industry.js && node --check frontend/industry-view.js && node --check frontend/source-view.js && node --check frontend/assembly-editor.js && node --check frontend/solid-editor.js && node --check frontend/frame-editor.js && node --check frontend/spatial-editor.js && node --check frontend/mass-properties.js && node --check frontend/polygon-extrusion.js && node --check frontend/revolution-profile.js && node --check frontend/point-probe.js && node --check frontend/wheel-kinematics.js && node --check frontend/reference-geometry.js && node --check frontend/step-asset.js && node --check frontend/step-mass.js && node --check frontend/step-view.js && node --check frontend/kinematics.js && node --check frontend/agent.js && node --check frontend/tour.js && node --check frontend/glyphs.js && node --check frontend/full-resolution.js",
     "test": "node tests/ui-smoke.mjs",
     "test:industry": "node tests/industry-ui.mjs",
     "test:source": "node tests/source-ui.mjs",
