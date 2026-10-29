@@ -78,6 +78,12 @@ class AgentBoundaryTests(unittest.TestCase):
         calls = [body for path, body in requests if path == "/api/chat"]
         self.assertIs(calls[0]["think"], False)
         self.assertTrue(any(item.get("role") == "tool" for item in calls[-1]["messages"]))
+        # Accepted edits report validation to the language model without repeating the whole model.
+        edited = [json.loads(item["content"]) for item in calls[-1]["messages"] if item.get("role") == "tool" and item.get("tool_name") == "set_parameters"]
+        self.assertEqual(len(edited), 1)
+        self.assertNotIn("model", edited[0]["result"])
+        self.assertTrue(edited[0]["result"]["validation"]["valid"])
+        self.assertIn("model", next(item for item in result["toolResults"] if item["name"] == "set_parameters")["result"])
         self.assertFalse(any(path not in ("/api/tags", "/api/show", "/api/chat") for path, _ in requests))
 
     def test_malicious_unknown_and_cross_family_tools_have_no_effect(self):
@@ -138,6 +144,24 @@ class AgentBoundaryTests(unittest.TestCase):
             result = agent.chat(self.request(), client)
         self.assertEqual(result["actions"], [])
         self.assertTrue(all(not item["ok"] for item in result["toolResults"]))
+
+    def test_settings_accept_an_optional_time_budget_for_slow_machines(self):
+        import tempfile
+        from pathlib import Path
+        original = agent.CONFIG
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                agent.CONFIG = Path(folder) / "agent.json"
+                self.assertEqual(agent.time_budget(), agent.LIMITS["timeoutSeconds"])
+                agent.CONFIG.write_text('{"endpoint":"http://127.0.0.1:11434","timeoutSeconds":600}', encoding="utf-8")
+                self.assertEqual((agent.configuration(), agent.time_budget()), ("http://127.0.0.1:11434", 600))
+                for text in ('{"endpoint":"http://127.0.0.1:11434","timeoutSeconds":5}', '{"endpoint":"http://127.0.0.1:11434","timeoutSeconds":"600"}',
+                             '{"timeoutSeconds":600}', '{"endpoint":"http://127.0.0.1:11434","model":"x"}'):
+                    with self.subTest(text=text), self.assertRaises(agent.AgentError):
+                        agent.CONFIG.write_text(text, encoding="utf-8")
+                        agent.time_budget()
+        finally:
+            agent.CONFIG = original
 
     def test_transport_is_literal_loopback_only_and_unavailable_is_actionable(self):
         for endpoint in ("https://127.0.0.1:11434", "http://example.test:11434", "http://localhost:11434", "http://127.0.0.1:11434/path", "http://user:pass@127.0.0.1:11434", "http://192.168.1.2:11434"):

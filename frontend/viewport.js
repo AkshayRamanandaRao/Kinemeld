@@ -3,6 +3,7 @@ import { OrbitControls } from "./vendor/OrbitControls.js";
 import { buildIndustry, sampleIndustry } from "./industry-view.js";
 import { buildSourceView, sampleSourceView } from "./source-view.js";
 import { createStepView } from "./step-view.js";
+import { buildGlyphs, disposeGlyphs, updateGlyphs } from "./glyphs.js";
 
 const DEG = Math.PI / 180;
 const BODY_COLORS = [0x5b8fd0, 0xd99a4e, 0x5aae8a, 0xa982c9, 0xcf6d6d, 0x8fa54e, 0x4fb0c6, 0xc7a64a];
@@ -10,8 +11,9 @@ const TRAIL_COLORS = [0x2f74d0, 0xe0821e, 0x13998f, 0xb04fc9, 0xd2453f, 0x6c8f1f
 
 /** Parameter-driven visualization only; motion samples always come from the selected run. */
 export class MechanismView {
-  constructor(mount, onSelect) {
+  constructor(mount, onSelect, onHover = () => {}) {
     this.mount = mount;
+    this.glyphsVisible = true;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
     this.camera.up.set(0, 0, 1);
@@ -58,25 +60,35 @@ export class MechanismView {
     this.scene.add(this.floor);
     this.labels = [];
     this.raycaster = new THREE.Raycaster();
-    let down;
+    let down, hoverQueued = null;
     this.renderer.domElement.addEventListener("pointerdown", (e) => {
       down = [e.clientX, e.clientY];
     });
     this.renderer.domElement.addEventListener("pointerup", (e) => {
       if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5)
         return;
-      const rect = this.renderer.domElement.getBoundingClientRect();
-      this.raycaster.setFromCamera(
-        new THREE.Vector2(
-          ((e.clientX - rect.left) / rect.width) * 2 - 1,
-          (-(e.clientY - rect.top) / rect.height) * 2 + 1,
-        ),
-        this.camera,
-      );
-      const hit = this.raycaster
-        .intersectObjects(this.group.children, true)
-        .find((item) => item.object.userData.entity);
-      if (hit) onSelect(hit.object.userData.entity);
+      const entity = this.pick(e.clientX, e.clientY);
+      if (entity) onSelect(entity);
+    });
+    // Hover highlighting, throttled to one pick per frame and paused while orbiting.
+    this.renderer.domElement.addEventListener("pointermove", (e) => {
+      if (e.buttons) return;
+      const queued = !hoverQueued;
+      hoverQueued = [e.clientX, e.clientY];
+      if (!queued) return;
+      requestAnimationFrame(() => {
+        const [x, y] = hoverQueued;
+        hoverQueued = null;
+        const entity = this.pick(x, y);
+        this.setHover(entity);
+        this.renderer.domElement.style.cursor = entity ? "pointer" : "";
+        onHover(entity, x, y);
+      });
+    });
+    this.renderer.domElement.addEventListener("pointerleave", () => {
+      hoverQueued = null;
+      this.setHover(null);
+      onHover(null);
     });
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(mount);
@@ -86,6 +98,17 @@ export class MechanismView {
       this.renderer.render(this.scene, this.camera);
       this.positionLabels();
     });
+  }
+  /** Entity under a screen point. Glyphs draw over the geometry, so a glyph under the cursor wins. */
+  pick(clientX, clientY) {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.raycaster.setFromCamera(
+      new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, (-(clientY - rect.top) / rect.height) * 2 + 1),
+      this.camera,
+    );
+    const shown = (object) => { for (let o = object; o; o = o.parent) if (!o.visible) return false; return true; };
+    const hits = this.raycaster.intersectObjects(this.group.children, true).filter((item) => item.object.userData.entity && shown(item.object));
+    return (hits.find((item) => item.object.userData.glyph) || hits[0])?.object.userData.entity || null;
   }
   resize() {
     const { width, height } = this.mount.getBoundingClientRect();
@@ -180,7 +203,11 @@ export class MechanismView {
     this.setTrails(null);
     this.followLast = null;
     this.clear();
+    this.glyphs = null;
+    this.glyphNodes = null;
+    this.hover = null;
     if (["source-example", "planar-assembly", "spatial-assembly"].includes(model.kind)) buildSourceView(this, sourceExample);
+
     else if (model.kind === "double-pendulum") this.buildDoublePendulum();
     else if (model.kind === "pendulum") this.buildPendulum();
     else if (model.kind === "mass-spring") this.buildSpring();
@@ -378,6 +405,8 @@ export class MechanismView {
         this,
         sample || { nodes: this.sourceMetadata.initialNodes },
       );
+      this.glyphNodes = sample?.nodes || this.sourceMetadata.initialNodes;
+      updateGlyphs(this.glyphs, this.glyphNodes);
       if (this.stepView && ["planar-assembly", "spatial-assembly"].includes(this.model.kind)) {
         const nodes = sample?.nodes || this.sourceMetadata.initialNodes.filter(n => this.model.bodies.some(b => b.id === n.id));
         this.stepView.update(this.model.kind === "planar-assembly" && sample
@@ -477,7 +506,31 @@ export class MechanismView {
     if (this.model) this.setModel(this.model, false, this.sourceMetadata);
     this.reset();
   }
+  /** Joint and force symbols, sized from the CAD extent when solids are attached. */
+  rebuildGlyphs() {
+    if (this.glyphs) {
+      this.group.remove(this.glyphs.group);
+      disposeGlyphs(this.glyphs);
+      this.glyphs = null;
+    }
+    if (this.model?.kind !== "spatial-assembly") return;
+    let size = this.scale || 1;
+    if (this.stepView) {
+      const box = new THREE.Box3().setFromObject(this.stepView.group);
+      if (!box.isEmpty()) size = Math.max(size, ...box.getSize(new THREE.Vector3()).toArray());
+    }
+    for (const contact of this.model.contacts || []) size = Math.max(size, 2 * contact.radius);
+    this.glyphs = buildGlyphs(this.model, size, this.sourceParts.offset);
+    this.glyphs.group.visible = this.glyphsVisible;
+    this.group.add(this.glyphs.group);
+    updateGlyphs(this.glyphs, this.glyphNodes || this.sourceMetadata.initialNodes);
+    this.applyHighlight();
+  }
   renderStep() {
+    this.renderStepView();
+    this.rebuildGlyphs();
+  }
+  renderStepView() {
     this.stepView?.dispose();
     this.stepView = null;
     if (!this.model || !this.stepAsset) {
@@ -505,7 +558,7 @@ export class MechanismView {
       for (const link of this.sourceParts.links) link.line.visible = false;
       this.showLabels(false);
     } else {
-      for (const child of this.group.children) if (child !== this.stepView.group) child.visible = false;
+      for (const child of this.group.children) if (child !== this.stepView.group && child !== this.glyphs?.group) child.visible = false;
       this.showLabels(false);
     }
   }
@@ -583,14 +636,26 @@ export class MechanismView {
   }
   setSelection(entity) {
     this.selection = entity;
+    this.applyHighlight();
+  }
+  /** Highlight an entity under the cursor or hovered in the model tree. */
+  setHover(entity) {
+    if (entity === this.hover) return;
+    this.hover = entity;
+    this.applyHighlight();
+  }
+  applyHighlight() {
     this.group.traverse((obj) => {
       if (!obj.isMesh || !obj.userData.entity) return;
-      obj.material.color.set(obj.userData.baseColor ?? 0x7196bd);
-      obj.material.emissive.set(
-        obj.userData.entity === entity ? 0x183458 : 0x000000,
-      );
-      obj.material.emissiveIntensity = 0.3;
+      const entity = obj.userData.entity, selected = entity === this.selection, hovered = entity === this.hover;
+      obj.material.color.set(obj.userData.glyph && selected ? 0x2f7de1 : obj.userData.baseColor ?? 0x7196bd);
+      obj.material.emissive.set(selected ? 0x183458 : hovered ? 0x3d6fa8 : 0x000000);
+      obj.material.emissiveIntensity = selected ? 0.3 : 0.45;
     });
+  }
+  setGlyphs(visible) {
+    this.glyphsVisible = visible;
+    if (this.glyphs) this.glyphs.group.visible = visible;
   }
   setGrid(visible) {
     this.grid.visible = visible;
