@@ -33,6 +33,20 @@ mass and inertia computed from the solids, a tyre contact and drop conditions, t
 solve and the tyre-load plot. [Watch the MP4](docs/demos/workflow-wheel-end.mp4) · the
 **guided tour** (compass icon) walks through the same steps.
 
+### AI-assisted set-up
+
+[![The local AI assistant adds a wheel bearing, tyre contact and drop conditions for review](docs/demos/ai-assistant-setup.png)](docs/demos/ai-assistant-setup.mp4)
+
+The optional assistant runs a local model through [Ollama](https://ollama.com) — `qwen3.5:4b`
+in this recording — and turns a request in engineering terms into model edits: here a
+revolute wheel bearing, a tyre contact with stated stiffness and damping, drop conditions and
+the study settings. The review lists every changed field with its old and new value; nothing
+changes until you apply it, and Undo restores the previous model. Recorded on a 4-core CPU
+without a GPU; the four-minute wait for the model is condensed.
+[Watch the MP4](docs/demos/ai-assistant-setup.mp4) · [assistant guide](docs/ai-agent.md)
+
+### Featured studies
+
 <table>
 <tr>
 <td width="50%"><img src="docs/demos/quarter-car.gif" alt="Double-wishbone quarter-car swept through wheel travel, with knuckle camber and toe plotted"><br>

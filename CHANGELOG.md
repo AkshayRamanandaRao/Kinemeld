@@ -67,7 +67,13 @@ All notable changes to Kinemeld are recorded here. Versions follow
   operating systems) and a tag-triggered release workflow that attaches the MBDyn source.
 
 ### AI assistant
+- The proposal review lists every changed field with its old and new value, so changes a
+  request did not ask for are visible before applying.
+- After an accepted edit the language model reads back the validation result rather than the
+  whole model, saving minutes per request on CPU-only machines.
 - Optional `timeoutSeconds` in the assistant settings for CPU-only machines.
+- Demo recording of the assistant adding a wheel bearing, tyre contact and drop conditions with
+  a real local `qwen3.5:4b` model.
 
 ### Fixes
 - STEP import documents the supported OpenCascade runtime (`cadquery-ocp` 7.9; 8.x removed
