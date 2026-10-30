@@ -76,11 +76,13 @@ jobs:
       - uses: cygwin/cygwin-install-action@v4
         with:
           packages: gcc-core gcc-g++ gcc-fortran make python3 tar binutils
-      - uses: actions/cache@v4
+      # Restore and save explicitly, so a compiled tree is kept even when bundling fails.
+      - uses: actions/cache/restore@v4
         with:
           path: backend/vendor
           key: mbdyn-1.7.3-${{ runner.os }}-cygwin-${{ hashFiles('backend/build_solver.sh') }}
-      - name: Build and bundle
+      - name: Build
+        id: build
         run: |
           # MBDyn's bundled libtool takes gfortran on Cygwin for a non-GNU compiler and archives
           # Fortran libraries with Microsoft's lib; this shim does the same with GNU ar.
@@ -93,9 +95,17 @@ jobs:
           # -std=c++11 hides POSIX functions such as strcasecmp in Cygwin's headers; _GNU_SOURCE
           # makes them visible again without changing the build on other platforms.
           CPPFLAGS=-D_GNU_SOURCE MBDYN_JOBS=4 bash backend/build_solver.sh
+      - uses: actions/cache/save@v4
+        if: steps.build.outcome == 'success'
+        with:
+          path: backend/vendor
+          key: mbdyn-1.7.3-${{ runner.os }}-cygwin-${{ hashFiles('backend/build_solver.sh') }}
+      - name: Bundle
+        run: |
+          export PATH="/usr/bin:$PATH"
+          # The bundling script also checks that the bundle starts with nothing from Cygwin on PATH.
           bash scripts/bundle_solver.sh backend/vendor/mbdyn-1.7.3/mbdyn/mbdyn.exe build/solver
-          # The bundle must run with nothing from Cygwin on PATH.
-          PATH="/cygdrive/c/Windows/system32:/cygdrive/c/Windows" build/solver/bin/mbdyn.exe -v | head -1
+          ls -la build/solver/bin
       - uses: actions/upload-artifact@v4
         with:
           name: solver-windows
