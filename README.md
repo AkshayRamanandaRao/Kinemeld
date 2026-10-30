@@ -170,7 +170,7 @@ build the native desktop host see [desktop builds](native/README.md).
 - GitHub Actions builds MBDyn, runs the backend suite and the study verification, and builds
   and tests the desktop host on Linux, macOS and Windows for every change.
 - `scripts/check_package.py` — every release package unpacked on a fresh machine: file
-  hashes, the packaged service, real MBDyn runs and the desktop self-check.
+  hashes, the packaged service, real MBDyn runs and (Linux, macOS) the desktop self-check.
 
 See [verification](docs/verification.md) and [multibody capabilities](docs/multibody-feature-map.md)
 for scope and limitations.
