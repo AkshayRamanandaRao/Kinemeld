@@ -2306,26 +2306,26 @@ legend {
   font: 10.5px PlexMono, monospace;
   font-variant-numeric: tabular-nums;
 }
-.study-table th {
-  text-align: right;
-  font: 600 10px Plex, sans-serif;
-  color: var(--dim);
-  padding: 4px 5px;
-  border-bottom: 1px solid var(--line-strong);
-  white-space: nowrap;
-}
-.study-table th small {
-  font-weight: 400;
-}
+.study-table th,
 .study-table td {
   text-align: right;
-  padding: 4px 5px;
+  padding: 4px 3px;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
-.study-table th:nth-child(-n + 2),
-.study-table td:nth-child(-n + 2) {
+.study-table thead th {
+  font: 600 10px Plex, sans-serif;
+  color: var(--dim);
+  border-bottom-color: var(--line-strong);
+}
+.study-table thead th small {
+  font-weight: 400;
+}
+.study-table th:first-child {
   text-align: left;
+}
+.study-table tbody th {
+  font-weight: 400;
 }
 .study-table tbody tr {
   cursor: pointer;
@@ -2337,9 +2337,11 @@ legend {
   background: var(--soft);
 }
 .study-case {
-  display: grid;
+  display: inline-grid;
   place-items: center;
-  width: 20px;
+  vertical-align: middle;
+  margin-right: 3px;
+  width: 18px;
   height: 18px;
   padding: 0;
   border: none;

@@ -103,12 +103,14 @@ Kinemeld separates the work into three workspaces (keys **1**, **2**, **3**):
    properties; joints and frames placed by picking or dragging onto CAD bores, shafts and
    faces, and in-view distance and angle measurement; Grübler mobility estimate.
 2. **Solve** — study settings, pre-run checks, linked validation issues, the generated
-   MBDyn deck, solver status and a live console with the solver log.
+   MBDyn deck, solver status, a live console with the solver log, and parameter studies
+   that solve the model for several values of one input.
 3. **Post-processing** — animation with frame stepping and speed control, interactive
    plots with hover readout, scrubbing and channel statistics, body-axes angular velocity,
    joint reactions, motion trails, follow camera, point and wheel-kinematics measurements,
    full-resolution plots and statistics from every solver step, pinned traces, comparison
-   with an earlier run, SVG/PNG plot export, full-resolution CSV, and a presentation mode.
+   with an earlier run, every case of a parameter study with a table of peaks, RMS and final
+   values, SVG/PNG plot export, full-resolution CSV, and a presentation mode.
 
 See [workspaces and post-processing](docs/workspaces.md) for details and shortcuts.
 
@@ -177,9 +179,9 @@ for scope and limitations.
 
 ## Roadmap
 
-Next: parameter studies that sweep a model input through MBDyn and compare the responses,
-and more validated engineering examples. Longer term:
-broader contact, flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
+Next: featured parameter studies in the demo set, verified against independent physics.
+Longer term: contact friction,
+flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
 and the [changelog](CHANGELOG.md).
 
 ## License and attribution
