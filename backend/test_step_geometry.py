@@ -116,6 +116,16 @@ class StepGeometryTest(unittest.TestCase):
         self.assertTrue(all([abs(value) for value in rim["axis"]] == [0.0, 1.0, 0.0] for rim in rims))
         self.assertEqual([part["edges"] for part in step_geometry.convert_step(self.data, "assembly.step")["parts"]], [[], []])
 
+    def test_rims_written_as_arcs_are_merged(self):
+        # SolidWorks writes each hole rim of the nose-gear strut as two half arcs.
+        data = (Path(__file__).resolve().parents[1] / "examples/open-aircraft-nose-gear/parts/03-strut.step").read_bytes()
+        rims = step_geometry.convert_step(data, "03-strut.step")["parts"][0]["edges"]
+        holes = {(round(rim["centre"][0], 6), round(rim["centre"][1], 6)) for rim in rims if abs(rim["radius"] - .0075) < 1e-9}
+        # Both faces of each torque-link lug, on the pin axis 616 mm up.
+        self.assertTrue({(-.01, -.07), (-.01, .07), (.01, -.07), (.01, .07)} <= holes, holes)
+        self.assertTrue(all(abs(abs(rim["axis"][0]) - 1) < 1e-9 for rim in rims if abs(rim["radius"] - .0075) < 1e-9))
+        self.assertEqual(len({tuple(rim["centre"]) + (rim["radius"],) for rim in rims}), len(rims))
+
     def test_inch_source_is_converted_to_same_metre_geometry(self):
         result = step_geometry.convert_step(self.inch_data, "inch.step")
         self.assertTrue(any("inch" in unit.lower() for unit in result["sourceLengthUnits"]))

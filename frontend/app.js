@@ -4,7 +4,7 @@ import { restoreReferenceGeometry } from "./reference-geometry.js";
 import { setupAgent } from "./agent.js";
 import { assemblyInfo, renderAssemblyEditor } from "./assembly-editor.js";
 import { spatialInfo, renderSpatialEditor } from "./spatial-editor.js";
-import { loadStepAsset, restoreStepAsset, stepPartLabel } from "./step-asset.js";
+import { appendStepAsset, loadStepAsset, restoreStepAsset, stepPartLabel } from "./step-asset.js";
 import { createStepView } from "./step-view.js";
 import { setupTour } from "./tour.js";
 import { setupStepMass } from "./step-mass.js";
@@ -141,7 +141,7 @@ let view,
   lastFrame = 0,
   playTime = 0,
   pendingDownload,
-  referenceLoad = 0, stepLoad = 0;
+  referenceLoad = 0, stepLoad = 0, stepAppend = false;
 let applyingNativeProject = false, projectRevision = 0, browserDirty = false, activeRunToken = null;
 const nativeDesktop = window.mbdynNative;
 const stepMass = setupStepMass({
@@ -230,6 +230,7 @@ function renderStepReview() {
 function renderStepControls() {
   const asset=state.step;
   $("stepRemove").hidden=!asset;
+  $("stepAdd").hidden=!asset;
   $("stepBindings").hidden=!asset;
   $("stepMass").hidden=!asset;
   stepMass.clear();
@@ -2315,7 +2316,8 @@ $("referenceIsolateButton").onclick = () => {
 };
 $("stepButton").onclick = () => {renderStepControls(); $("stepDialog").showModal();};
 $("stepClose").onclick = () => $("stepDialog").close();
-$("stepImport").onclick = () => $("stepFile").click();
+$("stepImport").onclick = () => {stepAppend=false;$("stepFile").click();};
+$("stepAdd").onclick = () => {stepAppend=true;$("stepFile").click();};
 $("stepPart").onchange = () => { $("stepBody").value = state.step?.metadata.bindings[$("stepPart").value]?.body || ""; };
 $("stepReviewCandidate").onchange = renderStepReview;
 $("stepReviewApply").onclick = () => {
@@ -2390,9 +2392,10 @@ $("stepFile").onchange = async event => {
     if (files.length>24 || files.reduce((n,file)=>n+file.size,0)>12*1024*1024) throw Error("Select up to 24 STEP files totalling at most 12 MiB.");
     $("stepDetail").textContent="Converting STEP solids locally…";
     const inputs=[];for(const file of files) inputs.push({name:file.name,bytes:new Uint8Array(await file.arrayBuffer())});
-    const asset=await loadStepAsset(inputs);
-    if(token!==stepLoad)return;
-    replaceStep(asset);notice("STEP solids loaded. Attach them to assembly bodies to follow motion; define mass, inertia and joints in the physical model.");
+    const previous=stepAppend ? state.step : null;
+    const asset=previous ? await appendStepAsset(previous,inputs) : await loadStepAsset(inputs);
+    if(token!==stepLoad || (previous && state.step!==previous))return;
+    replaceStep(asset);notice(previous ? `Added ${files.length===1 ? files[0].name : `${files.length} STEP files`}: ${asset.parts.length} parts in ${asset.metadata.files.length} files. Earlier attachments are kept.` : "STEP solids loaded. Attach them to assembly bodies to follow motion; define mass, inertia and joints in the physical model.");
   } catch(error) {if(token===stepLoad){renderStepControls();notice(`STEP import failed: ${error.message}`,"error");}}
   finally {event.target.value="";}
 };

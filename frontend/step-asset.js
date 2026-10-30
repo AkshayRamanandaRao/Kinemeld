@@ -70,6 +70,25 @@ export async function loadStepAsset(files, bindings={}) {
   return {metadata:{schemaVersion:1,format:'step',files:records,bindings:{...bindings},occurrenceWitnesses,unverifiedBindings:{}},parts,units:'m'};
 }
 
+/**
+ * Add STEP files to a loaded set. Earlier parts keep their IDs, attachments and identities;
+ * the new files follow them, and every part is labelled with its file as in a multi-file import.
+ */
+export async function appendStepAsset(previous, files) {
+  const existing=previous.metadata.files;
+  if(existing.length+files.length>MAX_FILES) throw Error('A STEP set holds at most 24 files.');
+  const bytes=existing.reduce((sum,file)=>sum+file.byteLength,0)+files.reduce((sum,file)=>sum+(file.bytes.byteLength ?? file.bytes.length),0);
+  if(bytes>MAX_BYTES) throw Error('STEP sources together must be no larger than 12 MiB.');
+  const added=await loadStepAsset(files), offset=existing.length;
+  if([...previous.parts,...added.parts].reduce((sum,part)=>sum+part.indices.length/3,0)>MAX_TRIANGLES) throw Error('STEP assembly exceeds the 200,000-triangle display limit.');
+  const shift=id=>{const at=id.indexOf(':');return `${Number(id.slice(0,at))+offset}${id.slice(at)}`;};
+  const records=[...existing,...added.metadata.files];
+  const label=part=>`${records[Number(part.id.split(':',1)[0])].name} · ${part.occurrenceName ?? part.name}`;
+  const parts=[...previous.parts,...added.parts.map(part=>({...part,id:shift(part.id)}))].map(part=>({...part,name:label(part)}));
+  const witnesses=Object.fromEntries(Object.entries(added.metadata.occurrenceWitnesses).map(([id,witness])=>[shift(id),witness]));
+  return {metadata:{...previous.metadata,files:records,bindings:{...previous.metadata.bindings},occurrenceWitnesses:{...previous.metadata.occurrenceWitnesses,...witnesses},unverifiedBindings:{...previous.metadata.unverifiedBindings}},parts,units:'m'};
+}
+
 export async function restoreStepAsset(asset) {
   if(!asset || asset.schemaVersion!==1 || asset.format!=='step' || !Array.isArray(asset.files) || !asset.files.length || asset.files.length>MAX_FILES || Object.keys(asset).some(k=>!['schemaVersion','format','files','bindings','occurrenceWitnesses','unverifiedBindings'].includes(k))) throw Error('Invalid saved STEP asset.');
   if(!validateBindings(asset.bindings,asset.files.length) || !validateBindings(asset.unverifiedBindings??{},asset.files.length)) throw Error('STEP part bindings are invalid.');

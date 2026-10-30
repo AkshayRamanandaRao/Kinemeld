@@ -281,7 +281,7 @@
     <dialog id="stepDialog">
       <div class="dialog-heading"><div><span class="eyebrow">CAD PARTS</span><h2>STEP geometry</h2></div><button id="stepClose" class="icon-button" aria-label="Close STEP dialog">×</button></div>
       <p>Import STEP files with their original units. Parts are visual geometry; mass, joints and contact are defined in the simulation model.</p>
-      <div class="step-actions"><button id="stepImport" class="secondary">Import STEP files</button><button id="stepPendulum" class="secondary">Load moving STEP pendulum</button><button id="stepExample" class="secondary">Load double-wishbone STEP parts</button><button id="stepRemove" class="secondary" hidden>Remove STEP parts</button></div>
+      <div class="step-actions"><button id="stepImport" class="secondary">Import STEP files</button><button id="stepAdd" class="secondary" hidden>Add STEP files</button><button id="stepPendulum" class="secondary">Load moving STEP pendulum</button><button id="stepExample" class="secondary">Load double-wishbone STEP parts</button><button id="stepRemove" class="secondary" hidden>Remove STEP parts</button></div>
       <p id="stepDetail">No STEP geometry loaded.</p>
       <div id="stepBindings" hidden><label>STEP part <select id="stepPart"></select></label><label id="stepBodyLabel">Attach to simulation body <select id="stepBody"></select></label><button id="stepBind" class="secondary">Apply attachment</button><button id="stepExport" class="secondary">Export selected STEP source</button></div>
       <section id="stepReview" aria-labelledby="stepReviewTitle" hidden>

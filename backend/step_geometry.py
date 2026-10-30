@@ -122,7 +122,8 @@ def _worker(source):
         from OCP.TDF import TDF_Label
         from OCP.TDocStd import TDocStd_Document
         from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_REVERSED
-        from OCP.TopExp import TopExp_Explorer
+        from OCP.TopExp import TopExp, TopExp_Explorer
+        from OCP.TopTools import TopTools_IndexedMapOfShape
         from OCP.TopLoc import TopLoc_Location
         from OCP.TopoDS import TopoDS
         from OCP.XCAFDoc import XCAFDoc_DocumentTool, XCAFDoc_ShapeTool
@@ -249,22 +250,23 @@ def _worker(source):
                 if described:
                     faces.append({"triangles": [first_triangle, count], **described})
             explorer.Next()
-        # Full circles only: hole rims and shaft ends. Partial arcs (fillets, chamfer
-        # boundaries) are left out. The explorer meets each edge once per adjacent face.
-        circles, seen = [], set()
-        explorer = TopExp_Explorer(shape, TopAbs_EDGE)
-        while explorer.More() and len(circles) < MAX_CIRCLES:
-            curve = BRepAdaptor_Curve(TopoDS.Edge(explorer.Current()))
-            explorer.Next()
-            if curve.GetType() != GeomAbs_Circle or abs(curve.LastParameter() - curve.FirstParameter() - 2 * math.pi) > 1e-6:
+        # Full circles only: hole rims and shaft ends. Many CAD systems (SolidWorks, for one)
+        # write a rim as two or four arcs, so arcs on the same circle are summed; partial arcs
+        # (fillets, chamfer boundaries) are left out. Each edge is counted once.
+        edges = TopTools_IndexedMapOfShape()
+        TopExp.MapShapes_s(shape, TopAbs_EDGE, edges)
+        arcs = {}
+        for index in range(1, edges.Extent() + 1):
+            curve = BRepAdaptor_Curve(TopoDS.Edge(edges.FindKey(index)))
+            if curve.GetType() != GeomAbs_Circle:
                 continue
             circle = curve.Circle()
             described = {"type": "circle", "centre": metres(circle.Location()), "axis": direction(circle.Axis().Direction()),
                          "radius": round(circle.Radius()*.001, 9)}
-            key = (*described["centre"], described["radius"], *(abs(v) for v in described["axis"]))
-            if key not in seen:
-                seen.add(key)
-                circles.append(described)
+            key = (*(round(v, 7) for v in described["centre"]), round(described["radius"], 8), *(round(abs(v), 6) for v in described["axis"]))
+            entry = arcs.setdefault(key, [described, 0.0])
+            entry[1] += curve.LastParameter() - curve.FirstParameter()
+        circles = [described for described, span in arcs.values() if abs(span - 2 * math.pi) <= 1e-6][:MAX_CIRCLES]
         if positions and indices:
             parts.append({"id":f"part-{len(parts)+1}", "name":name, "path":current_path,
                           "productName":product_name or None, "positions":positions, "indices":indices, "faces":faces, "edges":circles,
