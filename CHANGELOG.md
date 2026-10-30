@@ -28,6 +28,16 @@ All notable changes to Kinemeld are recorded here. Versions follow
   macOS 14 and Windows runners and publishes only when every package passes. A `dry_run`
   input builds and checks without publishing.
 
+### Fixes
+- **Self-contained solver bundles.** The first clean-machine run showed that the MBDyn bundled
+  in the 0.3–0.5 Linux and macOS archives only ran where the build machine's libraries were
+  installed: Linux needed `liblapack3`, and macOS needed Homebrew GCC for `libgcc_s`, which the
+  Fortran runtime loads through `@rpath`. `scripts/bundle_solver.sh` now bundles every
+  library outside the C/C++ runtime (Linux) or the operating system (macOS), resolves `@rpath`
+  references, and fails the build if any reference still points at the build machine. On those
+  older releases, install `liblapack3` (Linux) or `brew install gcc` (macOS), or configure MBDyn
+  as in `docs/solver.md`.
+
 ### Tests
 - `RecoveryStore` unit tests (atomic replacement, interrupted writes, size limit, damaged
   snapshots, retention) and `tests/native-recovery-ui.mjs` (recover, discard, autosave
