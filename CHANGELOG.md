@@ -4,6 +4,39 @@ All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/); from 1.0, project files follow the compatibility
 rules in [docs/project-format.md](docs/project-format.md).
 
+## 1.1.0 — Contact friction
+
+### Model
+- **Friction on sphere-plane contacts.** A contact takes an optional Coulomb friction
+  coefficient and a slip velocity (default 0.05 m/s) over which the friction force rises to
+  μ × normal force. MBDyn applies it from the contact's own normal force and the slip of the
+  contact point, as a force at the sphere centre and its couple, so sliding balls spin up and
+  braked wheels drag their axles. Regularised friction has no true stiction: a part held on a
+  slope creeps slowly, at a speed the guide states.
+- **Validate model** estimates whether the time step resolves the friction near sticking and
+  suggests a smaller step or a larger slip velocity.
+- Projects without friction are unchanged; the new fields are optional
+  ([project format](docs/project-format.md)).
+
+### Post-processing
+- Contact friction force (MBDyn's applied force, from `result.frc`), slip speed and friction
+  dissipated energy plots at full resolution, with matching CSV columns
+  (`frictionForce_N`, `slip_m_s`, `frictionPower_W`, `frictionEnergy_J`).
+
+### Studies
+- **Landing-gear spin-up drag** featured study: a wheel spun backwards to a 30 m/s tyre
+  surface speed is dropped on a still platform, as drop-test rigs reproduce touchdown, with a
+  friction study at μ = 0.3, 0.55 and 0.8. Recorded for the homepage
+  (`docs/demos/study-spin-up.mp4`).
+- The assistant can set a contact's friction.
+
+### Verification
+- `backend/verify_contact_friction.py`: a ball rolling at 5/7 v₀ against RK4, blocks sliding
+  to rest and down slopes on general planes, creep on a slope, MBDyn's applied friction
+  against μ N tanh(|s| / v_s), and the energy balance.
+- The spin-up study is checked for angular momentum, Coulomb drag, the axle reaction and the
+  dissipated spin energy in every case.
+
 ## 1.0.0 — Self-contained everywhere
 
 ### Windows

@@ -44,6 +44,19 @@ peak tyre load rises from 18.0 to 27.5 kN, and in every case the mechanical, sto
 dissipated energy balance within 0.1 % of the impact energy.
 [Watch the MP4](docs/demos/study-gear-drop.mp4) · [parameter studies](docs/workspaces.md#parameter-studies)
 
+### Contact friction: landing-gear spin-up drag *(new in 1.1)*
+
+[![Spin-up drag study: tyre friction stops a reverse-spun wheel at touchdown and loads the axle aft](docs/demos/study-spin-up.png)](docs/demos/study-spin-up.mp4)
+
+At touchdown the runway drags a still wheel up to speed and loads the gear aft. As on
+drop-test rigs, the wheel is spun backwards to a 30 m/s tyre surface speed and dropped on a
+still platform; regularised Coulomb friction on the tyre contact stops the spin about 50 ms
+after touchdown. The preloaded study compares friction coefficients 0.3, 0.55 and 0.8: peak
+drag rises from 6.3 to 16.9 kN and the spin-up shortens from 220 to 36 ms. In every case the
+drag equals μ × vertical load while the tyre slides, the axle carries it, the wheel's angular
+momentum matches the friction impulse and friction absorbs exactly the spin energy.
+[Watch the MP4](docs/demos/study-spin-up.mp4) · [contact friction](docs/contact-friction.md)
+
 ### AI-assisted set-up
 
 [![The local AI assistant adds a wheel bearing, tyre contact and drop conditions for review](docs/demos/ai-assistant-setup.png)](docs/demos/ai-assistant-setup.mp4)

@@ -60,7 +60,12 @@ try {
   if (process.env.KINEMELD_SCREENSHOT) {
     await page.locator('#timeSlider').evaluate((slider, i) => { slider.value = String(i); slider.dispatchEvent(new Event('input', { bubbles: true })); },
       result.samples.findIndex((sample) => sample.contactStates[0].frictionForce === Math.max(...result.samples.map((s) => s.contactStates[0].frictionForce))));
-    await page.waitForTimeout(400);
+    await page.evaluate(() => { document.querySelector('#notice').hidden = true; });
+    const mount = await page.locator('#canvasMount').boundingBox();
+    await page.mouse.move(mount.x + mount.width / 2, mount.y + mount.height / 2);
+    for (let notch = 0; notch < 4; notch++) { await page.mouse.wheel(0, -200); await page.waitForTimeout(100); }
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(600);
     await page.screenshot({ path: process.env.KINEMELD_SCREENSHOT });
   }
   assert.deepEqual(errors, []);

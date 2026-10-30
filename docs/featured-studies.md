@@ -19,7 +19,7 @@ guides) are display-only. The studies are teaching models: dimensions, materials
 and loads are representative, not validated hardware.
 
 `python -B backend/verify_featured_studies.py` runs every study through MBDyn and
-compares the solution with an independent quantity, including every case of the two
+compares the solution with an independent quantity, including every case of the three
 parameter studies below. `backend/test_featured_studies.py`
 checks that each saved project validates and keeps its force elements and geometry.
 
@@ -28,6 +28,7 @@ checks that each saved project validates and keeps its force elements and geomet
 | Robot arm inverse dynamics | Three rotary drives (motor ramp, two oscillations) on revolute joints, measured STEP inertia | Every axis follows its command within 10⁻¹² rad; drive work equals the change in kinetic and potential energy |
 | Double-wishbone quarter-car | Closed spatial loop, spherical/revolute joints, preloaded coil-over, stiff tie rod, harmonic wheel-pad force | ±60 mm wheel travel; bump steer 0.64°; camber change 2.1° |
 | Oleo-pneumatic gear drop test | Oleo strut (polytropic gas, orifice damping, stops), damped sphere–plane tyre contact, prismatic guides; sink-speed study | 183 mm peak stroke without bottoming; settled tyre load within 3 % of weight; peak load factor 6.0; energy balanced within 0.1 % at every sink speed |
+| Landing-gear spin-up drag | Reverse-spun wheel on a revolute axle, oleo strut, damped tyre contact with regularised Coulomb friction; friction study | Wheel angular momentum matches the friction impulse within 0.04 %; drag = μ × vertical load while sliding; axle carries the full drag; friction absorbs the spin energy |
 | Aircraft nose-gear kinematics | Original 11-part STEP assembly, weld/prismatic/revolute/spherical/universal joints, prescribed 80 mm stroke | Strut follows the stroke to 10⁻¹³ m; scissor pin matches two-circle linkage geometry to 10⁻¹⁴ m; torque links fold 10.5° |
 | Oleo strut on a wheel-end fixture | Original STEP wheel end, oleo strut with stops, prescribed fixture stroke | Native gas pressure follows p₀(V₀/V)^γ to 10⁻¹² (relative) over a 50 mm stroke |
 | Wheel-end drop test | Original STEP knuckle/hub/tyre, revolute hub bearing, damped sphere–plane tyre contact; tyre-stiffness study | Free fall to 10⁻¹⁰ m; first contact 0.4 ms from prediction; energy lost equals contact dissipation within 0.1 %; peak load within 0.5 % of an independent drop solution for five stiffnesses |
@@ -93,6 +94,31 @@ drop-test programme would vary sink speed. Run it to compare the four tyre loads
 In every case the mechanical energy plus the strut's stored and dissipated energy and the
 tyre's balance within 0.08 % of the impact energy, and the strut never reaches its
 compression stop.
+
+## Landing-gear spin-up drag
+
+At touchdown the wheel is still while the runway passes under it at the landing speed:
+tyre friction spins it up within milliseconds and drags the gear aft — the spin-up load.
+Drop-test rigs reproduce this by spinning the wheel backwards and dropping it on a still
+platform, and so does this study. The carriage and oleo strut are those of the gear drop
+test; the wheel (49 kg, 0.83 kg·m² about the axle) turns on a revolute axle on an 18 kg
+sliding piston and starts at −136 rad/s, a 30 m/s tyre surface speed. The tyre contact has
+μ = 0.55 regularised over 0.5 m/s of slip ([contact friction](contact-friction.md)).
+
+**Watch:** the wheel stopping about 50 ms after touchdown while the drag follows the vertical
+load. Plot **Contact friction force**, then **Joint reaction force on B** for **axle**.
+
+**Parameter study — tyre friction.** The study runs μ = 0.3, 0.55 and 0.8:
+
+| Friction coefficient | 0.3 | 0.55 | 0.8 |
+| --- | --- | --- | --- |
+| Peak drag | 6.3 kN | 11.6 kN | 16.9 kN |
+| Spin-up after touchdown | 220 ms | 53 ms | 36 ms |
+
+In every case the wheel's angular momentum matches the friction impulse about the axle, the
+drag equals μ × the vertical tyre load while the tyre slides, the axle's fore-aft reaction
+equals the drag and friction dissipates exactly the wheel's initial spin energy, all within
+0.07 %.
 
 ## Aircraft nose-gear kinematics
 

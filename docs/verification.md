@@ -5,6 +5,24 @@ not a claim of general-purpose CAE qualification or measured usability superiori
 Run records, generated reports and local logs are ignored and are not included in
 the public checkout; the commands below produce fresh evidence on the target system.
 
+## Contact friction increment (1.1)
+
+- On 30 October 2026, `backend/verify_contact_friction.py` ran MBDyn 1.7.3 on five cases.
+  A ball launched sliding at 2 m/s with μ = 0.3 decelerated at μg to 10⁻³ relative, rolled
+  at 5/7 v₀ from 0.193 s (theory 0.194 s), stayed within 3·10⁻⁵ m/s of an independent RK4
+  integration and balanced energy to 2·10⁻⁶ J. A block on four corner spheres stopped in
+  0.50968 m (theory 0.50968 m) on a horizontal and on a tilted-normal plane, decelerated
+  and accelerated on 15° and 25° slopes within 10⁻⁵ m of `g (sin θ − μ cos θ)`, and crept
+  at 5.98 mm/s where regularised friction cannot hold it (predicted 5.98 mm/s). In every
+  case MBDyn's applied friction (`result.frc`) equalled `μ N tanh(|s| / v_s)` rebuilt from
+  the motion.
+- `backend/verify_featured_studies.py gear-spin-up gear-spin-up-study` checked the spin-up
+  drag study for μ = 0.3, 0.55 and 0.8: angular momentum against the friction impulse,
+  Coulomb drag while sliding, the axle's fore-aft reaction and the dissipated spin energy
+  all balance within 0.07 %. 246 backend tests passed, and the browser test
+  `tests/contact-friction-ui.mjs` solved the study model and read the friction force at
+  full resolution.
+
 ## Desktop and authored assembly increment
 
 - On 28 October, 76 backend tests passed. Uniform brick, cylinder, sphere and

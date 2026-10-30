@@ -6,7 +6,7 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation (1.0)
+## Current foundation (1.1)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
   forces, springs, dampers, oleo struts, contact and selected prescribed motion.
@@ -36,6 +36,8 @@ appropriate.
   dragged along or across their axis in 1 mm steps.
 - MBDyn bundled on Linux, macOS and Windows; a documented project format with a 1.x
   compatibility promise.
+- Regularised Coulomb friction on sphere–plane contacts, with friction force, slip and
+  dissipated energy in the results and a landing-gear spin-up drag study.
 
 ## Release plan
 
@@ -69,9 +71,9 @@ Each step ships as its own release with an example, documentation and solver evi
 9. **1.0 — Self-contained everywhere (released):** a Windows package with a bundled MBDyn
    built in CI, so no platform needs WSL or a separate solver install, checked like the
    others on a clean machine; a stated project-format compatibility promise from 1.0 on.
-10. **1.1 — Contact friction:** regularised Coulomb friction for sphere–plane contact, with
-    stick–slip verified against an independent sliding-block solution and a braking or
-    skidding wheel study.
+10. **1.1 — Contact friction (released):** regularised Coulomb friction for sphere–plane
+    contact, verified against rolling-ball and sliding-block solutions, with a landing-gear
+    spin-up drag study.
 
 ## Further priorities
 
@@ -86,7 +88,7 @@ Each step ships as its own release with an example, documentation and solver evi
 
 ## Longer-term work
 
-Broader surface contact and friction, flexible bodies, controls and co-simulation,
+Broader surface contact, true stiction, flexible bodies, controls and co-simulation,
 aerodynamics, design studies and optimization each need their own model contract,
 editor, solver integration and numerical benchmarks. A solver capability is not
 an application feature until the complete workflow has been implemented and tested.

@@ -46,6 +46,8 @@ From 1.0 on:
   given a new meaning.
 - A change that cannot be additive would introduce `mbdyn-studio/2` in a new major version,
   together with a converter from version 1.
+- Additions so far: 1.1 added the optional contact fields `friction` (Coulomb coefficient,
+  default 0) and `slipVelocity` (m/s, default 0.05).
 - Compatibility runs forward in time: a project that uses a model feature added in a later
   release opens in that release or newer. An older release refuses it with *Unsupported
   field* rather than solve it without the feature.
