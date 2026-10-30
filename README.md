@@ -136,7 +136,7 @@ Download the archive for your platform from the
 | --- | --- | --- | --- |
 | Linux x86-64 | `Kinemeld-<version>-linux-x86_64.tar.gz` | MBDyn 1.7.3 bundled | Python 3.10+, WebKitGTK 4.1 (`libwebkit2gtk-4.1-0`) |
 | macOS (Apple silicon) | `Kinemeld-<version>-macos-arm64.zip` | MBDyn 1.7.3 bundled | Python 3.10+ |
-| Windows x64 | `Kinemeld-<version>-windows-x86_64.zip` | Configure MBDyn through WSL ([solver setup](docs/solver.md)) | Python 3.10+, WebView2 Runtime |
+| Windows x64 | `Kinemeld-<version>-windows-x86_64.zip` | MBDyn 1.7.3 bundled (Cygwin build) | Python 3.10+, WebView2 Runtime |
 
 Extract the archive and run `kinemeld` (Linux), `Kinemeld.app` (macOS, Control-click →
 Open the first time — the app is not notarized) or `Kinemeld.exe` (Windows). STEP import
@@ -183,15 +183,15 @@ build the native desktop host see [desktop builds](native/README.md).
 - GitHub Actions builds MBDyn, runs the backend suite and the study verification, and builds
   and tests the desktop host on Linux, macOS and Windows for every change.
 - `scripts/check_package.py` — every release package unpacked on a fresh machine: file
-  hashes, the packaged service, real MBDyn runs and (Linux, macOS) the desktop self-check.
+  hashes, the packaged service, real MBDyn runs and the desktop self-check.
 
 See [verification](docs/verification.md) and [multibody capabilities](docs/multibody-feature-map.md)
 for scope and limitations.
 
 ## Roadmap
 
-Next: a Windows package with MBDyn bundled, so every platform works without a separate solver.
-Longer term: contact friction,
+Next: Coulomb friction for sphere–plane contact, verified against an independent solution.
+Longer term:
 flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
 and the [changelog](CHANGELOG.md).
 

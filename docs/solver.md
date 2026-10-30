@@ -6,16 +6,18 @@ to **MBDyn 1.7.3**, the official archived release, for a reproducible baseline.
 The project recommends its development branch for newer capabilities; this
 prototype does not claim coverage of that branch.
 
-## Tested configuration
+## Bundled solver
 
-The tested configuration uses a WSL Linux distribution with GCC/G++, gfortran,
-and a local build in `backend/vendor/mbdyn-1.7.3`. A solver configuration points
-to that build through WSL. A different machine must supply its own distribution,
-toolchain and solver path.
+Release archives for Linux, macOS and Windows include MBDyn 1.7.3 built in CI from the
+pinned source below: with GCC on Ubuntu 22.04, with Homebrew GCC on macOS (Apple silicon),
+and with Cygwin's GCC on Windows. Each `solver/` folder holds the executable, the runtime
+libraries it loads (the GCC runtime; on Windows also the Cygwin DLL beside `mbdyn.exe`;
+LAPACK and BLAS where the build found them), `COPYING` and `SOURCE.txt`. The app uses it
+without configuration. Every package is unpacked on a fresh machine and solves real models
+before a release is published.
 
-Run the app from normal Windows PowerShell. The restricted Codex command sandbox
-can deny WSL and local socket access; successful host checks must be distinguished
-from those sandbox denials.
+To use a different MBDyn — another version, your own build, or a build in WSL — configure it
+as below; a configured solver takes precedence over the bundled one.
 
 The source archive came from the download link on the
 [official download page](https://www.mbdyn.org/Download.html):
@@ -60,7 +62,7 @@ For Windows with WSL:
 ```
 
 Without a `solver.json`, the service uses a solver bundled with the application at
-`solver/bin/mbdyn` (`mbdyn.exe` on Windows) — the Linux release archive includes one — and
+`solver/bin/mbdyn` (`mbdyn.exe` on Windows) — every release archive includes one — and
 otherwise the first `mbdyn` on `PATH`. A present `solver.json` always takes precedence.
 
 The HTTP API cannot change this executable or submit arbitrary input-deck text.
