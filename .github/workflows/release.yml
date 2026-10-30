@@ -83,7 +83,9 @@ jobs:
       - name: Build and bundle
         run: |
           export PATH="/usr/bin:$PATH"
-          MBDYN_JOBS=4 bash backend/build_solver.sh
+          # -std=c++11 hides POSIX functions such as strcasecmp in Cygwin's headers; _GNU_SOURCE
+          # makes them visible again without changing the build on other platforms.
+          CPPFLAGS=-D_GNU_SOURCE MBDYN_JOBS=4 bash backend/build_solver.sh
           bash scripts/bundle_solver.sh backend/vendor/mbdyn-1.7.3/mbdyn/mbdyn.exe build/solver
           # The bundle must run with nothing from Cygwin on PATH.
           PATH="/cygdrive/c/Windows/system32:/cygdrive/c/Windows" build/solver/bin/mbdyn.exe -v | head -1
