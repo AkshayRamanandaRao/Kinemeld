@@ -4,6 +4,28 @@ All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/); from 1.0, project files follow the compatibility
 rules in [docs/project-format.md](docs/project-format.md).
 
+## 1.2.0 — CAD part by part: the nose-gear showcase
+
+### Pre-processing
+- **Add STEP files.** Once CAD is loaded, **STEP parts → Add STEP files** adds files to it, one
+  part or several at a time, so an assembly can be brought in part by part. Earlier parts keep
+  their attachments and identities, every part is listed with its file name, and Undo removes
+  the last addition. **Import STEP files** still replaces the loaded CAD.
+- **Hole rims from any CAD system.** SolidWorks and others write a hole rim as two or four
+  arcs; the importer now joins arcs that complete a circle, so such parts offer their pin holes
+  for joint placement and measurement as well as single full circles.
+
+### Demos
+- **End-to-end showcase on the aircraft nose gear.** The homepage recording imports the
+  eleven original STEP parts one by one, builds the strut, piston, torque-link and wheel
+  bodies, attaches the CAD, places every joint on the CAD pin holes, computes mass from the
+  solids, prescribes the shock-strut stroke, solves with MBDyn and post-processes the stroke,
+  torque-link fold and strut force (`docs/demos/workflow-nose-gear.mp4`).
+- The README now plays every showcase recording inline as a GIF; GitHub does not play MP4
+  files from a repository, so the full-quality MP4 stays linked beside each one.
+- `examples/open-aircraft-nose-gear/parts` holds the nose-gear assembly's eleven parts as
+  separate STEP files, written by `split_parts.py` with the source product names.
+
 ## 1.1.0 — Contact friction
 
 ### Model

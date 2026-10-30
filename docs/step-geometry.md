@@ -7,6 +7,13 @@ by OpenCascade; display vertices are in metres. Tessellation is a derived displa
 representation, not a replacement STEP file. Reopening regenerates it from the
 preserved original files.
 
+**Import STEP files** replaces the loaded CAD with the files you choose; once CAD is
+loaded, **Add STEP files** adds more files to it, one part or several at a time. Earlier
+parts keep their attachments, and every part is listed with its file name. Undo removes
+the last addition. A set holds up to 24 files, 12 MiB and 200,000 display triangles.
+[`examples/open-aircraft-nose-gear/parts`](../examples/open-aircraft-nose-gear/parts) has
+the eleven parts of an aircraft nose gear as separate files to try this with.
+
 For a complete moving-solid example, choose **Load moving STEP pendulum**. This
 loads an original rectangular STEP solid and a matching rigid-body model with
 the binding already set. Its dimensions, density, inertia and initial frame are
@@ -42,8 +49,9 @@ not create masses, inertia, joints, contact or forces; supply those separately.
 The converter also records each face's analytic surface with the range of display
 triangles it produced: cylinders with axis, centre, radius and length, and planes with
 a point and outward normal, in metres and assembly coordinates. Full circular edges (hole
-rims, shaft ends; up to 512 per part) are listed with centre, axis and radius; partial
-arcs such as fillet boundaries are not. Joint anchors, joint
+rims, shaft ends; up to 512 per part) are listed with centre, axis and radius. A rim
+written as several arcs — SolidWorks writes two or four — counts when its arcs complete
+the circle; partial arcs such as fillet boundaries are left out. Joint anchors, joint
 axes and named frames can then be placed by picking or dragging onto those faces and rims,
 and features can be measured in the view, also at a solved frame; see
 [placing joints and frames from CAD](workspaces.md#placing-joints-and-frames-from-cad).

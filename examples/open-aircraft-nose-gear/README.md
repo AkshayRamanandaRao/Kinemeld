@@ -19,6 +19,30 @@
 
 The source describes a light-aircraft nose-gear design study; this file is not evidence of a manufactured, certified or tested gear. The STEP assembly retains occurrence placements but does **not** convey the original assembly constraints, material assignments, measured inertias, hydraulics, tire properties or calibrated load history to Kinemeld. A CAD import alone is visualization, not a dynamics model. Do not equate the publisher's structural-analysis claims with verification of this app's model.
 
+## Separate part files
+
+[`parts/`](parts) holds the eleven occurrences as separate STEP files, for importing the gear
+part by part (**STEP parts → Import STEP files**, then **Add STEP files**). `split_parts.py`
+writes them from `source-assembly.step` with OpenCascade: each keeps its source product name
+and millimetre units, and the whole gear is translated by the same offset as the
+[kinematic example](../open-aircraft-nose-kinematics/generate.py), so the axle centre lies
+0.35 m above the origin. The geometry is otherwise unchanged and the files are MIT licensed
+like the source.
+
+| File | STEP product |
+|---|---|
+| `01-piston.step` | Piston |
+| `02-shaft.step` | Shaft |
+| `03-strut.step` | Strut |
+| `04-upper-link.step` | Upper Link |
+| `05-wheel-hub.step` | Wheel Hub |
+| `06-lower-link.step` | Lower Link |
+| `07-upper-pin-bolt.step`, `08-scissor-pin-bolt.step`, `09-lower-pin-bolt.step` | M12 flange bolts at the upper, scissor and lower torque-link pins |
+| `10-wheel-left.step`, `11-wheel-right.step` | Wheel |
+
+The [end-to-end recording](../../docs/demo-videos.md#end-to-end-aircraft-nose-gear) builds the
+kinematic model from these files in the interface.
+
 ## Inspect in the application
 
 1. Open a spatial example and choose **STEP parts → Import STEP**, then select `source-assembly.step`. The detail panel should list 11 parts. Use the viewport's fit/reset control to frame the assembly.
