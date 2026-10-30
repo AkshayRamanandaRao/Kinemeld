@@ -6,7 +6,7 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation (0.5)
+## Current foundation (0.6)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
   forces, springs, dampers, oleo struts, contact and selected prescribed motion.
@@ -26,6 +26,8 @@ appropriate.
 - Full-resolution plots and statistics, pinned traces, run comparison and SVG/PNG plot export.
 - Joint anchors, joint axes and named frames placed by picking or dragging onto analytic CAD
   faces (cylinders and planes), and in-view distance and angle measurement.
+- STEP import with `cadquery-ocp` 7.9 or 8; crash-safe autosave and recovery in the desktop
+  app; every release package checked on fresh Linux, macOS and Windows machines.
 
 ## Release plan
 
@@ -43,14 +45,18 @@ Each step ships as its own release with an example, documentation and solver evi
 4. **0.5 — Interaction (released):** place joint anchors and frames directly in the 3D view
    by picking CAD features (hole axes, cylinder centres, faces), drag joint symbols onto
    faces with snapping, and in-view distance and angle measurement.
-5. **0.6 — Reliability and CAD:** support for the current OpenCascade runtime
+5. **0.6 — Reliability and CAD (released):** support for the current OpenCascade runtime
    (`cadquery-ocp` 8), crash-safe autosave and recovery in the desktop app, and
    clean-machine installation checks for every platform package.
+6. **0.7 — Parameter studies:** sweep one model input (a stiffness, a damping, a mass, a drop
+   height) over a list of values, solve every case with MBDyn, overlay the responses and
+   tabulate key results such as peak force and maximum travel, with CSV export.
 
 ## Further priorities
 
 - **Reliability and publication:** protect edits during asynchronous CAD and
-  project operations, exercise save/open and recovery, qualify native dialogs,
+  project operations, qualify native dialogs, run the desktop self-check on macOS and
+  Windows release packages,
   and finish dependency and license audits for every bundled component.
 - **Engineering examples:** extend suspension and landing-gear studies only
   with traceable geometry, hardpoints, material data and loading. Add independent
@@ -70,8 +76,9 @@ an application feature until the complete workflow has been implemented and test
 
 The current integration has been exercised with MBDyn 1.7.3 and selected
 examples. Other versions, general models, engineering accuracy, production use
-and safety-critical qualification remain unverified. A public binary needs a
-clean-machine installation check, native dialog tests and a complete review of
-redistributed dependencies and licenses. Release archives bundle MBDyn 1.7.3 on
-Linux (and macOS when its CI build succeeds) with the corresponding source attached;
-no package bundles Python or the CAD runtime.
+and safety-critical qualification remain unverified. Every release package is unpacked
+and checked on fresh Linux, macOS and Windows runners before publication (file hashes,
+the packaged service, real MBDyn runs and, on Linux, the desktop self-check); native dialog
+tests and a complete review of redistributed dependencies and licenses remain open.
+Release archives bundle MBDyn 1.7.3 on Linux and macOS with the corresponding source
+attached; no package bundles Python or the CAD runtime.

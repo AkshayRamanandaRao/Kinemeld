@@ -60,6 +60,43 @@ replacement and detects external file changes.
 
 The snapshot check also identifies an existing project through case and hard-link aliases. If the original is missing, it conservatively treats a different-cased name as the same destination even in a case-sensitive Windows directory; choose a more distinct name to save a copy. It detects changes observed before the check; it cannot make noncooperating external writes atomic with the subsequent replacement. Save locks are per path, so concurrent saves through distinct hard-link names are not serialized. Retain replacement backups when coordinating with other writers.
 
+## Autosave and crash recovery
+
+While a project has unsaved edits, the desktop writes a recovery snapshot once editing pauses
+for 15 seconds, and at least once a minute while editing continues. The snapshot is
+`recovery/autosave.json` in the user-data folder below. It is written to a temporary file,
+flushed to disk and renamed over the previous snapshot, so a crash or power loss during a
+write leaves the previous snapshot intact. Saving the project, or closing Kinemeld normally
+(including choosing to discard changes), removes it.
+
+If Kinemeld finds a snapshot when it starts, it asks before doing anything else:
+
+- **Recover** opens the autosaved project as unsaved work. Save asks where to write it,
+  starting at the original file, rather than overwriting a file that may have changed.
+- **Discard** keeps the snapshot as `recovery/declined-<time>.json` and starts fresh.
+  Snapshots that cannot be read, or that fail to open, are set aside the same way. The
+  newest three are kept; open one with **Open project** to inspect it.
+
+Autosave never replaces a snapshot that is waiting for this decision. A result too large for
+a project file is left out of the snapshot; the model, geometry bindings and view are kept.
+One snapshot is shared per user, so run one Kinemeld window at a time.
+
+## Checking a release package
+
+`scripts/check_package.py` checks an archive the way a clean machine sees it: it unpacks the
+archive into an empty folder, verifies the checksum and every file against
+`package-manifest.json`, starts the packaged service with a fresh user-data folder, and,
+when MBDyn is bundled, solves the pendulum and a featured 3D study. `--native-smoke` also runs
+the desktop self-check (`xvfb-run` on Linux without a display).
+
+```bash
+python3 scripts/check_package.py dist/Kinemeld-0.6.0-linux-x86_64.tar.gz --version 0.6.0 --expect-solver --native-smoke
+```
+
+The release workflow runs these checks on fresh Ubuntu 24.04, macOS 14 and Windows runners
+that have only Python (and, on Linux, `libwebkit2gtk-4.1-0` and Xvfb) installed, and
+publishes a release only when every package passes.
+
 ## Application resources and user data
 
 The desktop reads application resources from the extracted application folder and stores runtime data in a per-user folder: `%LOCALAPPDATA%\MBDynStudio` on Windows, `~/Library/Application Support/Kinemeld` on macOS and `$XDG_DATA_HOME/kinemeld` (default `~/.local/share/kinemeld`) on Linux. This includes `runs/` and the WebView2 profile. Set `MBDYN_STUDIO_DATA_DIR` to an absolute writable folder to override this location. If the user-data directory cannot be created, startup reports an error. Browser development without that override retains the existing workspace layout.
