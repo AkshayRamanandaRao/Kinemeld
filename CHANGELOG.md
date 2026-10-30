@@ -1,7 +1,31 @@
 # Changelog
 
 All notable changes to Kinemeld are recorded here. Versions follow
-[semantic versioning](https://semver.org/) while the project is in preview (0.x).
+[semantic versioning](https://semver.org/); from 1.0, project files follow the compatibility
+rules in [docs/project-format.md](docs/project-format.md).
+
+## 1.0.0 — Self-contained everywhere
+
+### Windows
+- **MBDyn bundled on Windows.** The Windows package now carries MBDyn 1.7.3 built in CI with
+  Cygwin's GCC, with the Cygwin runtime and GCC DLLs beside `mbdyn.exe`. No WSL, compiler or
+  separate solver installation is needed; a configured solver still takes precedence.
+- The Windows package passes the same clean-machine check as Linux and macOS before a release
+  is published: every file against its manifest, the packaged service with an empty user
+  folder, real MBDyn solves of the pendulum and a featured 3D study, and the desktop
+  self-check (embedded viewer, MBDyn run, project save and reopen).
+
+### Projects
+- **Compatibility promise:** from 1.0, every 1.x release opens projects saved by earlier 1.x
+  releases and by 0.2–0.9; changes within 1.x are additive. `docs/project-format.md`
+  documents the format and the rules; `backend/test_project_compatibility.py` checks every
+  shipped project against them.
+
+### Build
+- `scripts/bundle_solver.sh` bundles the DLLs a Cygwin build imports and fails unless the
+  bundle starts with only Windows on PATH. The Windows build exposes POSIX declarations to
+  `-std=c++11` and archives the Fortran libraries with GNU ar where MBDyn's bundled libtool
+  assumes Microsoft's tools.
 
 ## 0.9.0 — Interaction II
 

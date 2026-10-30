@@ -21,8 +21,10 @@ case "$(uname -s)" in
     ls "$out/bin"/*.dll >/dev/null 2>&1 || { echo "cygcheck found no Cygwin DLLs for mbdyn.exe." >&2; exit 1; }
     # Starting the bundle from this Cygwin shell would mix two copies of the Cygwin runtime in
     # one process tree; check it from a native Windows shell with only Windows on PATH instead.
-    # Record the Cygwin packages the DLLs come from, for their licences and sources.
-    cygcheck -c cygwin libgfortran5 libgcc1 libstdc++6 libquadmath0 2>/dev/null | tail -n +3 > "$out/CYGWIN-PACKAGES.txt" || true
+    # Record the Cygwin package each bundled DLL comes from, for its licence and source.
+    for dll in "$out"/bin/*.dll; do
+      printf '%s\t%s\n' "$(basename "$dll")" "$(cygcheck -f "/usr/bin/$(basename "$dll")" | tr -d '\r')"
+    done > "$out/CYGWIN-PACKAGES.txt"
     ;;
   Linux)
     # glibc and the C++/GCC support libraries are present on every Linux system; everything else
@@ -94,8 +96,9 @@ Corresponding source: https://raw.githubusercontent.com/mmorandi/MBDyn-web/main/
 SHA-256 3cf05cd1cb14c1af3d987aac119b6ecf0d835bc1aee06bc4cf7cc5a245c1f36d. The same archive is attached to each Kinemeld release.
 Built with: backend/build_solver.sh from the Kinemeld repository.
 Runtime libraries copied from the build machine into lib/: ${bundled:-none}.
-They are the GCC runtime (GPL-3.0 with the GCC Runtime Library Exception), on Windows the
-Cygwin runtime (LGPL-3.0; packages in CYGWIN-PACKAGES.txt, sources at https://cygwin.com) and,
+They are the GCC runtime (GPL-3.0 with the GCC Runtime Library Exception); on Windows also the
+Cygwin runtime (LGPL-3.0-or-later) and GNU libiconv and libintl (LGPL-2.1-or-later), whose
+Cygwin packages are listed in CYGWIN-PACKAGES.txt with sources at https://cygwin.com; and,
 when the build machine provided them, LAPACK and BLAS (BSD-3-Clause); see THIRD_PARTY_NOTICES.md.
 NOTE
 echo "Bundled libraries: ${bundled:-none}"

@@ -204,8 +204,6 @@ jobs:
         run: python checker/scripts/check_package.py dist/Kinemeld-*-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.ext }} --version "${VERSION#v}" ${{ matrix.solver }}
       - name: Desktop self-check
         if: matrix.desktop
-        # First runs of the Windows self-check on hosted runners are informational.
-        continue-on-error: ${{ matrix.platform == 'windows' }}
         shell: bash
         run: python checker/scripts/check_package.py dist/Kinemeld-*-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.ext }} --version "${VERSION#v}" --native-smoke
 

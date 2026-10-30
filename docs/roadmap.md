@@ -6,7 +6,7 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation (0.9)
+## Current foundation (1.0)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
   forces, springs, dampers, oleo struts, contact and selected prescribed motion.
@@ -34,6 +34,8 @@ appropriate.
   case against independent physics and shown in the demo set and guided tour.
 - Hole rims picked as well as faces, measurement at the animated pose, and joint symbols
   dragged along or across their axis in 1 mm steps.
+- MBDyn bundled on Linux, macOS and Windows; a documented project format with a 1.x
+  compatibility promise.
 
 ## Release plan
 
@@ -64,15 +66,17 @@ Each step ships as its own release with an example, documentation and solver evi
 8. **0.9 — Interaction II (released):** pick circular edges (hole rims) as well as faces,
    measure at the animated pose in Post-processing, and drag joint anchors along an axis or
    within a plane without a target face.
-9. **1.0 — Self-contained everywhere:** a Windows package with a bundled MBDyn built in CI,
-   so no platform needs WSL or a separate solver install, checked like the others on a
-   clean machine; a stated project-format compatibility promise from 1.0 on.
+9. **1.0 — Self-contained everywhere (released):** a Windows package with a bundled MBDyn
+   built in CI, so no platform needs WSL or a separate solver install, checked like the
+   others on a clean machine; a stated project-format compatibility promise from 1.0 on.
+10. **1.1 — Contact friction:** regularised Coulomb friction for sphere–plane contact, with
+    stick–slip verified against an independent sliding-block solution and a braking or
+    skidding wheel study.
 
 ## Further priorities
 
 - **Reliability and publication:** protect edits during asynchronous CAD and
-  project operations, qualify native dialogs, run the desktop self-check on the Windows
-  package (which needs a solver),
+  project operations, qualify native dialogs,
   and finish dependency and license audits for every bundled component.
 - **Engineering examples:** extend suspension and landing-gear studies only
   with traceable geometry, hardpoints, material data and loading. Add independent
@@ -93,7 +97,7 @@ The current integration has been exercised with MBDyn 1.7.3 and selected
 examples. Other versions, general models, engineering accuracy, production use
 and safety-critical qualification remain unverified. Every release package is unpacked
 and checked on fresh Linux, macOS and Windows runners before publication (file hashes,
-the packaged service, real MBDyn runs and, on Linux and macOS, the desktop self-check); native dialog
+the packaged service, real MBDyn runs and the desktop self-check); native dialog
 tests and a complete review of redistributed dependencies and licenses remain open.
-Release archives bundle MBDyn 1.7.3 on Linux and macOS with the corresponding source
+Release archives bundle MBDyn 1.7.3 on Linux, macOS and Windows with the corresponding source
 attached; no package bundles Python or the CAD runtime.
