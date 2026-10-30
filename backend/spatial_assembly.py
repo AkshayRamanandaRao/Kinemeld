@@ -221,11 +221,36 @@ def driven(joint):
     return joint['type']=='revolute' and 'motion' in joint
 
 
+FRICTION_SLIP_VELOCITY=.05
+FRICTION_COLUMNS=(('frictionForce','frictionForce_N'),('slip','slip_m_s'),('frictionPower','frictionPower_W'),('frictionEnergy','frictionEnergy_J'))
+
+
+def friction(contact):
+    """Coulomb coefficient of a sphere-plane contact; 0 is frictionless."""
+    return contact.get('friction',0.)
+
+
+def slip_velocity(contact):
+    """Slip speed (m/s) over which the regularised friction force rises to 76% of mu*N."""
+    return contact.get('slipVelocity',FRICTION_SLIP_VELOCITY)
+
+
+def friction_force_labels(model):
+    """MBDyn force and couple labels of each frictional contact, after the drive and load forces."""
+    joints={j['id']:j for j in model['joints']}
+    label=1+sum(1+int(joints[d['joint']]['a']!='ground') for d in model.get('jointTorques',[]))+len(model.get('jointForces',[]))
+    label+=sum(int(any(load['force'].values()))+int(any(load['torque'].values())) for load in model.get('loads',[]))
+    labels={}
+    for contact in model.get('contacts',[]):
+        if friction(contact):labels[contact['id']]=(label,label+1);label+=2
+    return labels
+
+
 def element_csv_values_per_row(model):
     """Count the scalar element and reaction columns repeated on each body row."""
     joints=model['joints'];rotary=model.get('rotationalElements',[]);drives=model.get('jointTorques',[])
     linear=model.get('jointForces',[]);forces=model.get('forces',[]);loads=model.get('loads',[]);contacts=model.get('contacts',[])
-    return (6*len(joints)+7*len(contacts)+4*sum(j['type']=='cylindrical' for j in joints)+4*sum(driven(j) for j in joints)+2*any(driven(j) for j in joints)
+    return (6*len(joints)+7*len(contacts)+4*sum(bool(friction(c)) for c in contacts)+4*sum(j['type']=='cylindrical' for j in joints)+4*sum(driven(j) for j in joints)+2*any(driven(j) for j in joints)
             +10*len(loads)+4*len(forces)+6*sum(j['type']=='prismatic' for j in joints)
             +4*sum(force.get('type')=='oleo-strut' for force in forces)
             +3*len(rotary)+2*len(drives)+2*len(linear)+2*bool(loads)+3*bool(rotary or forces)
@@ -319,7 +344,7 @@ def validate(model):
         nums({k:load.get(k) for k in ('offset','amplitude','frequencyHz')},{'offset':(-1e6,1e6),'amplitude':(-1e6,1e6),'frequencyHz':(.001,1000)},path)
     for i,contact in enumerate(contacts):
         path=f'contacts.{i}'
-        optional_contact={'damping'} if isinstance(contact,dict) and 'damping' in contact else set()
+        optional_contact={key for key in ('damping','friction','slipVelocity') if isinstance(contact,dict) and key in contact}
         if not obj(contact,{'id','body','center','radius','planePoint','planeNormal','stiffness'}|optional_contact,path):continue
         ident(contact.get('id'),path+'.id');ident(contact.get('body'),path+'.body')
         for key in ('center','planePoint'):nums(contact.get(key),{k:(-1000,1000) for k in ('x','y','z')},path+'.'+key)
@@ -327,6 +352,8 @@ def validate(model):
         if len(issues)==before and abs(norm(xyz(contact['planeNormal']))-1)>1e-7:issue(path+'.planeNormal','Plane normal must be a unit vector.')
         nums({k:contact.get(k) for k in ('radius','stiffness')},{'radius':(1e-6,1000),'stiffness':(1e-6,1e9)},path)
         if 'damping' in contact:nums({'damping':contact['damping']},{'damping':(0,1e9)},path)
+        if 'friction' in contact:nums({'friction':contact['friction']},{'friction':(0,2)},path)
+        if 'slipVelocity' in contact:nums({'slipVelocity':contact['slipVelocity']},{'slipVelocity':(1e-4,10)},path)
     for group,values,fields in (('rotationalElements',rotary,{'stiffness':(0,1e9),'damping':(0,1e9),'restAngleDeg':(-179.999,179.999)}),('jointTorques',drives,{'amplitude':(-1e9,1e9),'frequencyHz':(.001,1000),'offset':(-1e9,1e9)}),('jointForces',linear_drives,{'amplitude':(-1e9,1e9),'frequencyHz':(.001,1000),'offset':(-1e9,1e9)})):
         for i,value in enumerate(values):
             path=f'{group}.{i}'
@@ -376,6 +403,15 @@ def validate(model):
     for body_id,squared_rate in contact_rates.items():
         rate=math.sqrt(squared_rate)+contact_damping_rates[body_id]
         if model['simulation']['step']*rate>.2:issue('simulation.step',f"Resolve combined contacts on body {body_id} with a smaller time step (at most {0.2/rate:.6g} s by a conservative estimate).")
+    # Friction enters MBDyn's Newton iteration without its Jacobian, so near sticking each iteration
+    # contracts only by about step*mu*N/v_s*(1/m + lever^2/I); N is estimated as the system weight shared by the contacts.
+    rough=[(i,contact) for i,contact in enumerate(contacts) if friction(contact)]
+    weight=sum(body['mass'] for body in bodies)*(norm(xyz(model['parameters']['gravity'])) or 9.81)/max(len(rough),1)
+    for i,contact in rough:
+        body=lookup[contact['body']];lever=norm(sub(xyz(contact['center']),xyz(body.get('centerOfMass',dict.fromkeys(('x','y','z'),0.)))))+contact['radius']
+        bound=minimum_inertia_bound(body['inertia'])
+        rate=math.inf if bound<=0 else friction(contact)*weight/slip_velocity(contact)*(1/body['mass']+lever**2/bound)
+        if model['simulation']['step']*rate>.5:issue(f'contacts.{i}.slipVelocity',f"Resolve friction on contact {contact['id']} with a smaller time step (at most {0.5/rate:.6g} s) or a larger slip velocity (at least {slip_velocity(contact)*model['simulation']['step']*rate/.5:.6g} m/s) by a conservative estimate.")
     for i,force in enumerate(forces):
         initial_length=norm(sub(anchor(lookup.get(force['b']),force['anchorB']),anchor(lookup.get(force['a']),force['anchorA'])))
         if initial_length<1e-6:issue(f'forces.{i}.anchorB','Spring endpoints must initially be at least 1e-6 m apart.')
@@ -469,11 +505,11 @@ def deck(model):
     vec=lambda obj:','.join(f(obj[k]) for k in ('x','y','z'))
     bodies,joints=model['bodies'],model['joints'];rotary,drives,forces,loads=model.get('rotationalElements',[]),model.get('jointTorques',[]),model.get('forces',[]),model.get('loads',[]);linear_drives=model.get('jointForces',[]);contacts=model.get('contacts',[]);joint_lookup={j['id']:j for j in joints};labels={body['id']:i+1 for i,body in enumerate(bodies)};lookup={b['id']:b for b in bodies};sim=model['simulation'];g=xyz(model['parameters']['gravity']);gn=norm(g)
     contact_functions=''.join(f'scalar function: "contact_{i}", multilinear, -1,{f(-c["stiffness"])},0,0,1,0;\n' for i,c in enumerate(contacts))
-    damped_contacts=sum(c.get('damping',0)>0 for c in contacts)
+    damped_contacts=sum(c.get('damping',0)>0 for c in contacts);friction_labels=friction_force_labels(model);friction_chains={}
     if damped_contacts:
         contact_functions+='scalar function: "contact_zero", multilinear, -1,0,1,0;\n'
         contact_functions+=''.join(f'scalar function: "contact_damping_{i}", multilinear, -1,{f(-c["damping"])},0,0,1,0;\n' for i,c in enumerate(contacts) if c.get('damping',0)>0)
-    text=f'''# Kinemeld spatial rigid bodies; SI units.\nbegin: data;\n problem: initial value;\nend: data;\nbegin: initial value;\n initial time: 0;\n final time: {f(sim['duration'])};\n time step: {f(sim['step'])};\n max iterations: 40;\n tolerance: 1.e-9;\n derivatives tolerance: 1.e-8;\n derivatives max iterations: 100;\n derivatives coefficient: 1.e-3, auto;\nend: initial value;\n{contact_functions}begin: control data;\n max iterations: 40;\n {'skip initial joint assembly;' if rotary or forces or contacts else ''}\n structural nodes: {len(bodies)+1};\n rigid bodies: {len(bodies)};\n joints: {len(joints)+1+len(rotary)+len(forces)+len(contacts)+damped_contacts+sum(j['type']=='prismatic' and 'motion' not in j for j in joints)};\n {f"forces: {sum(1+int(joint_lookup[d['joint']]['a']!='ground') for d in drives)+len(linear_drives)+sum(int(any(load['force'].values()))+int(any(load['torque'].values())) for load in loads)};" if drives or linear_drives or loads else ''}\n {'gravity;' if gn else ''}\n output precision: 12;\nend: control data;\nbegin: nodes;\n structural: 0, static, null, eye, null, null, output, no;\n'''
+    text=f'''# Kinemeld spatial rigid bodies; SI units.\nbegin: data;\n problem: initial value;\nend: data;\nbegin: initial value;\n initial time: 0;\n final time: {f(sim['duration'])};\n time step: {f(sim['step'])};\n max iterations: 40;\n tolerance: 1.e-9;\n derivatives tolerance: 1.e-8;\n derivatives max iterations: 100;\n derivatives coefficient: 1.e-3, auto;\nend: initial value;\n{contact_functions}begin: control data;\n max iterations: 40;\n {'skip initial joint assembly;' if rotary or forces or contacts else ''}\n structural nodes: {len(bodies)+1};\n rigid bodies: {len(bodies)};\n joints: {len(joints)+1+len(rotary)+len(forces)+len(contacts)+damped_contacts+sum(j['type']=='prismatic' and 'motion' not in j for j in joints)};\n {f"forces: {sum(1+int(joint_lookup[d['joint']]['a']!='ground') for d in drives)+len(linear_drives)+sum(int(any(load['force'].values()))+int(any(load['torque'].values())) for load in loads)+2*len(friction_labels)};" if drives or linear_drives or loads or friction_labels else ''}\n {'gravity;' if gn else ''}\n output precision: 12;\nend: control data;\nbegin: nodes;\n structural: 0, static, null, eye, null, null, output, no;\n'''
     for b in bodies:
         p,v=b['pose'],b['velocity'];r=body_rotation(b);orient=orientation_spec(r)
         text+=f" structural: {labels[b['id']]}, dynamic, {vec(p)}, {orient}, {f(v['vx'])},{f(v['vy'])},{f(v['vz'])}, {f(v['wx'])},{f(v['wy'])},{f(v['wz'])};\n"
@@ -545,7 +581,32 @@ def deck(model):
             text+=f' joint: {sensor}, {args}linear elastic generic, null, output, no;\n'
             # MBDyn 1.7.3 ignores nonlinear damping in a purely viscous NLSF law; a zero elastic function enables the viscoelastic path.
             law=f'array, 2, {law}, bistop, initial status, inactive, element, {sensor}, joint, string, "dz", string, "Var<0", element, {sensor}, joint, string, "dz", string, "Var>=0", nlsf viscoelastic, null, "contact_zero", null, null, null, null, null, "contact_damping_{i}"'
-        text+=f' joint: {extra_label}, {args}{law};\n';extra_label+=1
+        text+=f' joint: {extra_label}, {args}{law};\n'
+        if friction(contact):
+            # Regularised Coulomb friction from the contact's own normal force and the slip of the contact
+            # point, v_c + R n x w, in the plane; applied as a force at the sphere centre and its couple.
+            # Element data are read through an array drive, which calls them without an argument; each
+            # stores its value in a deck variable that the last member combines.
+            node=labels[contact['body']];n=axis;R=contact['radius'];w=lambda k:f'model::{k}angvel({node})'
+            terms=lambda pairs:'+'.join(f'{f(c)}*{e}' for c,e in pairs if c) or '0'
+            v=[f'friction_v{k}_{i}' for k in 'xyz'];p=[f'friction_p{k}_{i}' for k in 'xyz'];s,c,q,normal=f'friction_s_{i}',f'friction_c_{i}',f'friction_q_{i}',f'friction_n_{i}'
+            slip=[f'{p[0]}={v[0]}+{f(R)}*({terms([(n[1],w("z")),(-n[2],w("y"))])})',f'{p[1]}={v[1]}+{f(R)}*({terms([(n[2],w("x")),(-n[0],w("z"))])})',f'{p[2]}={v[2]}+{f(R)}*({terms([(n[0],w("y")),(-n[1],w("x"))])})']
+            slip+=[f'{q}={terms(zip(n,p))}']+[f'{p[k]}={p[k]}-{q}*{f(n[k])}' for k in range(3) if n[k]]
+            slip+=[f'{s}=sqrt({p[0]}^2+{p[1]}^2+{p[2]}^2)',f'{c}=-{f(friction(contact))}*{normal}*tanh({s}/{f(slip_velocity(contact))})/({s}+{f(1e-9*slip_velocity(contact))})']
+            text+=''.join(f' set: real {name}=0.;\n' for name in (*v,*p,q,s,c,normal))
+            reads=[f'element, {extra_label}, joint, string, "{datum}", string, "{name}=Var; 0"' for datum,name in zip(('vx','vy','vz'),v)]
+            reads.append(f'element, {extra_label}, joint, string, "Fz", string, "{normal}=max(0.,-Var); 0"')
+            friction_chains[contact['id']]=lambda result,reads=reads,slip=slip:f'array, 5, {", ".join(reads)}, string, "{"; ".join(slip)}; {result}"'
+        extra_label+=1
+    friction_text=''
+    for i,contact in enumerate(contacts):
+        if not friction(contact):continue
+        chain=friction_chains[contact['id']];p=[f'friction_p{k}_{i}' for k in 'xyz'];c=f'friction_c_{i}';n=xyz(contact['planeNormal']);R=contact['radius']
+        moment=[f'{f(-R)}*{c}*({f(a)}*{x}-{f(b)}*{y})' for a,x,b,y in ((n[1],p[2],n[2],p[1]),(n[2],p[0],n[0],p[2]),(n[0],p[1],n[1],p[0]))]
+        force_label,couple_label=friction_labels[contact['id']]
+        # The x component recomputes the slip; y and z, evaluated after it, reuse the stored values.
+        friction_text+=f" force: {force_label}, absolute, {labels[contact['body']]}, position, reference, node, {vec(contact['center'])}, component, {chain(f'{c}*{p[0]}')}, "+', '.join(f'string, "{c}*{x}"' for x in p[1:])+';\n'
+        friction_text+=f" couple: {couple_label}, absolute, {labels[contact['body']]}, component, {chain(moment[0])}, "+', '.join(f'string, "{x}"' for x in moment[1:])+';\n'
     label=1
     for drive in drives:
         j=joint_lookup[drive['joint']]
@@ -565,6 +626,7 @@ def deck(model):
             text+=f" force: {label}, {kind}, {body}, position, reference, node, {vec(load['point'])}, {vec(load['force'])}, {drive};\n";label+=1
         if any(load['torque'].values()):
             text+=f" couple: {label}, {kind}, {body}, {vec(load['torque'])}, {drive};\n";label+=1
+    text+=friction_text
     if gn:text+=f" gravity: uniform, {','.join(f(v/gn) for v in g)}, const, {f(gn)};\n"
     return text+'end: elements;\n'
 
@@ -639,6 +701,31 @@ def parse_joint_reactions(directory,model,samples):
     if index!=len(samples)*len(order):raise ValueError('Incomplete native joint output; reaction frames do not match node frames.')
 
 
+def parse_friction(directory,model,samples):
+    """Read the friction force and couple MBDyn applied to each frictional contact at every output frame."""
+    labels=friction_force_labels(model)
+    if not labels:return
+    owners={label:(contact,kind) for contact,pair in labels.items() for label,kind in zip(pair,('force','couple'))}
+    path=directory/'result.frc'
+    if not path.is_file():raise ValueError('Missing native force output result.frc; contact friction cannot be read.')
+    if path.stat().st_size>256*1024*1024:raise ValueError('Native force output exceeds the 256-MiB parsing limit.')
+    rows={label:[] for label in owners}
+    with path.open(encoding='utf-8') as stream:
+        for line in stream:
+            fields=line.split()
+            try:label=int(fields[0]) if fields else None
+            except ValueError as exc:raise ValueError('Invalid native force output label.') from exc
+            if label not in owners:continue
+            if len(fields)!=(8 if owners[label][1]=='force' else 5):raise ValueError(f'Unexpected native friction record width for {owners[label][0]}.')
+            try:values=[float(x) for x in fields[2:5]]
+            except ValueError as exc:raise ValueError(f'Invalid native friction record for {owners[label][0]}.') from exc
+            if not all(math.isfinite(x) for x in values):raise ValueError(f'Non-finite native friction for {owners[label][0]}.')
+            rows[label].append(values)
+    if any(len(values)!=len(samples) for values in rows.values()):raise ValueError('Native friction output frames do not match node frames.')
+    for index,sample in enumerate(samples):
+        sample['_friction']={contact:{kind:rows[label][index] for label,kind in zip(pair,('force','couple'))} for contact,pair in labels.items()}
+
+
 def parse_output(directory,model):
     from source_catalog import parse_output as native_output
     native=native_output(directory,{'simulation':model['simulation'],'nodes':[{'id':i+1} for i in range(len(model['bodies']))]})
@@ -646,6 +733,7 @@ def parse_output(directory,model):
     if len(native)*len(model['bodies'])>160000+2*len(model['bodies']) or len(native)*len(model['bodies'])*element_csv_values_per_row(model)>1600000:
         raise ValueError('Actual native output exceeds the body-step or 1,600,000 scalar-value limit; shorten the duration, increase the step, or reduce bodies, joints or elements.')
     parse_joint_reactions(directory,model,native)
+    parse_friction(directory,model,native)
     initial={body['id']:body for body in model['bodies']};joints={j['id']:j for j in model['joints']}
     rotary,drives,forces,loads=model.get('rotationalElements',[]),model.get('jointTorques',[]),model.get('forces',[]),model.get('loads',[])
     linear_drives=model.get('jointForces',[]);contacts=model.get('contacts',[])
@@ -665,7 +753,7 @@ def parse_output(directory,model):
             ra,rb=body_rotation(initial.get(joint['a'])),body_rotation(initial[joint['b']]);axis=mul(ra,xyz(joint['axisA']));t,second,_=basis(axis);h=[[t[i],second[i],axis[i]] for i in range(3)]
             cylinder_frames[joint['id']]=(matmul(transpose(ra),h),matmul(transpose(rb),h))
     previous_angles={};cylinder_angles={};previous_time=None;previous_damping=previous_power=previous_load_power=previous_linear_power=0.;dissipated=work=load_work=linear_work=0.
-    contact_previous_time=None;contact_previous_power={};contact_dissipated={}
+    contact_previous_time=None;contact_previous_power={};contact_dissipated={};friction_previous_power={};friction_dissipated={}
     drive_previous_time=None;drive_previous_power=0.;drive_work=0.
     for sample in native:
         observed={}
@@ -750,8 +838,18 @@ def parse_output(directory,model):
                 damping=contact.get('damping',0.)*max(0.,-speed) if gap<0 else 0.;effort=contact['stiffness']*penetration+damping;contact_power=damping*max(0.,-speed)
                 if contact_previous_time is not None:contact_dissipated[contact['id']]=contact_dissipated.get(contact['id'],0.)+(sample['time']-contact_previous_time)*(contact_power+contact_previous_power[contact['id']])/2
                 contact_previous_power[contact['id']]=contact_power
-                sample['contactStates'].append({'id':contact['id'],'gap':gap,'penetration':penetration,'force':effort,'power':effort*speed,'energy':.5*contact['stiffness']*penetration**2,'dampingPower':contact_power,'dissipatedEnergy':contact_dissipated.get(contact['id'],0.)})
+                state={'id':contact['id'],'gap':gap,'penetration':penetration,'force':effort,'power':effort*speed,'energy':.5*contact['stiffness']*penetration**2,'dampingPower':contact_power,'dissipatedEnergy':contact_dissipated.get(contact['id'],0.)}
+                if friction(contact):
+                    # Slip of the contact point in the plane; the friction force is MBDyn's own (result.frc).
+                    point=[v+contact['radius']*t for v,t in zip(anchor_velocity(body,contact['center']),cross(normal,angular(body)))]
+                    along=sum(n*v for n,v in zip(normal,point));slip=[v-along*n for v,n in zip(point,normal)];applied=sample['_friction'][contact['id']]['force']
+                    friction_power=-sum(a*b for a,b in zip(applied,slip))
+                    if contact_previous_time is not None:friction_dissipated[contact['id']]=friction_dissipated.get(contact['id'],0.)+(sample['time']-contact_previous_time)*(friction_power+friction_previous_power[contact['id']])/2
+                    friction_previous_power[contact['id']]=friction_power
+                    state.update(frictionForce=norm(applied),frictionVector=dict(zip(('x','y','z'),applied)),slip=norm(slip),frictionPower=friction_power,frictionEnergy=friction_dissipated.get(contact['id'],0.))
+                sample['contactStates'].append(state)
             contact_previous_time=sample['time']
+            sample.pop('_friction',None)
         if forces:sample['forces']=force_states
         if rotary:sample['rotationalStates']=rotary_states
         if rotary or forces:sample.update(elasticEnergy=elastic,dampingPower=damping_power,dissipatedEnergy=dissipated)
@@ -766,13 +864,14 @@ def metrics(model,samples):
             'maxConstraintError':max(s['positionError'] for s in samples),'maxJointVelocityError':max(s['velocityError'] for s in samples),
             'maxJointAngularError':max(s['angularError'] for s in samples),'maxJointAngularVelocityError':max(s['angularVelocityError'] for s in samples),
             'constraintErrorUnit':'m','angularConstraintErrorUnit':'rad',
-            'validationScope':'3D rigid body motion, joint residuals and optional fixed-plane frictionless spherical penalty contact; no general surface contact, flexible bodies or certification.'}
+            'validationScope':'3D rigid body motion, joint residuals and optional fixed-plane spherical penalty contact with regularised Coulomb friction; no general surface contact, true stiction, flexible bodies or certification.'}
     if model.get('rotationalElements') or model.get('forces'):result.update(finalElasticEnergy=samples[-1]['elasticEnergy'],dissipatedEnergy=samples[-1]['dissipatedEnergy'],energyUnit='J')
     if model.get('jointTorques'):result.update(actuationWork=samples[-1]['actuationWork'],energyUnit='J')
     if 'rotaryDriveWork' in samples[-1]:result.update(rotaryDriveWork=samples[-1]['rotaryDriveWork'],peakRotaryDriveTorque=max(abs(d['torque']) for s in samples for d in s['rotaryDrives']),energyUnit='J')
     if model.get('jointForces'):result.update(jointForceWork=samples[-1]['jointForceWork'],energyUnit='J')
     if model.get('loads'):result.update(appliedWork=samples[-1]['appliedWork'],energyUnit='J')
     if model.get('contacts'):result.update(maxContactForce=max(c['force'] for sample in samples for c in sample['contactStates']),maxPenetration=max(c['penetration'] for sample in samples for c in sample['contactStates']),contactDissipatedEnergy=sum(c.get('dissipatedEnergy',0.) for c in samples[-1]['contactStates']))
+    if any(friction(c) for c in model.get('contacts',[])):result.update(maxFrictionForce=max(c.get('frictionForce',0.) for sample in samples for c in sample['contactStates']),frictionDissipatedEnergy=sum(c.get('frictionEnergy',0.) for c in samples[-1]['contactStates']))
     return result
 
 
@@ -785,6 +884,8 @@ def write_csv(path,samples):
     if rotary_drives:fields += ['rotaryDrivePower_W','rotaryDriveWork_J']
     for name in reactions:fields += [f'jointReaction:{name}:{kind}_{axis}_{unit}' for kind,unit in (('force','N'),('moment','Nm')) for axis in ('x','y','z')]
     for name in contacts:fields += [f'contact:{name}:gap_m',f'contact:{name}:penetration_m',f'contact:{name}:force_N',f'contact:{name}:power_W',f'contact:{name}:energy_J',f'contact:{name}:dampingPower_W',f'contact:{name}:dissipatedEnergy_J']
+    for state in samples[0].get('contactStates',[]):
+        if 'frictionForce' in state:fields += [f"contact:{state['id']}:{unit}" for _,unit in FRICTION_COLUMNS]
     for name in cylinders:fields += [f'cylindrical:{name}:position_m',f'cylindrical:{name}:velocity_m_s',f'cylindrical:{name}:angle_rad',f'cylindrical:{name}:angularVelocity_rad_s']
     for name in loads:fields += [f'load:{name}:{kind}_{axis}_{unit}' for kind,unit in (('force','N'),('torque','Nm'),('moment','Nm')) for axis in ('x','y','z')]+[f'load:{name}:power_W']
     if loads:fields += ['loadPower_W','appliedWork_J']
@@ -827,6 +928,8 @@ def write_csv(path,samples):
                 for key,unit in (('torque','torque_Nm'),('power','power_W')):values[f"actuation:{state['id']}:{unit}"]=state[key]
             for state in sample.get('contactStates',[]):
                 for key,unit in (('gap','gap_m'),('penetration','penetration_m'),('force','force_N'),('power','power_W'),('energy','energy_J'),('dampingPower','dampingPower_W'),('dissipatedEnergy','dissipatedEnergy_J')):values[f"contact:{state['id']}:{unit}"]=state.get(key,0.)
+                if 'frictionForce' in state:
+                    for key,unit in FRICTION_COLUMNS:values[f"contact:{state['id']}:{unit}"]=state[key]
             for state in sample.get('jointForceStates',[]):
                 for key,unit in (('force','force_N'),('power','power_W')):values[f"jointForce:{state['id']}:{unit}"]=state[key]
             if rotary or forces:values.update(elasticEnergy_J=sample['elasticEnergy'],dampingPower_W=sample['dampingPower'],dissipatedEnergy_J=sample['dissipatedEnergy'])
