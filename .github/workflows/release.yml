@@ -82,7 +82,14 @@ jobs:
           key: mbdyn-1.7.3-${{ runner.os }}-cygwin-${{ hashFiles('backend/build_solver.sh') }}
       - name: Build and bundle
         run: |
-          export PATH="/usr/bin:$PATH"
+          # MBDyn's bundled libtool takes gfortran on Cygwin for a non-GNU compiler and archives
+          # Fortran libraries with Microsoft's lib; this shim does the same with GNU ar.
+          mkdir -p build/lib-shim
+          printf '%s\n' '#!/bin/bash' 'out=; objects=()' \
+            'for a in "$@"; do case "$a" in -OUT:*) out="${a#-OUT:}" ;; -*) ;; *) objects+=("$a") ;; esac; done' \
+            'ar rc "$out" "${objects[@]}" && ranlib "$out"' > build/lib-shim/lib
+          chmod +x build/lib-shim/lib
+          export PATH="$PWD/build/lib-shim:/usr/bin:$PATH"
           # -std=c++11 hides POSIX functions such as strcasecmp in Cygwin's headers; _GNU_SOURCE
           # makes them visible again without changing the build on other platforms.
           CPPFLAGS=-D_GNU_SOURCE MBDYN_JOBS=4 bash backend/build_solver.sh
