@@ -281,9 +281,87 @@ def wheel_end_drop():
     ]
 
 
+def contact_peak(mass, stiffness, damping, speed, g, dt=1e-6):
+    """Peak force of a mass meeting a compression-only damped penalty contact at `speed`.
+
+    Independent RK4 of m p'' = m g - k p - c max(0, p') from first touch until release, the
+    one-degree-of-freedom form of a vertical drop on the sphere-plane contact law.
+    """
+    def force(p, w):
+        return stiffness * p + damping * max(0.0, w)
+
+    def accel(p, w):
+        return g - force(p, w) / mass
+
+    p, w, peak = 0.0, speed, 0.0
+    while p >= 0.0:
+        peak = max(peak, force(p, w))
+        k1p, k1w = w, accel(p, w)
+        k2p, k2w = w + 0.5 * dt * k1w, accel(p + 0.5 * dt * k1p, w + 0.5 * dt * k1w)
+        k3p, k3w = w + 0.5 * dt * k2w, accel(p + 0.5 * dt * k2p, w + 0.5 * dt * k2w)
+        k4p, k4w = w + dt * k3w, accel(p + dt * k3p, w + dt * k3w)
+        p += dt * (k1p + 2 * k2p + 2 * k3p + k4p) / 6
+        w += dt * (k1w + 2 * k2w + 2 * k3w + k4w) / 6
+    return peak
+
+
+def featured_study(study_id):
+    item = next(entry for entry in featured.catalog() if entry["id"] == study_id)
+    return item, featured.project(item)["model"], featured.study_values(item)
+
+
+def wheel_end_tyre_study():
+    """Every case of the featured tyre-stiffness study against the one-degree-of-freedom drop."""
+    item, model, values = featured_study("wheel-end-drop")
+    g = -model["parameters"]["gravity"]["z"]
+    contact = model["contacts"][0]
+    wheel = next(b for b in model["bodies"] if b["id"] == contact["body"])
+    mass = sum(b["mass"] for b in model["bodies"])
+    speed = math.sqrt(wheel["velocity"]["vz"] ** 2 + 2 * g * (wheel["pose"]["z"] - contact["radius"]))
+    peaks, worst = [], 0.0
+    for value in values:
+        case = featured.study_case(model, item["study"]["input"], value)
+        samples = solve(case)
+        peak = max(element(s, "contactStates", contact["id"])["force"] for s in samples)
+        reference = contact_peak(mass, value, contact["damping"], speed, g)
+        worst = max(worst, abs(peak - reference) / reference)
+        peaks.append(peak)
+    return [
+        check(worst < 0.015, f"Peak tyre load for {len(values)} stiffnesses ({values[0] / 1000:.0f}–{values[-1] / 1000:.0f} kN/m) matches an independent one-degree-of-freedom RK4 drop within {100 * worst:.2f} %."),
+        check(all(a < b for a, b in zip(peaks, peaks[1:])), f"Peak tyre load rises with stiffness: {' < '.join(f'{p:.0f}' for p in peaks)} N."),
+    ]
+
+
+def gear_drop_sink_study():
+    """Every case of the featured sink-speed study: energy balance, load trend and stroke."""
+    item, model, values = featured_study("gear-drop")
+    weight = sum(b["mass"] for b in model["bodies"]) * 9.81
+    drift, factors, bottomed = 0.0, [], 0.0
+    for value in values:
+        case = featured.study_case(model, item["study"]["input"], value)
+        samples = solve(case)
+
+        def total(s):
+            tyre = element(s, "contactStates", "tyre")
+            return mechanical_energy(case, s) + s["elasticEnergy"] + s["dissipatedEnergy"] + tyre["energy"] + tyre["dissipatedEnergy"]
+
+        start = total(samples[0])
+        kinetic = 0.5 * sum(b["mass"] for b in case["bodies"]) * value * value
+        drift = max(drift, max(abs(total(s) - start) for s in samples) / kinetic)
+        factors.append(max(element(s, "contactStates", "tyre")["force"] for s in samples) / weight)
+        bottomed = min(bottomed, min(element(s, "forces", "oleo")["stopForce"] for s in samples))
+    # Cases run in ascending vz, so the fastest descent comes first.
+    return [
+        check(drift < 0.005, f"For sink speeds {abs(values[-1]):g}–{abs(values[0]):g} m/s the mechanical, stored and dissipated energy balance within {100 * drift:.2f} % of the impact energy."),
+        check(all(a > b for a, b in zip(factors, factors[1:])), f"Peak tyre load factor rises with sink speed: {' < '.join(f'{f:.2f}' for f in reversed(factors))}."),
+        check(bottomed > -1e-6, "The strut never bottoms on its compression stop, even at the fastest sink speed."),
+    ]
+
+
 STUDIES = {"robot-arm": robot_arm, "gyroscopic-top": gyroscopic_top, "tumbling-handle": tumbling_handle, "chaotic-pendulums": chaotic_pendulums,
            "slider-crank": slider_crank, "gear-drop": gear_drop, "quarter-car": quarter_car,
-           "aircraft-nose-gear": aircraft_nose_gear, "oleo-strut": oleo_strut, "wheel-end-drop": wheel_end_drop}
+           "aircraft-nose-gear": aircraft_nose_gear, "oleo-strut": oleo_strut, "wheel-end-drop": wheel_end_drop,
+           "wheel-end-drop-study": wheel_end_tyre_study, "gear-drop-study": gear_drop_sink_study}
 
 
 def main(selected):

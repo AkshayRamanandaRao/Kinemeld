@@ -54,7 +54,7 @@
     "test:cad": "node --test tests/cad-features.test.mjs && node tests/cad-picking-ui.mjs",
     "test:post": "node tests/post-processing-ui.mjs",
     "test:drives": "node tests/rotary-drive-ui.mjs",
-    "test:studies": "node --test tests/studies.test.mjs && node tests/parameter-study-ui.mjs"
+    "test:studies": "node --test tests/studies.test.mjs && node tests/parameter-study-ui.mjs && node tests/featured-study-ui.mjs"
   },
   "dependencies": {
     "three": "0.186.1"

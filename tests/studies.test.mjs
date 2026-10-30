@@ -31,6 +31,20 @@ test('assembly parameters list physical inputs and leave out geometry, vectors a
   assert.deepEqual([drive.label, drive.unit], ['drive frequency', 'Hz']);
 });
 
+test('a velocity shared by every body is one input that sets them all', () => {
+  const drop = structuredClone(spatial);
+  drop.bodies.push({ ...structuredClone(drop.bodies[0]), id: 'frame', name: 'Frame', velocity: { vx: 0, vy: 0, vz: -1, wx: 0, wy: 0, wz: 0 } });
+  const parameters = studyParameters(drop);
+  const shared = parameters.filter((item) => item.path[1] === '*');
+  assert.deepEqual(shared.map((item) => [pathKey(item.path), item.group, item.label, item.unit, item.value]), [['bodies/*/velocity/vz', 'All bodies', 'initial velocity vz', 'm/s', -1]], 'zero and unequal velocities are not offered');
+  assert.equal(parameters[0], shared[0], 'a shared drop speed is listed first');
+  const copy = caseModel(drop, ['bodies', '*', 'velocity', 'vz'], -3);
+  assert.deepEqual(copy.bodies.map((body) => body.velocity.vz), [-3, -3]);
+  assert.equal(parameterValue(copy, ['bodies', '*', 'velocity', 'vz']), -3);
+  drop.bodies[1].velocity.vz = -2;
+  assert(!studyParameters(drop).some((item) => item.path[1] === '*'));
+});
+
 test('template parameters come from the field definitions', () => {
   const model = { kind: 'mass-spring', parameters: { mass: 1, stiffness: 100, damping: 0.5, displacement: 0.1 } };
   const fields = { 'mass-spring': [['mass', 'Translating mass', 'kg'], ['stiffness', 'Spring stiffness', 'N/m'], ['missing', 'Missing', '']] };

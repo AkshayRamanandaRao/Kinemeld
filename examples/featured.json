@@ -22,7 +22,17 @@
       "title": "Oleo-pneumatic gear drop test",
       "description": "A 290 kg carriage drops at 2 m/s onto an oleo-pneumatic strut and damped tyre. Compare gas, orifice and tyre forces through the stroke.",
       "project": "gear-drop-test/gear-drop-test.mbdyn-studio",
-      "next": "Run it, then compare oleo force components with the tyre contact force in Post-processing."
+      "next": "Run it, then compare oleo force components with the tyre contact force in Post-processing.",
+      "study": {
+        "input": "bodies/*/velocity/vz",
+        "values": [
+          -3.0,
+          -2.5,
+          -1.5
+        ],
+        "response": "Contact normal force (reconstructed)",
+        "label": "sink speed 1.5–3 m/s"
+      }
     },
     {
       "id": "aircraft-nose-gear",
@@ -116,6 +126,17 @@
           ],
           "trailPoint": "auto"
         }
+      },
+      "study": {
+        "input": "contacts/tire_plane/stiffness",
+        "values": [
+          10000,
+          15000,
+          30000,
+          40000
+        ],
+        "response": "Contact normal force (reconstructed)",
+        "label": "tyre stiffness 10–40 kN/m"
       }
     },
     {

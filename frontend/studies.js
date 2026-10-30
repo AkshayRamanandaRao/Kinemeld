@@ -82,6 +82,17 @@ export function studyParameters(model, fields = {}) {
       .map(([key, label, unit]) => ({ path: ["parameters", key], group: "Parameters", label, unit, value: model.parameters[key] }));
   }
   const parameters = [];
+  // A drop or launch speed shared by every body is one input; sweeping one body alone would
+  // break the joints' initial velocity consistency.
+  const bodies = model.bodies || [];
+  if (bodies.length > 1) {
+    for (const key of ["velocity.vx", "velocity.vy", "velocity.vz"]) {
+      const path = ["bodies", "*", ...key.split(".")];
+      const values = bodies.map((body) => body.velocity?.[key.split(".")[1]]);
+      if (values.every((value) => Number.isFinite(value) && value === values[0]) && values[0] !== 0)
+        parameters.push({ path, group: "All bodies", label: NAMES[key][0], unit: NAMES[key][1], value: values[0] });
+    }
+  }
   for (const [collection, title] of Object.entries(COLLECTIONS)) {
     for (const item of model[collection] || []) {
       if (typeof item?.id !== "string") continue;
@@ -99,24 +110,28 @@ export function studyParameters(model, fields = {}) {
 
 export const pathKey = (path) => path.join("/");
 
+/** Every [container, key] an input addresses; an item id of "*" addresses each item of the collection. */
 function locate(model, path) {
-  let container = path[0] === "parameters" ? model.parameters : model[path[0]]?.find((item) => item.id === path[1]);
+  const items = path[0] === "parameters" ? [model.parameters] : (model[path[0]] || []).filter((item) => path[1] === "*" || item.id === path[1]);
   const keys = path[0] === "parameters" ? path.slice(1) : path.slice(2);
-  for (const key of keys.slice(0, -1)) container = container?.[key];
-  return [container, keys.at(-1)];
+  return items.map((item) => {
+    let container = item;
+    for (const key of keys.slice(0, -1)) container = container?.[key];
+    return [container, keys.at(-1)];
+  });
 }
 
 export function parameterValue(model, path) {
-  const [container, key] = locate(model, path);
+  const [container, key] = locate(model, path)[0] || [];
   return container?.[key];
 }
 
 /** A copy of `model` with the input at `path` set to `value`; the original is not changed. */
 export function caseModel(model, path, value) {
   const copy = structuredClone(model);
-  const [container, key] = locate(copy, path);
-  if (!container || typeof container[key] !== "number") throw new Error("The swept input no longer exists in this model.");
-  container[key] = value;
+  const targets = locate(copy, path);
+  if (!targets.length || targets.some(([container, key]) => typeof container?.[key] !== "number")) throw new Error("The swept input no longer exists in this model.");
+  for (const [container, key] of targets) container[key] = value;
   return copy;
 }
 
