@@ -216,7 +216,8 @@ async function hoverFeature(point, want, radius) {
   throw new Error(`No ${want} near ${point}: ${await tooltip()}`);
 }
 /** Pick a joint's anchor (and axis) from a CAD feature. */
-async function placeJoint(joint, point, direction, want, radius, label) {
+async function placeJoint(joint, point, direction, want, radius, label, what, distance = 0.6) {
+  await caption('1 · PRE-PROCESSING · JOINTS FROM CAD', `${label} (${joint}): Place from CAD, then point at ${what}.`);
   await select(`joint-${joint}`);
   const pick = page.locator(`#spatial-joint-${joint}-pick`);
   await pick.scrollIntoViewIfNeeded();
@@ -224,7 +225,7 @@ async function placeJoint(joint, point, direction, want, radius, label) {
   await shot(0.8);
   await pick.click();
   await focus(null);
-  await glide(point, direction, 0.42);
+  await glide(point, direction, distance);
   const target = await hoverFeature(point, want, radius);
   await shot(1.5);
   await page.mouse.click(target.x, target.y);
@@ -247,11 +248,12 @@ try {
   await shot(3.4);
 
   // ---- Pre-processing: CAD, one part at a time ----------------------------------------------------
-  await caption('1 · PRE-PROCESSING', 'Start a new 3D assembly. It holds one body to build from.');
+  await caption('1 · PRE-PROCESSING', 'Start a new 3D assembly and name it. It holds one body to build from.');
   await act(page.locator('#newButton'), async () => {
     await page.locator('#newButton').click();
     await page.waitForFunction(() => document.querySelector('#viewportName')?.textContent.includes('Untitled'));
-  });
+  }, 0.9, 0.6);
+  await edit([['spatial-model-name', 'Aircraft nose gear']], 1.4);
   for (const [index, [file, name]] of FILES.entries()) {
     await caption('1 · PRE-PROCESSING · IMPORT CAD', `Part ${index + 1} of ${FILES.length}: ${name} (${file}). Each STEP file keeps its units, placement and product name.`);
     await page.locator('#stepButton').click();
@@ -305,12 +307,12 @@ try {
 
   // ---- Joints from the CAD ---------------------------------------------------------------------------
   await caption('1 · PRE-PROCESSING · JOINTS FROM CAD', 'Place each joint on the CAD: Pick from CAD, then point at the pin hole. The rim gives the pin centre and axis.');
-  await placeJoint('joint2', [0.025, -0.025, 0.48], [1, -1, 0.35], /Cylinder Ø\d+\.\d mm · axis [−+]z/, 0, 'Shock-strut slide on the piston');
-  await placeJoint('joint3', [0, PIN.upperY, PIN.strut], [1, -0.45, 0.3], /Circle Ø1[5-7]\.\d mm · axis [−+]x/, 0.008, 'Upper torque-link pin');
-  await placeJoint('joint4', [0, -0.182980, 0.482552], [1, -0.45, 0.3], /Circle Ø1[5-7]\.\d mm · axis [−+]x/, 0.008, 'Scissor pin');
-  await placeJoint('joint5', [0, PIN.lowerY, PIN.lower], [1, -0.45, 0.25], /Circle Ø1[5-7]\.\d mm · axis [−+]x/, 0.008, 'Lower torque-link pin');
-  await placeJoint('joint6', [-PIN.wheelX, 0, 0.35], [-1, -0.4, 0.3], /Circle Ø40\.0 mm · axis [−+]x/, 0.02, 'Left wheel bearing');
-  await placeJoint('joint7', [PIN.wheelX, 0, 0.35], [1, -0.4, 0.3], /Circle Ø40\.0 mm · axis [−+]x/, 0.02, 'Right wheel bearing');
+  await placeJoint('joint2', [0.025, -0.025, 0.48], [1, -1, 0.35], /Cylinder Ø\d+\.\d mm · axis [−+]z/, 0, 'Shock-strut slide', 'the piston: its axis is the slide axis', 0.7);
+  await placeJoint('joint3', [0, PIN.upperY, PIN.strut], [1, -0.45, 0.3], /Circle Ø1[5-7]\.\d mm · axis [−+]x/, 0.008, 'Upper torque-link pin', 'the pin bolt’s rim');
+  await placeJoint('joint4', [0, -0.182980, 0.482552], [1, -0.45, 0.3], /Circle Ø1[5-7]\.\d mm · axis [−+]x/, 0.008, 'Scissor pin', 'the pin bolt’s rim');
+  await placeJoint('joint5', [0, PIN.lowerY, PIN.lower], [1, -0.45, 0.25], /Circle Ø1[5-7]\.\d mm · axis [−+]x/, 0.008, 'Lower torque-link pin', 'the pin bolt’s rim');
+  await placeJoint('joint6', [-PIN.wheelX, 0, 0.35], [-1, -0.4, 0.3], /Circle Ø40\.0 mm · axis [−+]x/, 0.02, 'Left wheel bearing', 'the wheel bore’s rim', 0.85);
+  await placeJoint('joint7', [PIN.wheelX, 0, 0.35], [1, -0.4, 0.3], /Circle Ø40\.0 mm · axis [−+]x/, 0.02, 'Right wheel bearing', 'the wheel bore’s rim', 0.85);
   await fit(1.2);
 
   // ---- Mass from CAD -----------------------------------------------------------------------------------
@@ -369,6 +371,7 @@ try {
   await page.locator('#trailsToggle').check();
   await select('node-body4');
   await fit();
+  await glide([0, -0.06, 0.5], [1, -0.9, 0.4], 1.05, 20);
   await shot(2.6);
   await caption('3 · POST-PROCESSING', `Plot the upper torque link’s rotation: the scissor folds through ${swing.toFixed(1)}° as the strut compresses. Playback in real time.`);
   await page.locator('#signalSelect').selectOption({ label: 'Node Euler 1–2–3 · X / Y / Z' });

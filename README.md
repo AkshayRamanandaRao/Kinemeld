@@ -18,24 +18,31 @@ Linux, macOS and Windows, or in your browser from a source checkout.
 
 ## Industry-inspired demos
 
-Every clip is an actual MBDyn 1.7.3 solution recorded in Kinemeld's presentation mode; the
-playback rate is stated in each caption. Open the same studies from **Examples → Featured
-studies**. The [study guide](docs/featured-studies.md) lists each model's parameters and the
-independent checks it passes (`backend/verify_featured_studies.py`).
+Every clip is an actual MBDyn 1.7.3 solution recorded in Kinemeld; the playback rate is
+stated in each caption. The animations below are condensed GIFs; each links to its
+full-quality MP4. Open the same studies from **Examples → Featured studies**. The
+[study guide](docs/featured-studies.md) lists each model's parameters and the independent
+checks it passes (`backend/verify_featured_studies.py`).
 
-### From STEP files to results: wheel-end drop test
+### End to end: aircraft nose gear from eleven STEP parts *(new in 1.2)*
 
-[![Complete workflow: STEP import, bodies and links, mass from CAD, contact, MBDyn solve and post-processing](docs/demos/workflow-wheel-end.png)](docs/demos/workflow-wheel-end.mp4)
+[![End-to-end workflow on an aircraft nose gear: STEP parts imported one by one, bodies and joints placed on the CAD pin holes, mass from CAD, MBDyn solve and post-processing](docs/demos/workflow-nose-gear.gif)](docs/demos/workflow-nose-gear.mp4)
 
-One continuous session in the real interface: a new 3D assembly, the original knuckle, hub
-and tyre STEP files, bodies with a revolute bearing and a weld, CAD attached to the bodies,
-mass and inertia computed from the solids, a tyre contact and drop conditions, then the MBDyn
-solve and the tyre-load plot. [Watch the MP4](docs/demos/workflow-wheel-end.mp4) · the
-**guided tour** (compass icon) walks through the same steps.
+One continuous session in the real interface, on the open-source design of a light-aircraft
+nose gear. The eleven original parts — strut, piston, axle, hub, two torque links, three pin
+bolts and two wheels — are imported one by one. Six bodies are built with a strut mount, a
+shock-strut slide, the torque-link scissor and two wheel bearings; the CAD is attached, every
+joint is placed by pointing at its pin bolt or bore in the CAD, and mass and inertia come
+from the solids. An 80 mm shock-strut stroke is prescribed and solved with MBDyn; the
+post-processing shows the stroke, the 10.5° torque-link fold and the 144–163 N force the
+strut must deliver. A kinematic illustration: the source CAD overlaps in places and the
+scissor uses spherical and universal joints to avoid redundant constraints.
+[Watch the MP4](docs/demos/workflow-nose-gear.mp4) · [the part files](examples/open-aircraft-nose-gear)
+· the **guided tour** (compass icon) builds a wheel-end drop test step by step.
 
 ### Parameter study: landing-gear sink speed
 
-[![Parameter study of the landing-gear drop test: four sink speeds solved by MBDyn and compared on one plot](docs/demos/study-gear-drop.png)](docs/demos/study-gear-drop.mp4)
+[![Parameter study of the landing-gear drop test: four sink speeds solved by MBDyn and compared on one plot](docs/demos/study-gear-drop.gif)](docs/demos/study-gear-drop.mp4)
 
 The oleo-pneumatic gear drop test opens with its study preloaded: the initial velocity of all
 bodies swept from 1.5 to 3 m/s around the 2 m/s baseline. MBDyn solves the four cases; the
@@ -44,9 +51,9 @@ peak tyre load rises from 18.0 to 27.5 kN, and in every case the mechanical, sto
 dissipated energy balance within 0.1 % of the impact energy.
 [Watch the MP4](docs/demos/study-gear-drop.mp4) · [parameter studies](docs/workspaces.md#parameter-studies)
 
-### Contact friction: landing-gear spin-up drag *(new in 1.1)*
+### Contact friction: landing-gear spin-up drag
 
-[![Spin-up drag study: tyre friction stops a reverse-spun wheel at touchdown and loads the axle aft](docs/demos/study-spin-up.png)](docs/demos/study-spin-up.mp4)
+[![Spin-up drag study: tyre friction stops a reverse-spun wheel at touchdown and loads the axle aft](docs/demos/study-spin-up.gif)](docs/demos/study-spin-up.mp4)
 
 At touchdown the runway drags a still wheel up to speed and loads the gear aft. As on
 drop-test rigs, the wheel is spun backwards to a 30 m/s tyre surface speed and dropped on a
@@ -59,7 +66,7 @@ momentum matches the friction impulse and friction absorbs exactly the spin ener
 
 ### AI-assisted set-up
 
-[![The local AI assistant adds a wheel bearing, tyre contact and drop conditions for review](docs/demos/ai-assistant-setup.png)](docs/demos/ai-assistant-setup.mp4)
+[![The local AI assistant adds a wheel bearing, tyre contact and drop conditions for review](docs/demos/ai-assistant-setup.gif)](docs/demos/ai-assistant-setup.mp4)
 
 The optional assistant runs a local model through [Ollama](https://ollama.com) — `qwen3.5:4b`
 in this recording — and turns a request in engineering terms into model edits: here a

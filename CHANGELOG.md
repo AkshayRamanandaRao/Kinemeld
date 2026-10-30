@@ -21,6 +21,8 @@ rules in [docs/project-format.md](docs/project-format.md).
   bodies, attaches the CAD, places every joint on the CAD pin holes, computes mass from the
   solids, prescribes the shock-strut stroke, solves with MBDyn and post-processes the stroke,
   torque-link fold and strut force (`docs/demos/workflow-nose-gear.mp4`).
+- **Model name.** A 3D assembly's name can be edited in its properties, so a new model need
+  not stay "Untitled 3D assembly".
 - The README now plays every showcase recording inline as a GIF; GitHub does not play MP4
   files from a repository, so the full-quality MP4 stays linked beside each one.
 - `examples/open-aircraft-nose-gear/parts` holds the nose-gear assembly's eleven parts as

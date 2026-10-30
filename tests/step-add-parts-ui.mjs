@@ -19,6 +19,9 @@ try {
   await page.waitForFunction(() => document.querySelector('#solverStatus')?.textContent.includes('MBDyn ready'));
   await page.locator('#newButton').click();
   await page.waitForFunction(() => document.querySelector('#viewportName')?.textContent.includes('Untitled'));
+  await page.locator('#spatial-model-name').fill('Aircraft nose gear');
+  await page.locator('#spatial-model-name').dispatchEvent('change');
+  await page.waitForFunction(() => document.querySelector('#viewportName')?.textContent === 'Aircraft nose gear');
   await page.locator('#stepButton').click();
   assert(await page.locator('#stepAdd').isHidden(), 'nothing to add to before the first import');
 

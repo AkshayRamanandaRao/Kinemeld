@@ -6,7 +6,7 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation (1.1)
+## Current foundation (1.2)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
   forces, springs, dampers, oleo struts, contact and selected prescribed motion.
@@ -38,6 +38,8 @@ appropriate.
   compatibility promise.
 - Regularised Coulomb friction on sphere–plane contacts, with friction force, slip and
   dissipated energy in the results and a landing-gear spin-up drag study.
+- STEP parts added one file at a time, hole rims read from CAD that writes them as arcs, and
+  an end-to-end showcase that builds an aircraft nose gear from its eleven STEP parts.
 
 ## Release plan
 
@@ -74,6 +76,9 @@ Each step ships as its own release with an example, documentation and solver evi
 10. **1.1 — Contact friction (released):** regularised Coulomb friction for sphere–plane
     contact, verified against rolling-ball and sliding-block solutions, with a landing-gear
     spin-up drag study.
+11. **1.2 — CAD part by part (released):** STEP files added one at a time, hole rims read
+    from CAD that writes them as arcs, model names, and an end-to-end showcase on an
+    aircraft nose gear built from its eleven STEP parts.
 
 ## Further priorities
 

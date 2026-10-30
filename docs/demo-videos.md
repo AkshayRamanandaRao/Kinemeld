@@ -4,7 +4,9 @@ The homepage clips show the actual Kinemeld interface in presentation mode playi
 real MBDyn 1.7.3 solutions of the [featured studies](featured-studies.md). Each recording
 is captured frame by frame at 30 fps from the solver's output samples; the caption in the
 viewport states the playback rate (real time down to 0.2×). The clips have no audio. Each
-GIF is a smaller 15 fps preview of its MP4.
+GIF is a smaller 15 fps preview of its MP4. GitHub plays GIFs in the README but not MP4 files
+from the repository, so the longer session recordings below also have an 800 px, 8 fps GIF
+made with `scripts/demo_gif.sh`.
 
 | Demo | Simulated interval | Playback | What to watch |
 | --- | --- | --- | --- |
@@ -21,7 +23,28 @@ GIF is a smaller 15 fps preview of its MP4.
 
 The studies are teaching models with representative parameters, not validated hardware.
 
-## End-to-end workflow
+## End to end: aircraft nose gear
+
+[`demos/workflow-nose-gear.mp4`](demos/workflow-nose-gear.mp4) builds the open-source
+aircraft nose gear from its [eleven STEP part files](../examples/open-aircraft-nose-gear/parts)
+in one continuous session:
+
+1. A new 3D assembly, named; the parts imported one by one with **Add STEP files**.
+2. Six bodies with their frames on the pivots: strut, piston and axle, upper and lower torque
+   links, two wheels. The strut is welded to ground; the piston slides in it; the torque
+   links turn on revolute, spherical and universal joints that close the scissor loop
+   without redundant constraints; the wheels turn on revolute bearings.
+3. Every part attached to its body, then every joint placed with **Place from CAD**: the
+   slide on the piston's cylinder, the torque-link pins on their pin bolts' rims and the
+   wheel bearings on the wheel bores.
+4. Mass, centre of mass and inertia computed from the solids (2700 kg/m³ structure,
+   1100 kg/m³ wheels), and an 80 mm cosine stroke over 2 s prescribed on the slide.
+5. Validation, the MBDyn run, and post-processing: the stroke, the torque-link fold played
+   in real time, and the axial reaction on the slide.
+
+Held frames replace waiting time. `node tests/record-nose-gear-workflow.mjs` recreates it.
+
+## End-to-end workflow: wheel-end drop test
 
 [`demos/workflow-wheel-end.mp4`](demos/workflow-wheel-end.mp4) records one continuous session
 that builds the wheel-end drop test from the original STEP files: new 3D assembly, STEP
@@ -64,9 +87,11 @@ is on `PATH` (or set `FFMPEG`), then run:
 ```bash
 node tests/record-demo-videos.mjs
 node tests/record-workflow-demo.mjs
+node tests/record-nose-gear-workflow.mjs
 node tests/record-study-demo.mjs
 node tests/record-friction-demo.mjs
 AI_MODEL=qwen3.5:4b node tests/record-ai-demo.mjs   # needs Ollama with the model installed
+scripts/demo_gif.sh docs/demos/workflow-nose-gear.mp4 docs/demos/study-gear-drop.mp4 docs/demos/study-spin-up.mp4 docs/demos/ai-assistant-setup.mp4
 ```
 
 Append a study name (`robot-arm`, `quarter-car`, `gear-drop`, `aircraft-nose-gear`, `oleo-strut`,

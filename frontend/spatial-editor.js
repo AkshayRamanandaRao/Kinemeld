@@ -36,7 +36,8 @@ export function renderSpatialEditor({container,model,selection,mutate,notify,cre
   const contact=(model.contacts||[]).find(item=>selection===`contact-${item.id}`);
   const force=(model.forces||[]).find(item=>selection===`force-${item.id}`);
   const applied=(model.loads||[]).find(item=>selection===`applied-${item.id}`);
-  const gravity=section(container,'Gravity');
+  const gravity=section(container,'Model');
+  const modelLabel=document.createElement('label');modelLabel.textContent='Model name';const modelName=document.createElement('input');modelName.type='text';modelName.id='spatial-model-name';modelName.value=model.name;modelName.maxLength=120;modelName.setAttribute('aria-label','Model name');modelName.onchange=()=>{const value=modelName.value.trim();if(!value){modelName.value=model.name;return;}mutate(next=>{next.name=value;});};modelLabel.append(modelName);gravity.append(modelLabel);
   for(const axis of ['x','y','z'])row(gravity,`Gravity ${axis.toUpperCase()}`,'m/s²',model.parameters.gravity[axis],value=>mutate(next=>{next.parameters.gravity[axis]=value;}),`spatial-gravity-${axis}`);
   if(body){
     const group=section(container,`Rigid body · ${body.id}`), label=document.createElement('label');label.textContent='Body name';const name=document.createElement('input');name.type='text';name.value=body.name;name.maxLength=120;name.setAttribute('aria-label','Body name');name.onchange=()=>mutate(next=>{next.bodies.find(b=>b.id===body.id).name=name.value;});label.append(name);group.append(label);
