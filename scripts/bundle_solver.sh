@@ -5,9 +5,21 @@ set -euo pipefail
 binary="$1"; out="$2"
 root="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 rm -rf "$out"; mkdir -p "$out/bin" "$out/lib"
-cp "$binary" "$out/bin/mbdyn"; chmod 755 "$out/bin/mbdyn"
-strip -S "$out/bin/mbdyn" 2>/dev/null || true
+exe=""; case "$(uname -s)" in CYGWIN*) exe=".exe" ;; esac
+cp "$binary" "$out/bin/mbdyn$exe"; chmod 755 "$out/bin/mbdyn$exe"
+strip -S "$out/bin/mbdyn$exe" 2>/dev/null || true
 case "$(uname -s)" in
+  CYGWIN*)
+    # Windows loads DLLs from the executable's folder first, so the Cygwin runtime and the GCC
+    # libraries go beside mbdyn.exe; Windows system DLLs stay where they are.
+    ldd "$out/bin/mbdyn.exe" | awk '$3 ~ /^\/usr\// {print $3}' | while read -r dll; do cp -L "$dll" "$out/bin/"; chmod 755 "$out/bin/$(basename "$dll")"; done
+    if ldd "$out/bin/mbdyn.exe" | grep -i 'not found'; then echo "Bundled solver has unresolved DLLs." >&2; exit 1; fi
+    if ldd "$out/bin/mbdyn.exe" | awk '$3 ~ /^\/usr\// {print}' | grep .; then
+      echo "Bundled solver still loads the DLLs above from the Cygwin installation." >&2; exit 1
+    fi
+    # Record the Cygwin packages the DLLs come from, for their licences and sources.
+    cygcheck -c cygwin libgfortran5 libgcc1 libstdc++6 libquadmath0 2>/dev/null | tail -n +3 > "$out/CYGWIN-PACKAGES.txt" || true
+    ;;
   Linux)
     # glibc and the C++/GCC support libraries are present on every Linux system; everything else
     # (Fortran runtime, LAPACK/BLAS or any other library the build machine provided) is bundled.
@@ -71,15 +83,16 @@ case "$(uname -s)" in
     ;;
 esac
 cp "$root/backend/MBDyn-GPL-2.0.txt" "$out/COPYING"
-bundled="$(cd "$out/lib" && ls | tr '\n' ' ')"
+bundled="$(cd "$out/lib" && ls | tr '\n' ' ')$(cd "$out/bin" && ls | grep -i '\.dll$' | tr '\n' ' ' || true)"
 cat > "$out/SOURCE.txt" <<NOTE
 This folder contains an unmodified build of MBDyn 1.7.3, licensed GPL-2.0-only (see COPYING).
 Corresponding source: https://raw.githubusercontent.com/mmorandi/MBDyn-web/main/userfiles/downloads/mbdyn-1.7.3.tar.gz
 SHA-256 3cf05cd1cb14c1af3d987aac119b6ecf0d835bc1aee06bc4cf7cc5a245c1f36d. The same archive is attached to each Kinemeld release.
 Built with: backend/build_solver.sh from the Kinemeld repository.
 Runtime libraries copied from the build machine into lib/: ${bundled:-none}.
-They are the GCC runtime (GPL-3.0 with the GCC Runtime Library Exception) and, when the build
-machine provided them, LAPACK and BLAS (BSD-3-Clause); see THIRD_PARTY_NOTICES.md.
+They are the GCC runtime (GPL-3.0 with the GCC Runtime Library Exception), on Windows the
+Cygwin runtime (LGPL-3.0; packages in CYGWIN-PACKAGES.txt, sources at https://cygwin.com) and,
+when the build machine provided them, LAPACK and BLAS (BSD-3-Clause); see THIRD_PARTY_NOTICES.md.
 NOTE
 echo "Bundled libraries: ${bundled:-none}"
-"$out/bin/mbdyn" -v 2>&1 | head -3 || true
+"$out/bin/mbdyn$exe" -v 2>&1 | head -3 || true

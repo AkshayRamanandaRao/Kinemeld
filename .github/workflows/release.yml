@@ -61,9 +61,40 @@ jobs:
           name: solver-macos
           path: build/solver
 
+  # MBDyn builds on Windows with Cygwin, which supplies the POSIX layer it expects; the Cygwin
+  # runtime and GCC DLLs are bundled beside mbdyn.exe.
+  solver-windows:
+    name: MBDyn for Windows
+    runs-on: windows-latest
+    timeout-minutes: 120
+    continue-on-error: true
+    defaults:
+      run:
+        shell: C:\cygwin\bin\bash.exe --noprofile --norc -eo pipefail -o igncr '{0}'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cygwin/cygwin-install-action@v4
+        with:
+          packages: gcc-core gcc-g++ gcc-fortran make python3 tar binutils
+      - uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: mbdyn-1.7.3-${{ runner.os }}-cygwin-${{ hashFiles('backend/build_solver.sh') }}
+      - name: Build and bundle
+        run: |
+          export PATH="/usr/bin:$PATH"
+          MBDYN_JOBS=4 bash backend/build_solver.sh
+          bash scripts/bundle_solver.sh backend/vendor/mbdyn-1.7.3/mbdyn/mbdyn.exe build/solver
+          # The bundle must run with nothing from Cygwin on PATH.
+          PATH="/cygdrive/c/Windows/system32:/cygdrive/c/Windows" build/solver/bin/mbdyn.exe -v | head -1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solver-windows
+          path: build/solver
+
   package:
     name: Package ${{ matrix.platform }}-${{ matrix.arch }}
-    needs: [solver-linux, solver-macos]
+    needs: [solver-linux, solver-macos, solver-windows]
     if: always() && needs.solver-linux.result == 'success'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
@@ -73,7 +104,7 @@ jobs:
         include:
           - { os: ubuntu-22.04, platform: linux, arch: x86_64, binary: native/target/release/mbdyn-studio-desktop, solver: solver-linux }
           - { os: macos-14, platform: macos, arch: arm64, binary: native/target/release/mbdyn-studio-desktop, solver: solver-macos }
-          - { os: windows-latest, platform: windows, arch: x86_64, binary: native/target/release/mbdyn-studio-desktop.exe, solver: "" }
+          - { os: windows-latest, platform: windows, arch: x86_64, binary: native/target/release/mbdyn-studio-desktop.exe, solver: solver-windows }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -99,7 +130,7 @@ jobs:
         shell: bash
         run: |
           solver=()
-          if [ -x build/solver/bin/mbdyn ] || [ -f build/solver/bin/mbdyn ]; then solver=(--solver build/solver); fi
+          if [ -f build/solver/bin/mbdyn ] || [ -f build/solver/bin/mbdyn.exe ]; then solver=(--solver build/solver); fi
           python scripts/package_release.py --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} \
             --binary ${{ matrix.binary }} --version "${VERSION#v}" "${solver[@]}" --out dist
       - uses: actions/upload-artifact@v4
@@ -125,7 +156,7 @@ jobs:
         include:
           - { os: ubuntu-24.04, platform: linux, arch: x86_64, ext: tar.gz, solver: --expect-solver, desktop: true }
           - { os: macos-14, platform: macos, arch: arm64, ext: zip, solver: --expect-solver, desktop: true }
-          - { os: windows-latest, platform: windows, arch: x86_64, ext: zip, solver: "", desktop: false }
+          - { os: windows-latest, platform: windows, arch: x86_64, ext: zip, solver: --expect-solver, desktop: true }
     steps:
       - name: Fetch the checker only
         uses: actions/checkout@v4
@@ -148,6 +179,8 @@ jobs:
         run: python checker/scripts/check_package.py dist/Kinemeld-*-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.ext }} --version "${VERSION#v}" ${{ matrix.solver }}
       - name: Desktop self-check
         if: matrix.desktop
+        # First runs of the Windows self-check on hosted runners are informational.
+        continue-on-error: ${{ matrix.platform == 'windows' }}
         shell: bash
         run: python checker/scripts/check_package.py dist/Kinemeld-*-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.ext }} --version "${VERSION#v}" --native-smoke
 
