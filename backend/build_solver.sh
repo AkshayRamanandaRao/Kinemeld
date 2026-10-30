@@ -17,7 +17,10 @@ if [ ! -d "$base/vendor/mbdyn-1.7.3" ]; then
 fi
 cd "$base/vendor/mbdyn-1.7.3"
 if [ ! -f Makefile ]; then
-    CC="$CC" CXX="$CXX -std=c++11" F77="$FC" FC="$FC" FFLAGS='-O2 -fallow-argument-mismatch' ./configure --disable-runtime-loading > "$base/evidence/configure.log" 2>&1 || { tail -40 "$base/evidence/configure.log" >&2; exit 1; }
+    # MBDYN_CONFIGURE_FLAGS adds platform options, e.g. --disable-shared on Windows (Cygwin),
+    # where libtool would otherwise build DLLs and leave a wrapper in place of mbdyn.exe.
+    # shellcheck disable=SC2086
+    CC="$CC" CXX="$CXX -std=c++11" F77="$FC" FC="$FC" FFLAGS='-O2 -fallow-argument-mismatch' ./configure --disable-runtime-loading ${MBDYN_CONFIGURE_FLAGS:-} > "$base/evidence/configure.log" 2>&1 || { tail -40 "$base/evidence/configure.log" >&2; exit 1; }
 fi
 make -j"${MBDYN_JOBS:-4}" > "$base/evidence/build.log" 2>&1 || { tail -60 "$base/evidence/build.log" >&2; exit 1; }
 ./mbdyn/mbdyn -v

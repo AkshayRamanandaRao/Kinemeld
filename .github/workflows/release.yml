@@ -80,7 +80,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: backend/vendor
-          key: mbdyn-1.7.3-${{ runner.os }}-cygwin-${{ hashFiles('backend/build_solver.sh') }}
+          key: mbdyn-1.7.3-${{ runner.os }}-cygwin-static-${{ hashFiles('backend/build_solver.sh') }}
       - name: Build
         id: build
         run: |
@@ -94,12 +94,13 @@ jobs:
           export PATH="$PWD/build/lib-shim:/usr/bin:$PATH"
           # -std=c++11 hides POSIX functions such as strcasecmp in Cygwin's headers; _GNU_SOURCE
           # makes them visible again without changing the build on other platforms.
-          CPPFLAGS=-D_GNU_SOURCE MBDYN_JOBS=4 bash backend/build_solver.sh
+          # A static build: with shared libraries, libtool leaves a wrapper in place of mbdyn.exe.
+          MBDYN_CONFIGURE_FLAGS=--disable-shared CPPFLAGS=-D_GNU_SOURCE MBDYN_JOBS=4 bash backend/build_solver.sh
       - uses: actions/cache/save@v4
         if: steps.build.outcome == 'success'
         with:
           path: backend/vendor
-          key: mbdyn-1.7.3-${{ runner.os }}-cygwin-${{ hashFiles('backend/build_solver.sh') }}
+          key: mbdyn-1.7.3-${{ runner.os }}-cygwin-static-${{ hashFiles('backend/build_solver.sh') }}
       - name: Bundle
         run: |
           export PATH="/usr/bin:$PATH"
