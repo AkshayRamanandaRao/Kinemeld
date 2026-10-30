@@ -1830,7 +1830,15 @@ $("compareClearButton").onclick = () => { state.compareRun = null; renderCompare
 // ---------- Parameter studies ----------
 // One input is solved for several values plus its current (baseline) value. Cases live in memory
 // for the session; projects keep the baseline result.
-let studyInputs = [], studyRunning = false, studyCancelled = false;
+let studyInputs = [], studyRunning = false, studyCancelled = false, studySetupPending = false;
+/** A study set-up from a project or the featured catalog: input path key, values and response quantity. */
+function validStudySetup(value) {
+  if (!value || typeof value.input !== "string" || value.input.length > 200 || !Array.isArray(value.values)) return null;
+  const values = value.values.filter(Number.isFinite);
+  if (values.length < 1 || values.length > MAX_CASES || values.length !== value.values.length) return null;
+  const response = typeof value.response === "string" && value.response.length <= 200 ? value.response : null;
+  return { input: value.input, values, ...(response ? { response } : {}) };
+}
 const ENTITY_COLLECTIONS = { node: "bodies", joint: "joints", force: "forces", contact: "contacts", applied: "loads" };
 const selectedStudyInput = () => studyInputs.find((item) => pathKey(item.path) === $("studyParameter").value) || null;
 // Trailing zeros of a decimal fraction only: 0.12300 → 0.123, 1.0000e+5 → 1e+5, 20000 stays.
@@ -1858,6 +1866,15 @@ function renderStudyControls() {
   select.replaceChildren(...groups.values());
   // Prefer the input kept from before, then one of the entity selected in the model tree.
   const [kind, ...rest] = String(state.selection).split("-"), id = rest.join("-");
+  // A set-up that came with the project wins once, then the user's own choice is kept.
+  const setup = studySetupPending ? studyInputs.find((item) => pathKey(item.path) === state.studySetup?.input) : null;
+  studySetupPending = false;
+  if (setup) {
+    select.value = pathKey(setup.path);
+    $("studyValues").value = state.studySetup.values.join(", ");
+    updateStudyInput();
+    return;
+  }
   const preferred = studyInputs.find((item) => pathKey(item.path) === keep)
     || studyInputs.find((item) => item.path[0] === ENTITY_COLLECTIONS[kind] && item.path[1] === id)
     || studyInputs[0];
@@ -1941,7 +1958,11 @@ async function runStudy() {
     return;
   }
   state.study = { input: { ...input, name }, cases, signature: key, channel: 0, colors: caseColors(cases.length) };
+  const response = state.studySetup?.input === pathKey(input.path) ? state.studySetup.response : null;
+  state.studySetup = { input: pathKey(input.path), values: values.filter((value) => value !== baseline), ...(response ? { response } : {}) };
   showStudyCase(cases.find((item) => item.baseline) || cases[0]);
+  const option = response && [...$("signalSelect").options].find((item) => item.textContent === response);
+  if (option) { $("signalSelect").value = option.value; state.signal = Number(option.value); renderResult(); }
   markNativeDirty();
   switchStep("results");
   const solved = `${cases.length} of ${values.length} cases solved`;
@@ -2189,8 +2210,16 @@ function renderExamples() {
     while (anchor.nextElementSibling && !anchor.nextElementSibling.classList.contains("example-group")) anchor = anchor.nextElementSibling;
     anchor.after(card);
   };
-  for (const study of state.featured || [])
-    place("featured", exampleCard(exampleArt(study.id) || exampleArt("spatial-assembly"), study.category, study.title, study.description, { label: "Open study →", run: () => openFeatured(study) }, true));
+  for (const study of state.featured || []) {
+    const card = exampleCard(exampleArt(study.id) || exampleArt("spatial-assembly"), study.category, study.title, study.description, { label: "Open study →", run: () => openFeatured(study) }, true);
+    if (study.study?.label) {
+      const note = document.createElement("p");
+      note.className = "example-study";
+      note.textContent = `Parameter study included · ${study.study.label}`;
+      card.querySelector("p").after(note);
+    }
+    place("featured", card);
+  }
   for (const ex of [
     ...state.examples,
     ...state.sourceExamples.map((source) => ({
@@ -2547,6 +2576,7 @@ function currentViewState() {
     trailWindow: Number($("trailWindow").value) || 0,
     trailPoint: $("trailPoint").value,
     glyphs: state.glyphs !== false,
+    ...(state.studySetup ? { study: { ...state.studySetup, ...(activeStudy() ? { response: resultSignal().title } : {}) } } : {}),
     ...(state.trailPreset && $("trailBodies").value === "preset" ? { trailBodies: state.trailPreset } : {}),
   };
 }
@@ -2666,6 +2696,8 @@ function applyDisplayPreset(preset) {
   $("trailPoint").value = preset?.trailPoint === "tip" ? "tip" : "auto";
   if (typeof preset?.trails === "boolean") setTrails(preset.trails);
   setGlyphs(preset?.glyphs !== false);
+  state.studySetup = validStudySetup(preset?.study);
+  studySetupPending = Boolean(state.studySetup);
 }
 // Keep the previous document and its live reference geometry until the new view is complete.
 function commitOpenedProject(project, reference, step) {

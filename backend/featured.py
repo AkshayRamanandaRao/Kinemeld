@@ -2,7 +2,9 @@
 
 An entry may carry a documented overlay that is applied when the study is opened, so a
 verified example project can be shown with a longer study, a larger prescribed motion or a
-display preset without changing the project file its own guide and checks refer to.
+display preset without changing the project file its own guide and checks refer to. It may
+also define a parameter study (an input path, values and a response quantity) that the
+interface preloads; the project's view carries it as `study`.
 """
 import copy
 import json
@@ -47,6 +49,48 @@ def apply_overlay(project, overlay):
 
 
 def project(item):
-    """The project a featured entry opens, with its overlay applied."""
+    """The project a featured entry opens, with its overlay and parameter study applied."""
     saved = json.loads((EXAMPLES / item["project"]).read_text(encoding="utf-8"))
-    return apply_overlay(saved, item.get("overlay", {}))
+    result = apply_overlay(saved, item.get("overlay", {}))
+    if "study" in item:
+        result["view"] = {**(result.get("view") or {}), "study": {key: item["study"][key] for key in ("input", "values", "response")}}
+    return result
+
+
+def _targets(model, path):
+    """Containers and keys an input path addresses, as frontend/studies.js resolves them."""
+    parts = path.split("/")
+    if parts[0] == "parameters":
+        items, keys = [model["parameters"]], parts[1:]
+    else:
+        items, keys = [item for item in model.get(parts[0], []) if parts[1] == "*" or item.get("id") == parts[1]], parts[2:]
+    targets = []
+    for item in items:
+        container = item
+        for key in keys[:-1]:
+            container = container[key]
+        targets.append((container, keys[-1]))
+    return targets
+
+
+def study_value(model, path):
+    """The current value of a study input."""
+    container, key = _targets(model, path)[0]
+    return container[key]
+
+
+def study_case(model, path, value):
+    """A copy of `model` with the study input at `path` set to `value`."""
+    result = copy.deepcopy(model)
+    targets = _targets(result, path)
+    if not targets or any(not isinstance(container.get(key), (int, float)) for container, key in targets):
+        raise ValueError(f"Study input {path} does not exist in this model.")
+    for container, key in targets:
+        container[key] = value
+    return result
+
+
+def study_values(item):
+    """Every case of an entry's study in the order the interface runs them: ascending, baseline included."""
+    model = project(item)["model"]
+    return sorted(set(item["study"]["values"]) | {study_value(model, item["study"]["input"])})

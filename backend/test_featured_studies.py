@@ -76,6 +76,34 @@ class FeaturedStudyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             featured.apply_overlay(project, {"jointMotion": {"hinge": {"amplitude": 1, "frequencyHz": 1}}})
 
+    def test_parameter_studies_address_numeric_inputs_and_open_with_the_project(self):
+        studies = [study for study in featured_catalog() if "study" in study]
+        self.assertEqual({study["id"] for study in studies}, {"wheel-end-drop", "gear-drop"})
+        for study in studies:
+            with self.subTest(study=study["id"]):
+                definition = study["study"]
+                self.assertEqual(set(definition), {"input", "values", "response", "label"})
+                opened = featured.project(study)
+                self.assertEqual(opened["view"]["study"], {key: definition[key] for key in ("input", "values", "response")})
+                baseline = featured.study_value(opened["model"], definition["input"])
+                self.assertIsInstance(baseline, (int, float))
+                values = featured.study_values(study)
+                self.assertEqual(values, sorted(set(definition["values"]) | {baseline}))
+                self.assertTrue(2 <= len(values) <= 12)
+                for value in values:
+                    case = featured.study_case(opened["model"], definition["input"], value)
+                    self.assertEqual(featured.study_value(case, definition["input"]), value)
+                    self.assertTrue(spatial.validate(case)["valid"], spatial.validate(case)["issues"][:2])
+
+    def test_study_cases_change_only_the_input(self):
+        model = {"bodies": [{"id": "a", "velocity": {"vz": -2.0}}, {"id": "b", "velocity": {"vz": -2.0}}], "contacts": [{"id": "c", "stiffness": 1.0}]}
+        case = featured.study_case(model, "bodies/*/velocity/vz", -3.0)
+        self.assertEqual([b["velocity"]["vz"] for b in case["bodies"]], [-3.0, -3.0])
+        self.assertEqual(model["bodies"][0]["velocity"]["vz"], -2.0)
+        self.assertEqual(featured.study_case(model, "contacts/c/stiffness", 5.0)["contacts"][0]["stiffness"], 5.0)
+        with self.assertRaises(ValueError):
+            featured.study_case(model, "contacts/missing/stiffness", 5.0)
+
 
 if __name__ == "__main__":
     unittest.main()
