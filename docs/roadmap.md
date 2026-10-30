@@ -6,7 +6,7 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation (0.6)
+## Current foundation (0.7)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
   forces, springs, dampers, oleo struts, contact and selected prescribed motion.
@@ -28,6 +28,8 @@ appropriate.
   faces (cylinders and planes), and in-view distance and angle measurement.
 - STEP import with `cadquery-ocp` 7.9 or 8; crash-safe autosave and recovery in the desktop
   app; every release package checked on fresh Linux, macOS and Windows machines.
+- Parameter studies: one input solved for several values plus its baseline, every case on
+  one plot, and a table of peaks, RMS and final values with CSV export.
 
 ## Release plan
 
@@ -48,9 +50,13 @@ Each step ships as its own release with an example, documentation and solver evi
 5. **0.6 — Reliability and CAD (released):** support for the current OpenCascade runtime
    (`cadquery-ocp` 8), crash-safe autosave and recovery in the desktop app, and
    clean-machine installation checks for every platform package.
-6. **0.7 — Parameter studies:** sweep one model input (a stiffness, a damping, a mass, a drop
-   height) over a list of values, solve every case with MBDyn, overlay the responses and
-   tabulate key results such as peak force and maximum travel, with CSV export.
+6. **0.7 — Parameter studies (released):** sweep one model input (a stiffness, a damping, a
+   mass, a drop velocity) over a list of values, solve every case with MBDyn, overlay the
+   responses and tabulate key results such as peak force, with CSV export.
+7. **0.8 — Studies in the demo set:** featured parameter studies on the industry-inspired
+   models, such as tyre stiffness against wheel-end peak load and strut gas pre-charge
+   against landing load, each saved with its study, checked against independent physics
+   and recorded for the homepage.
 
 ## Further priorities
 

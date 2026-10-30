@@ -57,6 +57,28 @@ the log when a run fails; **Full log** opens the complete text.
 post-processing when MBDyn finishes. Only one solver job runs at a time; **Cancel**
 stops it and retains partial output.
 
+### Parameter studies
+
+**Parameter study** solves the model several times, changing one input, so you can see how
+a design choice moves the response: a tyre or contact stiffness, a damping coefficient, a
+strut's gas pre-charge, a body's mass or drop velocity, a drive's speed.
+
+1. **Input to vary** lists the template parameters or, for assemblies, the physical
+   properties of each body and element: mass, stiffness, damping, free length, strut gas
+   and orifice settings, load and torque amplitudes, drive settings, and initial positions
+   and velocities. Geometry, joint frames, vectors and inertia tensors are not offered,
+   because changing one component alone rarely means anything physically. The entity
+   selected in the model tree is preselected.
+2. **Values** starts at half, three quarters, one, one and a half and twice the current
+   value; type any list of up to 12 numbers. The current value is always solved as the
+   **baseline**, and the cases run in ascending order.
+3. **Run study** validates the model, then solves every case with MBDyn in turn. The
+   progress line and the console show each case; **Cancel** stops the running case and
+   skips the rest, keeping the cases already solved. A case the solver rejects ends the
+   study the same way, and the notice names it.
+
+The study opens in Post-processing (see [study results](#study-results)).
+
 ## 3 · Post-processing
 
 - **Animation:** play, pause (**Space**), step frame by frame (**←** / **→**), jump to
@@ -101,6 +123,22 @@ panel; select one to remove it. Traces with a different unit are not drawn.
 model, run again, and the pinned run's matching channels appear as grey dashed curves
 with their own statistics. Pin the newest run to move the reference forward; **Clear**
 removes it. Pinned runs live in memory for the session and are not saved in projects.
+
+### Study results
+
+After a parameter study the plot shows every case of the chosen quantity, coloured from
+blue (lowest value) to orange (highest), with the case being animated drawn heavier.
+Quantities with several channels (X / Y / Z) show one channel at a time; choose it in the
+**Parameter study** card. The card's table lists each case's maximum and minimum (hover
+for their times), RMS and final value, computed from the full-resolution series.
+**Export table** writes it as CSV. Select a row to animate that case.
+
+Projects save the baseline result, so a saved project's result always matches its model;
+the study itself stays in memory for the session. Loading another model or running a
+single simulation ends it; **Clear study** returns to the baseline. Pinned traces and run
+comparison are hidden while a study case is shown.
+
+![Parameter study of the wheel-end drop: contact force for five tyre stiffnesses](images/parameter-study.png)
 
 ### Export
 

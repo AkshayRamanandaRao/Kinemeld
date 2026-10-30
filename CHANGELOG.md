@@ -3,6 +3,29 @@
 All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/) while the project is in preview (0.x).
 
+## 0.7.0 — Parameter studies
+
+### Solve
+- **Parameter study** card: choose an input to vary — a template parameter, or a physical
+  property of an assembly body or element (mass, stiffness, damping, free length, strut gas
+  and orifice settings, load and torque amplitudes, drive settings, initial position and
+  velocity), with the selected entity preselected — and a list of up to 12 values,
+  defaulting to half to double the current one.
+- The current value is always solved as the baseline; cases run in ascending order through
+  MBDyn with progress, a console log and Cancel, which keeps the cases already solved.
+
+### Post-processing
+- Every case of the chosen quantity on one plot, ordered blue to orange, with the animated
+  case drawn heavier; one channel at a time for X / Y / Z quantities.
+- A table of each case's maximum and minimum (with their times), RMS and final value from
+  the full-resolution series, exportable as CSV. Selecting a row animates that case.
+- Projects save the baseline result; the study stays in memory for the session.
+
+### Tests
+- `tests/studies.test.mjs` (parameter discovery, case models, value parsing, summaries, CSV,
+  colours) and `tests/parameter-study-ui.mjs`, which sweeps the wheel-end drop's tyre
+  contact stiffness and checks that peak contact force rises with it.
+
 ## 0.6.0 — Reliability and CAD
 
 ### Desktop

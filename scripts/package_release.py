@@ -5,7 +5,7 @@ examples, documentation and notices. A prebuilt MBDyn solver directory (bin/ and
 may be bundled; Python 3.10+ and the optional STEP runtime are installed separately.
 
     python scripts/package_release.py --platform linux --binary native/target/release/mbdyn-studio-desktop \
-        --version 0.6.0 [--solver build/solver] [--out dist]
+        --version 0.7.0 [--solver build/solver] [--out dist]
 """
 import argparse
 import hashlib

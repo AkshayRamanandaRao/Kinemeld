@@ -31,7 +31,7 @@ try {
   await page.locator('#studyRunButton').click();
   await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('Parameter study complete · 3 of 3 cases solved'), null, { timeout: 300000 });
   assert(await page.locator('#studyResults').isVisible());
-  assert.deepEqual(await column(1), [10000, 20000, 40000], 'cases run in ascending order with the baseline included');
+  assert.deepEqual(await column(0), [10000, 20000, 40000], 'cases run in ascending order with the baseline included');
   assert.equal(await page.locator('#studyTable tr.shown .study-baseline').count(), 1, 'the baseline case is shown first');
   const baselineRun = await page.locator('#runId').textContent();
 
@@ -39,7 +39,7 @@ try {
   await page.locator('#signalSelect').selectOption({ label: 'Contact normal force (reconstructed)' });
   await page.waitForFunction(() => document.querySelectorAll('#plot path.plot-curve').length === 3);
   await page.waitForFunction(() => /Contact normal force/.test(document.querySelector('#studySummary')?.textContent || ''));
-  const peaks = await column(2);
+  const peaks = await column(1);
   assert(peaks[0] < peaks[1] && peaks[1] < peaks[2], `peak contact force should rise with stiffness: ${peaks}`);
   assert(await page.locator('#studyChannelField').isHidden());
 
@@ -80,9 +80,18 @@ try {
   // Cancel stops the remaining cases and keeps those already solved.
   await page.locator('[data-step="simulate"]').click();
   await page.locator('#studyValues').fill('30000, 40000');
+  // Press Cancel as soon as case 2 is running; short cases can finish faster than a test click.
+  await page.evaluate(() => {
+    const observer = new MutationObserver(() => {
+      const button = document.querySelector('#cancelRunButton');
+      if (/Case 2 of 3/.test(document.querySelector('#studyProgressText').textContent) && !button.hidden && !button.disabled) {
+        observer.disconnect();
+        button.click();
+      }
+    });
+    observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+  });
   await page.locator('#studyRunButton').click();
-  await page.waitForFunction(() => /Case 2 of 3/.test(document.querySelector('#studyProgressText')?.textContent || ''), null, { timeout: 120000 });
-  await page.locator('#cancelRunButton').click();
   await page.waitForFunction(() => /Study stopped · [12] of 3 cases solved/.test(document.querySelector('#notice')?.textContent || ''), null, { timeout: 120000 });
   assert.equal(await rows().count() >= 1, true);
   assert.deepEqual(errors, []);
