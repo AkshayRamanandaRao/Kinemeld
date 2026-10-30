@@ -11,12 +11,18 @@ strip -S "$out/bin/mbdyn$exe" 2>/dev/null || true
 case "$(uname -s)" in
   CYGWIN*)
     # Windows loads DLLs from the executable's folder first, so the Cygwin runtime and the GCC
-    # libraries go beside mbdyn.exe; Windows system DLLs stay where they are.
-    ldd "$out/bin/mbdyn.exe" | awk '$3 ~ /^\/usr\// {print $3}' | while read -r dll; do cp -L "$dll" "$out/bin/"; chmod 755 "$out/bin/$(basename "$dll")"; done
-    if ldd "$out/bin/mbdyn.exe" | grep -i 'not found'; then echo "Bundled solver has unresolved DLLs." >&2; exit 1; fi
-    if ldd "$out/bin/mbdyn.exe" | awk '$3 ~ /^\/usr\// {print}' | grep .; then
-      echo "Bundled solver still loads the DLLs above from the Cygwin installation." >&2; exit 1
+    # libraries go beside mbdyn.exe; Windows system DLLs stay where they are. cygcheck reads the
+    # import tables recursively (ldd under Cygwin can miss DLLs).
+    cygwin_bin="$(cygpath -w /usr/bin)"
+    cygcheck "$(cygpath -w "$out/bin/mbdyn.exe")" | tr -d '\r' | sed 's/^ *//' | grep -iF "$cygwin_bin\\" | sort -u | while read -r dll; do
+      cp "$(cygpath -u "$dll")" "$out/bin/"
+    done
+    chmod 755 "$out"/bin/*.dll
+    # Prove the bundle starts with nothing from Cygwin on PATH (exit 127 means a missing DLL).
+    if ! (PATH="/cygdrive/c/Windows/system32:/cygdrive/c/Windows"; "$out/bin/mbdyn.exe" -v) > "$out/check.txt" 2>&1; then
+      echo "The bundled solver does not start without Cygwin on PATH:" >&2; cat "$out/check.txt" >&2; exit 1
     fi
+    rm -f "$out/check.txt"
     # Record the Cygwin packages the DLLs come from, for their licences and sources.
     cygcheck -c cygwin libgfortran5 libgcc1 libstdc++6 libquadmath0 2>/dev/null | tail -n +3 > "$out/CYGWIN-PACKAGES.txt" || true
     ;;
