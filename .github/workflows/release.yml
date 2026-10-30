@@ -103,9 +103,14 @@ jobs:
       - name: Bundle
         run: |
           export PATH="/usr/bin:$PATH"
-          # The bundling script also checks that the bundle starts with nothing from Cygwin on PATH.
           bash scripts/bundle_solver.sh backend/vendor/mbdyn-1.7.3/mbdyn/mbdyn.exe build/solver
           ls -la build/solver/bin
+      - name: Check the bundle without Cygwin
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:SystemRoot\system32;$env:SystemRoot"
+          & .\build\solver\bin\mbdyn.exe -v
+          if ($LASTEXITCODE -ne 0) { throw "mbdyn.exe exited with $LASTEXITCODE (-1073741515 means a missing DLL)" }
       - uses: actions/upload-artifact@v4
         with:
           name: solver-windows
