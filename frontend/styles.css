@@ -2263,3 +2263,110 @@ legend {
   color: inherit;
   opacity: 0.8;
 }
+
+/* ---------- Parameter studies ---------- */
+.study-card label,
+.study-results label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 8px;
+  color: var(--dim);
+}
+.study-card select,
+.study-results select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}
+.study-card .number-field span:last-child:empty {
+  display: none;
+}
+.study-progress {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--dim);
+}
+.study-progress[hidden] {
+  display: none;
+}
+.study-progress progress {
+  width: 100%;
+  height: 5px;
+  accent-color: var(--accent);
+}
+.study-table-wrap {
+  overflow-x: auto;
+  margin: 4px 0 8px;
+}
+.study-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 10.5px PlexMono, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.study-table th {
+  text-align: right;
+  font: 600 10px Plex, sans-serif;
+  color: var(--dim);
+  padding: 4px 5px;
+  border-bottom: 1px solid var(--line-strong);
+  white-space: nowrap;
+}
+.study-table th small {
+  font-weight: 400;
+}
+.study-table td {
+  text-align: right;
+  padding: 4px 5px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.study-table th:nth-child(-n + 2),
+.study-table td:nth-child(-n + 2) {
+  text-align: left;
+}
+.study-table tbody tr {
+  cursor: pointer;
+}
+.study-table tbody tr:hover {
+  background: var(--panel);
+}
+.study-table tbody tr.shown {
+  background: var(--soft);
+}
+.study-case {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.study-case i {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+}
+.study-table tr.shown .study-case i {
+  height: 6px;
+}
+.study-baseline {
+  font: 9.5px Plex, sans-serif;
+  color: var(--blue-text);
+  background: var(--soft);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 4px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

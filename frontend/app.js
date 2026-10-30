@@ -13,6 +13,7 @@ import { setupPointProbe } from "./point-probe.js";
 import { setupWheelKinematics } from "./wheel-kinematics.js";
 import { parseSolverCsv, fullSeries, seriesStatistics, envelope } from "./full-resolution.js";
 import { faceAt, cadPlacement, worldFeature, jointFromFeature, frameFromFeature, measureFeatures } from "./cad-features.js";
+import { studyParameters as listStudyParameters, parameterValue, caseModel, parseValues, suggestValues, caseSummary, summaryCsv, caseColors, pathKey, MAX_CASES } from "./studies.js";
 import { syncFrameLinks } from "./frame-editor.js";
 
 const $ = (id) => document.getElementById(id);
@@ -1181,6 +1182,7 @@ async function validate(show = true) {
 }
 function applyModel(model, remember = true) {
   if (remember) pushHistory();
+  clearStudy(false);
   state.model = structuredClone(model);
   if (state.step && Object.keys(state.step.metadata.bindings).length) {
     const allowed=new Set(assemblyKind(model) ? model.bodies.map(body=>body.id) : []);
@@ -1216,6 +1218,7 @@ function switchStep(step) {
     .forEach((b) => b.classList.toggle("active", b.dataset.step === step));
   if (step === "simulate") {
     renderChecklist();
+    renderStudyControls();
     if (validating) validate();
   }
   if (step === "results" && state.result) requestAnimationFrame(drawPlot);
@@ -1245,6 +1248,7 @@ function setBusy(busy) {
     "saveAsButton",
     "validateButton",
     "deckButton",
+    "studyRunButton",
   ])
     $(id).disabled = busy || (id === "previewButton" && Boolean(visualInfo())) || (state.saving && ["saveButton", "saveAsButton"].includes(id));
   document
@@ -1295,6 +1299,7 @@ async function run(preview = false) {
     if (!Array.isArray(result.samples) || !result.samples.length)
       throw new Error("No response samples were returned.");
     if (["source-example", "planar-assembly", "spatial-assembly"].includes(snapshot.kind)) result.model = snapshot;
+    clearStudy(false);
     state.result = result;
     state.lastFailure = null;
     state.resultSignature = key;
@@ -1594,7 +1599,7 @@ async function loadFullResolution(result) {
   try {
     const text = result.csvText || (await (await fetch(csv)).text());
     fullResolution.set(result, parseSolverCsv(text));
-    if (state.result === result) drawPlot();
+    if (state.result === result || state.study?.cases.some((item) => item.result === result)) drawPlot();
   } catch (error) {
     console.warn("Full-resolution results unavailable:", error);
   } finally {
@@ -1615,6 +1620,14 @@ function nearestIndex(times, t) {
 /** Current channels, pinned traces with the same unit, and the comparison run's matching channels. */
 function plotSeries() {
   const signal = resultSignal();
+  const study = activeStudy();
+  if (study) {
+    const [key] = signal.channels[studyChannel(signal)];
+    return study.cases.map((item, i) => {
+      loadFullResolution(item.result);
+      return { key, label: studyValueLabel(item.value), color: study.colors[i], dash: "", shown: item.result === state.result, ...seriesFor(item.result, key) };
+    }).filter((item) => item.values.some(Number.isFinite));
+  }
   const series = signal.channels.map(([key, label], i) => ({ key, label, color: PLOT_COLORS[i], dash: DASHES[i] || "", ...seriesFor(state.result, key) }));
   let color = signal.channels.length;
   for (const overlay of state.overlays) {
@@ -1676,7 +1689,7 @@ function drawPlot() {
         pen = true;
       }
       const role = item.reference ? "plot-reference" : item.overlay ? "plot-overlay" : "plot-curve";
-      return `<path class="${role}" d="${path}" fill="none" stroke="${item.color}" stroke-width="${item.reference ? 1.4 : 1.7}" ${item.dash ? `stroke-dasharray="${item.dash}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
+      return `<path class="${role}" d="${path}" fill="none" stroke="${item.color}" stroke-width="${item.reference ? 1.4 : item.shown ? 2.6 : 1.7}" ${item.dash ? `stroke-dasharray="${item.dash}"` : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
     })
     .join("");
   let grid = "";
@@ -1701,6 +1714,7 @@ function drawPlot() {
     `${signal.title} in ${signal.unit} versus time. ${signal.channels.map(([, label], i) => `${label} ${["solid blue", "dashed teal", "dashed gold"][i]}`).join("; ")}. ${state.result.source}. ${samples.length} samples. Range ${format(Math.min(...values), 3)} to ${format(Math.max(...values), 3)}.`,
   );
   renderPlotStats();
+  renderStudyResults();
   placePlotCursor();
 }
 function renderPlotStats() {
@@ -1813,6 +1827,187 @@ $("compareButton").onclick = () => {
   notice(`${state.compareRun.name} pinned. Edit the model and run again; the pinned response stays on the plot as a grey dashed line.`);
 };
 $("compareClearButton").onclick = () => { state.compareRun = null; renderCompareControls(); drawPlot(); };
+// ---------- Parameter studies ----------
+// One input is solved for several values plus its current (baseline) value. Cases live in memory
+// for the session; projects keep the baseline result.
+let studyInputs = [], studyRunning = false, studyCancelled = false;
+const ENTITY_COLLECTIONS = { node: "bodies", joint: "joints", force: "forces", contact: "contacts", applied: "loads" };
+const selectedStudyInput = () => studyInputs.find((item) => pathKey(item.path) === $("studyParameter").value) || null;
+// Trailing zeros of a decimal fraction only: 0.12300 → 0.123, 1.0000e+5 → 1e+5, 20000 stays.
+const studyValueLabel = (value) => formatValue(value).replace(/(\.\d*?)0+(?=e|$)/, "$1").replace(/\.(?=e|$)/, "");
+const activeStudy = () => (state.study?.cases.some((item) => item.result === state.result) ? state.study : null);
+const studyChannel = (signal) => Math.min(state.study?.channel || 0, signal.channels.length - 1);
+function savedResult() {
+  return state.study?.cases.find((item) => item.baseline)?.result || state.result;
+}
+function renderStudyControls() {
+  const select = $("studyParameter"), keep = select.value;
+  studyInputs = state.model.kind === "source-example" ? [] : listStudyParameters(state.model, fields);
+  const groups = new Map();
+  for (const item of studyInputs) {
+    if (!groups.has(item.group)) {
+      const group = document.createElement("optgroup");
+      group.label = item.group;
+      groups.set(item.group, group);
+    }
+    const option = document.createElement("option");
+    option.value = pathKey(item.path);
+    option.textContent = `${item.label}${item.unit ? ` (${item.unit})` : ""}`;
+    groups.get(item.group).append(option);
+  }
+  select.replaceChildren(...groups.values());
+  // Prefer the input kept from before, then one of the entity selected in the model tree.
+  const [kind, ...rest] = String(state.selection).split("-"), id = rest.join("-");
+  const preferred = studyInputs.find((item) => pathKey(item.path) === keep)
+    || studyInputs.find((item) => item.path[0] === ENTITY_COLLECTIONS[kind] && item.path[1] === id)
+    || studyInputs[0];
+  if (preferred) select.value = pathKey(preferred.path);
+  if (pathKey(preferred?.path || []) !== keep) $("studyValues").value = "";
+  updateStudyInput();
+}
+function updateStudyInput() {
+  const item = selectedStudyInput();
+  $("studyUnit").textContent = item?.unit || "";
+  if (item && !$("studyValues").value.trim()) $("studyValues").value = suggestValues(item.value).join(", ");
+  $("studyHint").textContent = item
+    ? `Current value ${studyValueLabel(item.value)}${item.unit ? ` ${item.unit}` : ""}, always solved as the baseline. Up to ${MAX_CASES} cases.`
+    : "This model has no inputs a study can vary.";
+  $("studyRunButton").disabled = state.busy || !item;
+}
+$("studyParameter").onchange = () => { $("studyValues").value = ""; updateStudyInput(); };
+async function runStudy() {
+  if (state.busy || state.saving || state.opening) return;
+  const input = selectedStudyInput();
+  if (!input) return;
+  let values;
+  try {
+    const baseline = parameterValue(state.model, input.path);
+    values = [...new Set([...parseValues($("studyValues").value), baseline])].sort((a, b) => a - b);
+    if (values.length > MAX_CASES) throw new Error(`A study runs at most ${MAX_CASES} cases, including the baseline.`);
+  } catch (error) {
+    notice(error.message, "error");
+    return;
+  }
+  setBusy(true);
+  const checked = await validate(false);
+  if (!checked.valid) {
+    setBusy(false);
+    notice("The model needs attention before it can run. Review the highlighted fields.", "error");
+    return;
+  }
+  const base = structuredClone(state.model), key = signature(), baseline = parameterValue(base, input.path);
+  const name = `${input.label}${input.unit ? ` (${input.unit})` : ""}`, cases = [], log = [];
+  let failure = null;
+  studyRunning = true;
+  studyCancelled = false;
+  state.playing = false;
+  $("studyProgress").hidden = false;
+  try {
+    for (const [index, value] of values.entries()) {
+      if (studyCancelled) break;
+      const caption = `Case ${index + 1} of ${values.length} · ${input.label} = ${studyValueLabel(value)}${input.unit ? ` ${input.unit}` : ""}`;
+      $("studyProgressText").textContent = caption;
+      $("studyProgressBar").value = index / values.length;
+      status(`Parameter study · ${caption}`);
+      showConsole("Parameter study", [...log, `${caption} · solving…`].join("\n"));
+      const model = caseModel(base, input.path, value);
+      activeRunToken = [...crypto.getRandomValues(new Uint8Array(16))].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      setBusy(true);
+      try {
+        const result = await api("run", model, activeRunToken);
+        if (result.ok === false) throw new Error(result.error || "The solver did not finish successfully.");
+        if (!Array.isArray(result.samples) || !result.samples.length) throw new Error("No response samples were returned.");
+        if (assemblyKind(model)) result.model = model;
+        cases.push({ value, baseline: value === baseline, result });
+        log.push(`${caption} · ${result.samples.length.toLocaleString()} samples · run ${result.runId}`);
+      } catch (error) {
+        if (error.details?.cancelled) studyCancelled = true;
+        else failure = { caption, error };
+        log.push(`${caption} · ${error.details?.cancelled ? "cancelled" : `failed: ${error.message}`}`);
+        break;
+      } finally {
+        activeRunToken = null;
+      }
+    }
+  } finally {
+    studyRunning = false;
+    setBusy(false);
+    $("studyProgress").hidden = true;
+    showConsole("Parameter study", log.join("\n"));
+  }
+  if (!cases.length) {
+    notice(failure ? `${failure.caption} failed: ${failure.error.message}` : "The study was stopped before any case finished.", "error");
+    status("Parameter study stopped");
+    return;
+  }
+  state.study = { input: { ...input, name }, cases, signature: key, channel: 0, colors: caseColors(cases.length) };
+  showStudyCase(cases.find((item) => item.baseline) || cases[0]);
+  markNativeDirty();
+  switchStep("results");
+  const solved = `${cases.length} of ${values.length} cases solved`;
+  notice(failure ? `${failure.caption} failed: ${failure.error.message} ${solved}.` : studyCancelled ? `Study stopped · ${solved}.` : `Parameter study complete · ${solved}. Select a case to animate it.`, failure || studyCancelled ? "warn" : "");
+  status(`Parameter study · ${solved}`);
+}
+$("studyRunButton").onclick = runStudy;
+function showStudyCase(item) {
+  state.result = item.result;
+  state.resultSignature = state.study.signature;
+  state.lastFailure = null;
+  state.frame = 0;
+  playTime = 0;
+  state.playing = false;
+  renderResult();
+  setFrame(0);
+  $("runId").textContent = item.result.runId || "Study case";
+}
+function renderStudyResults() {
+  const study = activeStudy();
+  $("studyResults").hidden = !study;
+  if (!study) return;
+  const signal = resultSignal(), channel = studyChannel(signal), [key, label] = signal.channels[channel];
+  $("studyChannelField").hidden = signal.channels.length < 2;
+  $("studyChannel").replaceChildren(...signal.channels.map(([, name], i) => Object.assign(document.createElement("option"), { value: String(i), textContent: name })));
+  $("studyChannel").value = String(channel);
+  const response = `${signal.title}${signal.channels.length > 1 ? ` · ${label}` : ""}`;
+  $("studySummary").textContent = `${study.input.group} · ${study.input.name}, ${study.cases.length} cases. Response: ${response} (${signal.unit}) for ${entityName()}.`;
+  study.rows = study.cases.map((item) => ({ value: item.value, summary: caseSummary(...Object.values((({ times, values }) => ({ times, values }))(seriesFor(item.result, key)))) }));
+  const head = `<thead><tr><th scope="col"><span class="visually-hidden">Case</span></th><th scope="col">${escapeHtml(study.input.label)}${study.input.unit ? ` <small>${escapeHtml(study.input.unit)}</small>` : ""}</th><th scope="col">max</th><th scope="col">min</th><th scope="col">rms</th><th scope="col">final</th></tr></thead>`;
+  const body = study.rows.map(({ value, summary }, i) => {
+    const item = study.cases[i], shown = item.result === state.result;
+    return `<tr class="${shown ? "shown" : ""}" data-case="${i}"><td><button type="button" class="study-case" aria-label="Show case ${escapeHtml(studyValueLabel(value))}" aria-pressed="${shown}"><i style="background:${study.colors[i]}"></i></button></td><td>${escapeHtml(studyValueLabel(value))}${item.baseline ? ' <span class="study-baseline">baseline</span>' : ""}</td><td title="at ${format(summary.maxAt, 4)} s">${formatValue(summary.max)}</td><td title="at ${format(summary.minAt, 4)} s">${formatValue(summary.min)}</td><td>${formatValue(summary.rms)}</td><td>${formatValue(summary.final)}</td></tr>`;
+  }).join("");
+  $("studyTable").innerHTML = `${head}<tbody>${body}</tbody>`;
+  $("studyTable").querySelectorAll("tr[data-case]").forEach((row) => {
+    row.onclick = () => {
+      const item = study.cases[Number(row.dataset.case)];
+      if (item.result !== state.result) showStudyCase(item);
+    };
+  });
+  study.response = { label: response, unit: signal.unit };
+}
+$("studyChannel").onchange = () => { if (state.study) { state.study.channel = Number($("studyChannel").value); drawPlot(); } };
+$("studyCsvButton").onclick = () => {
+  const study = activeStudy();
+  if (!study?.rows) return;
+  download("parameter-study.csv", summaryCsv({ group: study.input.group, label: study.input.label, unit: study.input.unit }, study.response, study.rows), "text/csv");
+};
+function clearStudy(redraw = true) {
+  if (!state.study) return;
+  const baseline = state.study.cases.find((item) => item.baseline)?.result;
+  const showing = activeStudy();
+  state.study = null;
+  $("studyResults").hidden = true;
+  if (redraw && showing && baseline && baseline !== state.result) {
+    state.result = baseline;
+    state.frame = 0;
+    playTime = 0;
+    state.playing = false;
+    renderResult();
+    setFrame(0);
+    $("runId").textContent = baseline.runId || "MBDyn run";
+  } else if (redraw && state.result) drawPlot();
+}
+$("studyClearButton").onclick = () => clearStudy();
 function exportablePlot() {
   const svg = $("plot").querySelector("svg");
   if (!svg) return null;
@@ -2160,6 +2355,7 @@ $("stepInput").onchange = (e) =>
 async function cancelActiveRun() {
   const token=activeRunToken;
   if(!token || !state.busy)return;
+  if(studyRunning)studyCancelled=true;
   $("cancelRunButton").disabled=true;
   try {
     const response=await fetch("/api/run/cancel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({runToken:token})});
@@ -2244,7 +2440,7 @@ function fullCsv(source) {
 async function projectPayload(includeResult = true) {
   const model = structuredClone(state.model);
   const reference = state.reference, stepMetadata = state.step ? structuredClone(state.step.metadata) : null;
-  const source = includeResult ? state.result : null, view = currentViewState();
+  const source = includeResult ? savedResult() : null, view = currentViewState();
   let result = source ? structuredClone(source) : null;
   if (result?.source === "MBDyn" && !result.csvText && result.files?.csv) {
     if (!/^\/api\/runs\/[0-9a-f]{32}\/results\.csv$/.test(result.files.csv))
@@ -2665,7 +2861,7 @@ $("saveButton").onclick = async () => {
   if (nativeDesktop) return nativeSave(false);
   try {
   const revision = projectRevision;
-  const model = structuredClone(state.model), result = state.result ? structuredClone(state.result) : null, reference = state.reference, step = state.step ? structuredClone(state.step.metadata) : null;
+  const model = structuredClone(state.model), result = savedResult() ? structuredClone(savedResult()) : null, reference = state.reference, step = state.step ? structuredClone(state.step.metadata) : null;
   if (result?.source === "MBDyn" && !result.csvText && result.files?.csv) {
     if (!/^\/api\/runs\/[0-9a-f]{32}\/results\.csv$/.test(result.files.csv)) throw new Error("The result contains an unsupported CSV location.");
     const response = await fetch(result.files.csv);
