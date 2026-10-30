@@ -1686,6 +1686,14 @@ dialog::backdrop {
   justify-content: flex-end;
   gap: 8px;
 }
+.recovery-dialog {
+  width: min(520px, calc(100vw - 40px));
+}
+#recoveryText {
+  color: var(--text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
 .step-actions {
   display: flex;
   flex-wrap: wrap;

@@ -31,7 +31,7 @@ await page.addInitScript(() => {
     notify(op) {
       window.__nativeTest.notifications.push(op);
     },
-    async call(op, payload = {}) {
+    async call(op, payload = {}) {if(op==='recovery')return {};if(op==='autosave')return {skipped:true};
       const state = window.__nativeTest;
       if (op === "save") {
         if (state.failSave)

@@ -10,6 +10,8 @@ await page.addInitScript(()=>{
   window.ipc={postMessage(raw){
     const request=JSON.parse(raw),respond=(ok,value)=>window.__mbdynNativeResolve(request.id,ok?{ok:true,value}:{ok:false,error:value});
     if(request.op==='dirty'){host.revision++;host.dirty=true;return;}
+    if(request.op==='recovery'){respond(true,{});return;}
+    if(request.op==='autosave'){respond(true,{skipped:true});return;}
     if(request.op==='open') {fetch('/api/examples').then(r=>r.json()).then(data=>respond(true,{project:{format:'mbdyn-studio/1',model:data.examples.find(x=>x.id==='mass-spring').model},path:'C:/test/candidate.mbdyn-studio'}));return;}
     if(request.op==='accept-open'){host.accepted++;host.path='C:/test/candidate.mbdyn-studio';host.revision++;host.dirty=true;respond(true,{token:'1'});return;}
     if(request.op==='finalize-open'){

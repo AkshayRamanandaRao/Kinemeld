@@ -13,7 +13,7 @@ await page.addInitScript(()=>{
   window.__nativeTest={current:null,pending:null,previous:null,candidate:null,rollbacks:0};
   window.mbdynNative={
     notify(op){const s=window.__nativeTest;if(op==='finalize-open')s.previous=null;if(op==='discard-open')s.pending=null;},
-    async call(op,payload={}){
+    async call(op,payload={}){if(op==='recovery')return {};if(op==='autosave')return {skipped:true};
       const s=window.__nativeTest;
       if(op==='save') {s.current={path:s.current?.path||'C:/test/current.mbdyn-studio',project:structuredClone({format:'mbdyn-studio/1',schemaVersion:1,model:payload.model,result:payload.result,view:payload.view,assets:payload.assets})};return {path:s.current.path};}
       if(op==='open'){s.pending=structuredClone(s.candidate);return structuredClone(s.pending);}
