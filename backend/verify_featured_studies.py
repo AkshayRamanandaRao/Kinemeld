@@ -358,10 +358,67 @@ def gear_drop_sink_study():
     ]
 
 
+def spin_up_checks(model, samples):
+    """Spin-up drag against momentum, energy and Coulomb's law; returns the peak drag and spin-up time."""
+    contact = model["contacts"][0]
+    wheel = next(b for b in model["bodies"] if b["id"] == contact["body"])
+    mu, vs, radius, inertia = contact["friction"], contact["slipVelocity"], contact["radius"], wheel["inertia"]["yy"]
+    spin = [node(s, "wheel")["wy"] for s in samples]
+    tyre = [element(s, "contactStates", "tyre") for s in samples]
+    # Angular momentum about the axle: I (w - w0) = -R * integral of the fore-aft friction force.
+    impulse, momentum = 0.0, 0.0
+    for a, b, ta, tb, w in zip(samples, samples[1:], tyre, tyre[1:], spin[1:]):
+        impulse += (b["time"] - a["time"]) * (ta["frictionVector"]["x"] + tb["frictionVector"]["x"]) / 2
+        momentum = max(momentum, abs(inertia * (w - spin[0]) + radius * impulse))
+    sliding = [t for t in tyre if t["slip"] > 10 * vs and t["force"] > 0.05 * max(x["force"] for x in tyre)]
+    coulomb = max(abs(t["frictionForce"] / (mu * t["force"]) - 1) for t in sliding)
+    axle = max(abs(element(s, "jointReactions", "axle")["force"]["x"] + t["frictionVector"]["x"]) for s, t in zip(samples, tyre))
+    touchdown = next(s["time"] for s, t in zip(samples, tyre) if t["force"] > 0)
+    stopped = next(s["time"] for s, w in zip(samples, spin) if abs(w) * radius < vs)
+    spin_energy = 0.5 * inertia * spin[0] ** 2
+    peak = max(t["frictionForce"] for t in tyre)
+    return {
+        "momentum": momentum / (inertia * abs(spin[0])), "coulomb": coulomb, "axle": axle / peak,
+        "energy": abs(tyre[-1]["frictionEnergy"] - spin_energy) / spin_energy, "peak": peak, "spinUp": stopped - touchdown,
+        "ratio": peak / max(t["force"] for t in tyre), "final": abs(spin[-1]),
+    }
+
+
+def gear_spin_up():
+    model = load("gear-spin-up")
+    result = spin_up_checks(model, solve(model))
+    mu = model["contacts"][0]["friction"]
+    return [
+        check(result["momentum"] < 0.002, f"Wheel angular momentum matches the friction impulse about the axle within {100 * result['momentum']:.2f} % of the initial spin."),
+        check(result["coulomb"] < 0.002, f"While the tyre slides, drag equals {mu:g} × vertical tyre load within {100 * result['coulomb']:.2f} % (Coulomb)."),
+        check(result["axle"] < 1e-6, "The axle carries the full tyre drag fore and aft."),
+        check(result["energy"] < 0.005 and result["final"] < 0.5, f"Friction dissipates the wheel's spin energy within {100 * result['energy']:.2f} %; the wheel spins up in {1000 * result['spinUp']:.0f} ms."),
+        check(abs(result["ratio"] / mu - 1) < 0.01, f"Peak drag {result['peak'] / 1000:.1f} kN is {result['ratio']:.2f} × the peak vertical load: spin-up ends after the vertical peak."),
+    ]
+
+
+def gear_spin_up_study():
+    """Every case of the featured friction study: conservation laws hold and the drag trend is physical."""
+    item, model, values = featured_study("gear-spin-up")
+    peaks, times, worst = [], [], 0.0
+    for value in values:
+        case = featured.study_case(model, item["study"]["input"], value)
+        result = spin_up_checks(case, solve(case))
+        worst = max(worst, result["momentum"], result["coulomb"], result["energy"])
+        peaks.append(result["peak"])
+        times.append(result["spinUp"])
+    return [
+        check(worst < 0.005, f"For friction {values[0]:g}–{values[-1]:g}, angular momentum, Coulomb drag and spin energy all balance within {100 * worst:.2f} %."),
+        check(all(a < b for a, b in zip(peaks, peaks[1:])), f"Peak drag rises with friction: {' < '.join(f'{p / 1000:.1f}' for p in peaks)} kN."),
+        check(all(a > b for a, b in zip(times, times[1:])), f"Spin-up gets shorter with friction: {' > '.join(f'{1000 * t:.0f}' for t in times)} ms."),
+    ]
+
+
 STUDIES = {"robot-arm": robot_arm, "gyroscopic-top": gyroscopic_top, "tumbling-handle": tumbling_handle, "chaotic-pendulums": chaotic_pendulums,
            "slider-crank": slider_crank, "gear-drop": gear_drop, "quarter-car": quarter_car,
            "aircraft-nose-gear": aircraft_nose_gear, "oleo-strut": oleo_strut, "wheel-end-drop": wheel_end_drop,
-           "wheel-end-drop-study": wheel_end_tyre_study, "gear-drop-study": gear_drop_sink_study}
+           "wheel-end-drop-study": wheel_end_tyre_study, "gear-drop-study": gear_drop_sink_study,
+           "gear-spin-up": gear_spin_up, "gear-spin-up-study": gear_spin_up_study}
 
 
 def main(selected):

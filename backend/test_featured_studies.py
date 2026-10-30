@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = {
     "quarter-car": {"forces", "loads"},
     "gear-drop": {"forces", "contacts"},
+    "gear-spin-up": {"forces", "contacts"},
     "slider-crank": {"forces", "jointTorques"},
     "gyroscopic-top": set(),
     "tumbling-handle": set(),
@@ -78,7 +79,7 @@ class FeaturedStudyTests(unittest.TestCase):
 
     def test_parameter_studies_address_numeric_inputs_and_open_with_the_project(self):
         studies = [study for study in featured_catalog() if "study" in study]
-        self.assertEqual({study["id"] for study in studies}, {"wheel-end-drop", "gear-drop"})
+        self.assertEqual({study["id"] for study in studies}, {"wheel-end-drop", "gear-drop", "gear-spin-up"})
         for study in studies:
             with self.subTest(study=study["id"]):
                 definition = study["study"]

@@ -279,6 +279,47 @@ def gear_drop():
                    forces=oleo, contacts=contact)
 
 
+def gear_spin_up():
+    """Spin-up drag test: the wheel is spun backwards to the landing speed and dropped, as on drop-test rigs."""
+    drop, tyre_r, landing_speed = 0.18, 0.22, 30.0
+    axle_z = tyre_r + drop
+    strut_len = 0.55
+    airframe = Body("airframe", "Airframe share (drop carriage)", {"z": axle_z + strut_len}, {"vz": -2.0})
+    airframe.add("brick", {"x": 0.7, "y": 0.42, "z": 0.12}, STEEL, at=(0, 0, 0.30), label="carriage")
+    airframe.add("cylinder", {"radius": 0.06, "length": 0.40}, ALUMINIUM, at=(0, 0, -0.05), label="outer-cylinder")
+    piston = Body("piston", "Sliding piston and axle", {"z": axle_z}, {"vz": -2.0})
+    piston.add("cylinder", {"radius": 0.038, "length": 0.42}, STEEL, at=(0, 0, 0.21), label="sliding-piston")
+    piston.add("cylinder", {"radius": 0.025, "length": 0.2}, STEEL, at=(0, 0, 0), rotate=(90, 0, 0), label="axle")
+    # Reverse spin: the tyre surface moves at the landing speed over the stationary platform, as the
+    # runway moves under a non-rotating wheel at touchdown.
+    wheel = Body("wheel", "Wheel and tyre", {"z": axle_z}, {"vz": -2.0, "wy": -landing_speed / tyre_r})
+    wheel.add("cylinder", {"radius": tyre_r, "length": 0.16}, RUBBER, at=(0, 0, 0), rotate=(90, 0, 0), label="tyre")
+    wheel.add("cylinder", {"radius": 0.12, "length": 0.17}, ALUMINIUM, at=(0, 0, 0), rotate=(90, 0, 0), label="rim")
+    wheel.add("brick", {"x": 0.03, "y": 0.012, "z": 0.2}, ALUMINIUM, at=(0, -0.091, 0), label="spoke-marker")
+    joints = [
+        {"id": "drop_guide", "type": "prismatic", "a": "ground", "b": "airframe", "anchorA": v(0, 0, axle_z + strut_len), "anchorB": v(0, 0, 0), "axisA": v(0, 0, 1)},
+        {"id": "oleo_slide", "type": "prismatic", "a": "airframe", "b": "piston", "anchorA": v(0, 0, -strut_len), "anchorB": v(0, 0, 0), "axisA": v(0, 0, 1)},
+        {"id": "axle", "type": "revolute", "a": "piston", "b": "wheel", "anchorA": v(0, 0, 0), "anchorB": v(0, 0, 0), "axisA": v(0, 1, 0), "axisB": v(0, 1, 0)},
+    ]
+    # The strut acts along the axle line; anchored at the wheel centre it carries the same load as at the
+    # piston, which moves with the wheel along the strut, and applies no moment about the axle.
+    oleo = [{"id": "oleo", "type": "oleo-strut", "a": "wheel", "b": "airframe", "anchorA": v(0, 0, 0), "anchorB": v(0, 0, 0),
+             "restLength": strut_len, "pressure": 3.6e5, "gasArea": 0.006, "gasVolume": 0.004, "gamma": 1.3,
+             "minLength": strut_len - 0.20, "maxLength": strut_len, "stopStiffness": 2.0e6, "stopDamping": 4.0e3,
+             "fluidArea": 0.006, "fluidDensity": 850.0, "dischargeCoefficient": 0.7,
+             "compressionMeteringArea": 2.4e-4, "reboundMeteringArea": 1.4e-4}]
+    contact = [{"id": "tyre", "body": "wheel", "center": v(0, 0, 0), "radius": tyre_r, "planePoint": v(0, 0, 0), "planeNormal": v(0, 0, 1),
+                "stiffness": 6.0e5, "damping": 1.5e3, "friction": 0.55, "slipVelocity": 0.5}]
+    tower = Fixture()
+    for x in (-0.42, 0.42):
+        tower.add("brick", {"x": 0.06, "y": 0.06, "z": 1.6}, (x, 0, 0.8), label="drop-tower-column")
+    tower.add("brick", {"x": 0.96, "y": 0.08, "z": 0.06}, (0, 0, 1.63), label="drop-tower-head")
+    tower.add("brick", {"x": 1.2, "y": 0.5, "z": 0.02}, (0, 0, -0.01), label="platform")
+    return project("Landing-gear spin-up drag: reverse-spun wheel drop", [airframe, piston, wheel], joints, {"duration": 0.4, "step": 0.0002}, fixture=tower,
+                   view={"camera": [1.75, -2.2, 0.95], "target": [0, 0, 0.5], "signal": 18, "selection": "node-wheel", "trails": False},
+                   forces=oleo, contacts=contact)
+
+
 def align_z(direction):
     """Euler123 angles (degrees) that rotate local +Z onto a world direction."""
     z = [c / math.sqrt(sum(d * d for d in direction)) for c in direction]
@@ -392,6 +433,7 @@ STUDIES = {
     "chaotic-pendulums": ("chaotic-pendulums", "chaotic-pendulums.mbdyn-studio", chaotic_pendulums),
     "slider-crank": ("slider-crank", "slider-crank.mbdyn-studio", slider_crank),
     "gear-drop": ("gear-drop-test", "gear-drop-test.mbdyn-studio", gear_drop),
+    "gear-spin-up": ("gear-spin-up", "gear-spin-up.mbdyn-studio", gear_spin_up),
 }
 
 

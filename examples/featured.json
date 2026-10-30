@@ -35,6 +35,23 @@
       }
     },
     {
+      "id": "gear-spin-up",
+      "category": "AEROSPACE · CONTACT FRICTION",
+      "title": "Landing-gear spin-up drag",
+      "description": "The wheel is spun backwards to a 30 m/s tyre surface speed and dropped, as drop-test rigs reproduce touchdown. Tyre friction stops the spin within milliseconds and drags the axle aft: the spin-up load.",
+      "project": "gear-spin-up/gear-spin-up.mbdyn-studio",
+      "next": "Run it, then plot Contact friction force against Contact normal force and the axle's fore-aft reaction.",
+      "study": {
+        "input": "contacts/tyre/friction",
+        "values": [
+          0.3,
+          0.8
+        ],
+        "response": "Contact friction force",
+        "label": "tyre friction 0.3–0.8"
+      }
+    },
+    {
       "id": "aircraft-nose-gear",
       "category": "AEROSPACE · ORIGINAL STEP ASSEMBLY",
       "title": "Aircraft nose-gear kinematics",
