@@ -55,8 +55,8 @@ Each step ships as its own release with an example, documentation and solver evi
 ## Further priorities
 
 - **Reliability and publication:** protect edits during asynchronous CAD and
-  project operations, qualify native dialogs, run the desktop self-check on macOS and
-  Windows release packages,
+  project operations, qualify native dialogs, run the desktop self-check on the Windows
+  package (which needs a solver),
   and finish dependency and license audits for every bundled component.
 - **Engineering examples:** extend suspension and landing-gear studies only
   with traceable geometry, hardpoints, material data and loading. Add independent
@@ -78,7 +78,7 @@ The current integration has been exercised with MBDyn 1.7.3 and selected
 examples. Other versions, general models, engineering accuracy, production use
 and safety-critical qualification remain unverified. Every release package is unpacked
 and checked on fresh Linux, macOS and Windows runners before publication (file hashes,
-the packaged service, real MBDyn runs and, on Linux, the desktop self-check); native dialog
+the packaged service, real MBDyn runs and, on Linux and macOS, the desktop self-check); native dialog
 tests and a complete review of redistributed dependencies and licenses remain open.
 Release archives bundle MBDyn 1.7.3 on Linux and macOS with the corresponding source
 attached; no package bundles Python or the CAD runtime.
