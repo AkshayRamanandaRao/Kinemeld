@@ -6,7 +6,7 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation (0.8)
+## Current foundation (0.9)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
   forces, springs, dampers, oleo struts, contact and selected prescribed motion.
@@ -32,6 +32,8 @@ appropriate.
   one plot, and a table of peaks, RMS and final values with CSV export.
 - Featured parameter studies on the wheel-end and landing-gear drop tests, verified case by
   case against independent physics and shown in the demo set and guided tour.
+- Hole rims picked as well as faces, measurement at the animated pose, and joint symbols
+  dragged along or across their axis in 1 mm steps.
 
 ## Release plan
 
@@ -59,9 +61,12 @@ Each step ships as its own release with an example, documentation and solver evi
    industry-inspired models — tyre stiffness against wheel-end peak load and sink speed
    against landing-gear tyre load — each opening with its study, checked case by case
    against independent physics and recorded for the homepage.
-8. **0.9 — Interaction II:** pick circular edges (hole rims) as well as faces, measure at
-   the animated pose in Post-processing, and drag joint anchors along an axis or within a
-   plane without a target face.
+8. **0.9 — Interaction II (released):** pick circular edges (hole rims) as well as faces,
+   measure at the animated pose in Post-processing, and drag joint anchors along an axis or
+   within a plane without a target face.
+9. **1.0 — Self-contained everywhere:** a Windows package with a bundled MBDyn built in CI,
+   so no platform needs WSL or a separate solver install, checked like the others on a
+   clean machine; a stated project-format compatibility promise from 1.0 on.
 
 ## Further priorities
 

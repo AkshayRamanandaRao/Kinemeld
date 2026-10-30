@@ -41,9 +41,11 @@ not create masses, inertia, joints, contact or forces; supply those separately.
 
 The converter also records each face's analytic surface with the range of display
 triangles it produced: cylinders with axis, centre, radius and length, and planes with
-a point and outward normal, in metres and assembly coordinates. Joint anchors, joint
-axes and named frames can then be placed by picking or dragging onto those faces, and
-features can be measured in the view; see
+a point and outward normal, in metres and assembly coordinates. Full circular edges (hole
+rims, shaft ends; up to 512 per part) are listed with centre, axis and radius; partial
+arcs such as fillet boundaries are not. Joint anchors, joint
+axes and named frames can then be placed by picking or dragging onto those faces and rims,
+and features can be measured in the view, also at a solved frame; see
 [placing joints and frames from CAD](workspaces.md#placing-joints-and-frames-from-cad).
 Other surface types are tessellated for display but cannot be picked.
 Undo and redo include attachments. Other model families show the solids as static

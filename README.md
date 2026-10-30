@@ -190,7 +190,7 @@ for scope and limitations.
 
 ## Roadmap
 
-Next: picking circular edges, measuring at the animated pose and constrained dragging.
+Next: a Windows package with MBDyn bundled, so every platform works without a separate solver.
 Longer term: contact friction,
 flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
 and the [changelog](CHANGELOG.md).
