@@ -77,7 +77,7 @@ export class MechanismView {
       if (this.dragging) {
         const { entity, moved } = this.dragging;
         this.endDrag();
-        if (moved) { down = null; this.dragMode?.drop(entity, this.pickPart(e.clientX, e.clientY)); return; }
+        if (moved) { down = null; this.dragMode?.drop(entity, this.pickPart(e.clientX, e.clientY), this.dragInput(e.clientX, e.clientY, e)); return; }
       }
       if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5)
         return;
@@ -93,17 +93,18 @@ export class MechanismView {
         if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) <= 5) return;
         drag.moved = true;
         this.renderer.domElement.style.cursor = "grabbing";
+        this.stepView?.showRims?.(true);
         this.dragMode.start(drag.entity);
       }
       if (e.buttons && !drag) return;
       const queued = !hoverQueued;
-      hoverQueued = [e.clientX, e.clientY];
+      hoverQueued = [e.clientX, e.clientY, { shiftKey: e.shiftKey, altKey: e.altKey }];
       if (!queued) return;
       requestAnimationFrame(() => {
         if (!hoverQueued) return;
-        const [x, y] = hoverQueued;
+        const [x, y, keys] = hoverQueued;
         hoverQueued = null;
-        if (this.dragging?.moved) { this.dragMode.move(this.pickPart(x, y), x, y); return; }
+        if (this.dragging?.moved) { this.dragMode.move(this.pickPart(x, y), x, y, this.dragInput(x, y, keys)); return; }
         if (this.pickMode) { this.pickMode.hover(this.pickPart(x, y), x, y); return; }
         const entity = this.pick(x, y);
         this.setHover(entity);
@@ -137,6 +138,14 @@ export class MechanismView {
     const hits = this.raycaster.intersectObjects(this.group.children, true).filter((item) => item.object.userData.entity && shown(item.object));
     return (hits.find((item) => item.object.userData.glyph) || (glyphsOnly ? null : hits[0]))?.object.userData.entity || null;
   }
+  /** The pointer ray in model coordinates, the view direction and the modifier keys of a drag. */
+  dragInput(clientX, clientY, keys) {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.raycaster.setFromCamera(new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, (-(clientY - rect.top) / rect.height) * 2 + 1), this.camera);
+    const ray = this.raycaster.ray.clone();
+    ray.origin.sub(this.sourceParts?.offset || new THREE.Vector3());
+    return { ray, view: this.camera.getWorldDirection(new THREE.Vector3()), shift: Boolean(keys?.shiftKey), alt: Boolean(keys?.altKey) };
+  }
   /** STEP part and triangle under a screen point, with the hit in model coordinates (display offset removed). */
   pickPart(clientX, clientY) {
     if (!this.stepView) return null;
@@ -144,19 +153,28 @@ export class MechanismView {
     this.raycaster.setFromCamera(new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, (-(clientY - rect.top) / rect.height) * 2 + 1), this.camera);
     const meshes = new Map([...this.stepView.partMeshes].map(([id, mesh]) => [mesh, id]));
     const hit = this.raycaster.intersectObjects([...meshes.keys()], false)[0];
-    if (!hit) return null;
     const offset = this.sourceParts?.offset || new THREE.Vector3();
+    // A visible rim within a few millimetres of the pointer wins over the face it bounds; a rim
+    // farther away than the first surface hit is hidden behind it.
+    const size = Math.max(this.scale || 1, 0.05);
+    this.raycaster.params.Line.threshold = size * 0.006;
+    const rim = this.stepView.rimLines?.length ? this.raycaster.intersectObjects(this.stepView.rimLines.filter((line) => line.visible), false)[0] : null;
+    if (rim && (!hit || rim.distance <= hit.distance + size * 0.02))
+      return { partId: rim.object.userData.partId, edge: rim.object.userData.edge, point: rim.point.clone().sub(offset) };
+    if (!hit) return null;
     return { partId: meshes.get(hit.object), triangle: hit.faceIndex, point: hit.point.clone().sub(offset) };
   }
   /** Route clicks and hover to a picking task instead of selection; null restores normal selection. */
   setPickMode(mode) {
     this.pickMode = mode;
     this.renderer.domElement.style.cursor = mode ? "crosshair" : "";
+    this.stepView?.showRims?.(Boolean(mode || this.dragging?.moved));
     if (!mode) this.showFeature(null);
   }
   /**
-   * Let glyphs be dragged: `accepts(entity)` decides which, then `start(entity)`, `move(hit, x, y)`
-   * with the STEP face under the pointer, and `drop(entity, hit)` or `cancel()`. null disables dragging.
+   * Let glyphs be dragged: `accepts(entity)` decides which, then `start(entity)`, `move(hit, x, y,
+   * input)` with the STEP feature under the pointer and the pointer ray, view direction and
+   * modifier keys, and `drop(entity, hit, input)` or `cancel()`. null disables dragging.
    */
   setDragMode(mode) {
     this.cancelDrag();
@@ -167,6 +185,7 @@ export class MechanismView {
     this.dragging = null;
     this.controls.enabled = true;
     this.renderer.domElement.style.cursor = "";
+    this.stepView?.showRims?.(Boolean(this.pickMode));
   }
   cancelDrag() {
     const moved = this.dragging?.moved;
@@ -190,7 +209,7 @@ export class MechanismView {
     const cone = new THREE.Mesh(new THREE.ConeGeometry(size * 0.04, size * 0.12, 16), material());
     cone.position.y = size * 0.86;
     group.add(line, cone);
-    if (feature.type === "cylinder") {
+    if (feature.type === "cylinder" || feature.type === "circle") {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(feature.radius, size * 0.01, 8, 48), material());
       ring.rotation.x = Math.PI / 2;
       group.add(ring);
