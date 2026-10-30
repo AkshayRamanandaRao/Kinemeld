@@ -108,6 +108,13 @@ class StepGeometryTest(unittest.TestCase):
             self.assertAlmostEqual(got, want, places=9)
         caps = [face for face in part["faces"] if face["type"] == "plane"]
         self.assertEqual(sorted(face["normal"][1] for face in caps), [-1.0, 1.0])
+        # Both end rims are reported once as full circles on the axis; the boxes have none.
+        rims = part["edges"]
+        self.assertEqual(len(rims), 2)
+        self.assertTrue(all(rim["type"] == "circle" and abs(rim["radius"] - .005) < 1e-9 for rim in rims))
+        self.assertEqual(sorted(round(rim["centre"][1], 9) for rim in rims), [.02, .06])
+        self.assertTrue(all([abs(value) for value in rim["axis"]] == [0.0, 1.0, 0.0] for rim in rims))
+        self.assertEqual([part["edges"] for part in step_geometry.convert_step(self.data, "assembly.step")["parts"]], [[], []])
 
     def test_inch_source_is_converted_to_same_metre_geometry(self):
         result = step_geometry.convert_step(self.inch_data, "inch.step")

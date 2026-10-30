@@ -11,6 +11,8 @@ import tempfile
 MAX_STEP_BYTES = 12 * 1024 * 1024
 MAX_TRIANGLES = 150_000
 MAX_PARTS = 256
+# Full circular edges (hole rims, shaft ends) reported per part for picking.
+MAX_CIRCLES = 512
 MAX_OUTPUT_BYTES = 32 * 1024 * 1024
 TIMEOUT_SECONDS = 90
 
@@ -107,8 +109,8 @@ def convert_step(data, name="Imported STEP"):
 def _worker(source):
     try:
         from OCP.BRep import BRep_Tool
-        from OCP.BRepAdaptor import BRepAdaptor_Surface
-        from OCP.GeomAbs import GeomAbs_Cylinder, GeomAbs_Plane
+        from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
+        from OCP.GeomAbs import GeomAbs_Circle, GeomAbs_Cylinder, GeomAbs_Plane
         from OCP.gp import gp_Vec
         from OCP.BRepMesh import BRepMesh_IncrementalMesh
         from OCP.IFSelect import IFSelect_RetDone
@@ -119,7 +121,7 @@ def _worker(source):
         from OCP.TDataStd import TDataStd_Name
         from OCP.TDF import TDF_Label
         from OCP.TDocStd import TDocStd_Document
-        from OCP.TopAbs import TopAbs_FACE, TopAbs_REVERSED
+        from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_REVERSED
         from OCP.TopExp import TopExp_Explorer
         from OCP.TopLoc import TopLoc_Location
         from OCP.TopoDS import TopoDS
@@ -247,9 +249,25 @@ def _worker(source):
                 if described:
                     faces.append({"triangles": [first_triangle, count], **described})
             explorer.Next()
+        # Full circles only: hole rims and shaft ends. Partial arcs (fillets, chamfer
+        # boundaries) are left out. The explorer meets each edge once per adjacent face.
+        circles, seen = [], set()
+        explorer = TopExp_Explorer(shape, TopAbs_EDGE)
+        while explorer.More() and len(circles) < MAX_CIRCLES:
+            curve = BRepAdaptor_Curve(TopoDS.Edge(explorer.Current()))
+            explorer.Next()
+            if curve.GetType() != GeomAbs_Circle or abs(curve.LastParameter() - curve.FirstParameter() - 2 * math.pi) > 1e-6:
+                continue
+            circle = curve.Circle()
+            described = {"type": "circle", "centre": metres(circle.Location()), "axis": direction(circle.Axis().Direction()),
+                         "radius": round(circle.Radius()*.001, 9)}
+            key = (*described["centre"], described["radius"], *(abs(v) for v in described["axis"]))
+            if key not in seen:
+                seen.add(key)
+                circles.append(described)
         if positions and indices:
             parts.append({"id":f"part-{len(parts)+1}", "name":name, "path":current_path,
-                          "productName":product_name or None, "positions":positions, "indices":indices, "faces":faces,
+                          "productName":product_name or None, "positions":positions, "indices":indices, "faces":faces, "edges":circles,
                           "_occurrencePath":occurrence_path})
     for i in range(1, roots.Length()+1):
         visit(roots.Value(i), TopLoc_Location(), [], [], 0)

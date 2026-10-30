@@ -67,7 +67,29 @@ export function createStepView(converted, {initialNodes = [], bindings = {}, off
     point(binding.pose, part, spatial);
     point(initial.get(binding.body), binding.body, spatial);
   }
-  const group = new THREE.Group(), partMeshes = new Map(), attached = [];
+  const group = new THREE.Group(), partMeshes = new Map(), attached = [], rimLines = [];
+  // Full circular edges (hole rims, shaft ends) drawn exactly from centre, axis and radius; they
+  // are children of the part mesh, so they follow it, and are shown only while picking.
+  const rimMaterial = new THREE.LineBasicMaterial({ color: 0xf08c1a, transparent: true, opacity: 0.75 });
+  function rims(part, mesh) {
+    const edges = Array.isArray(part.edges) ? part.edges : [];
+    edges.forEach((edge, index) => {
+      if (edge?.type !== "circle" || !(edge.radius > 0)) return;
+      const axis = new THREE.Vector3(...edge.axis).normalize();
+      const u = new THREE.Vector3().crossVectors(axis, Math.abs(axis.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)).normalize();
+      const v = new THREE.Vector3().crossVectors(axis, u);
+      const centre = new THREE.Vector3(...edge.centre), points = [];
+      for (let i = 0; i < 64; i++) {
+        const angle = (i / 64) * Math.PI * 2;
+        points.push(centre.clone().addScaledVector(u, edge.radius * Math.cos(angle)).addScaledVector(v, edge.radius * Math.sin(angle)));
+      }
+      const line = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points), rimMaterial);
+      line.visible = false;
+      line.userData = { partId: part.id, edge: index, rim: true };
+      mesh.add(line);
+      rimLines.push(line);
+    });
+  }
   let disposed = false;
   try {
     for (const part of converted.parts) {
@@ -95,9 +117,12 @@ export function createStepView(converted, {initialNodes = [], bindings = {}, off
         mesh.position.copy(displayOffset); group.add(mesh);
       }
       partMeshes.set(part.id, mesh);
+      rims(part, mesh);
     }
   } catch (error) {
     for (const mesh of partMeshes.values()) { mesh.geometry.dispose(); mesh.material.dispose(); }
+    for (const line of rimLines) line.geometry.dispose();
+    rimMaterial.dispose();
     throw error;
   }
   function update(nodes) {
@@ -121,14 +146,19 @@ export function createStepView(converted, {initialNodes = [], bindings = {}, off
     disposed = true;
     group.removeFromParent();
     for (const mesh of partMeshes.values()) { mesh.geometry.dispose(); mesh.material.dispose(); }
+    for (const line of rimLines) line.geometry.dispose();
+    rimMaterial.dispose();
     group.clear();
+  }
+  function showRims(visible) {
+    for (const line of rimLines) line.visible = visible;
   }
   /** Farthest attached vertex from a body's origin, in body-local coordinates. */
   function farthestPoint(bodyId) {
     let best = null, distance = -1;
     for (const {body, frame} of attached) {
       if (body !== bodyId) continue;
-      const mesh = frame.children[0], positions = mesh.geometry.getAttribute("position");
+      const mesh = frame.children.find((child) => child.isMesh), positions = mesh.geometry.getAttribute("position");
       const local = new THREE.Vector3();
       for (let i = 0; i < positions.count; i += Math.max(1, Math.floor(positions.count / 4000))) {
         local.fromBufferAttribute(positions, i).applyQuaternion(mesh.quaternion).add(mesh.position);
@@ -139,5 +169,5 @@ export function createStepView(converted, {initialNodes = [], bindings = {}, off
     return best;
   }
   update(initialNodes);
-  return {group, partMeshes, update, dispose, farthestPoint};
+  return {group, partMeshes, rimLines, showRims, update, dispose, farthestPoint};
 }

@@ -12,7 +12,7 @@ import { setupKinematics } from "./kinematics.js";
 import { setupPointProbe } from "./point-probe.js";
 import { setupWheelKinematics } from "./wheel-kinematics.js";
 import { parseSolverCsv, fullSeries, seriesStatistics, envelope } from "./full-resolution.js";
-import { faceAt, cadPlacement, worldFeature, jointFromFeature, frameFromFeature, measureFeatures } from "./cad-features.js";
+import { faceAt, cadPlacement, worldFeature, jointFromFeature, frameFromFeature, measureFeatures, worldFromBody, alongAxis, inPlane } from "./cad-features.js";
 import { studyParameters as listStudyParameters, parameterValue, caseModel, parseValues, suggestValues, caseSummary, summaryCsv, caseColors, pathKey, MAX_CASES } from "./studies.js";
 import { syncFrameLinks } from "./frame-editor.js";
 
@@ -720,7 +720,7 @@ function showHover(entity, x, y) {
   if (!entity || entity.startsWith("step-part-")) { tip.hidden = true; return; }
   document.querySelector(`#modelTree [data-entity="${CSS.escape(entity)}"]`)?.classList.add("hovered");
   const [name, detail] = describeEntity(entity);
-  placeTooltip(name, jointDrag.accepts(entity) ? `${detail} · drag onto a CAD face to place it` : detail, x, y);
+  placeTooltip(name, jointDrag.accepts(entity) ? `${detail} · drag to move it, or onto a CAD feature to snap` : detail, x, y);
 }
 function placeTooltip(name, detail, x, y) {
   const tip = $("viewTooltip");
@@ -737,18 +737,25 @@ function placeTooltip(name, detail, x, y) {
 function featureFromHit(hit) {
   if (!hit || !state.step) return null;
   const part = state.step.parts.find((item) => item.id === hit.partId);
-  const face = faceAt(part, hit.triangle);
+  const face = Number.isInteger(hit.edge) ? part?.edges?.[hit.edge] || null : faceAt(part, hit.triangle);
   if (!face) return null;
   const binding = state.step.metadata.bindings[hit.partId];
-  const body = binding && (state.model.bodies || []).find((item) => item.id === binding.body);
+  let body = binding && (state.model.bodies || []).find((item) => item.id === binding.body);
+  // Measuring in Post-processing uses each body's pose in the displayed frame.
+  if (body && pickAtFrame) {
+    const node = state.result?.samples[state.frame]?.nodes?.find((item) => String(item.id) === body.id);
+    if (node) body = { ...body, pose: node };
+  }
   return { ...worldFeature(face, cadPlacement(binding, body), hit.point), part: part.name };
 }
-let picking = false;
-function startPick(text, onFeature) {
+let picking = false, pickAtFrame = false;
+/** Pick CAD features at the initial configuration, or with `atFrame` at the displayed result frame. */
+function startPick(text, onFeature, atFrame = false) {
   if (state.model.kind !== "spatial-assembly" || !state.step || !view) return notice("Import STEP parts into a 3D assembly to pick CAD features.", "warn");
   stopPick();
   picking = true;
-  view.setSample(null);
+  pickAtFrame = atFrame;
+  if (!atFrame) view.setSample(null);
   $("pickText").textContent = text;
   $("pickBar").hidden = false;
   view.setPickMode({
@@ -760,7 +767,7 @@ function startPick(text, onFeature) {
     },
     select: (hit) => {
       const feature = featureFromHit(hit);
-      if (!feature) return notice("Pick a cylindrical or planar face of a STEP part.", "warn");
+      if (!feature) return notice("Pick a cylindrical or planar face, or a circular edge, of a STEP part.", "warn");
       onFeature(feature);
     },
   });
@@ -768,6 +775,7 @@ function startPick(text, onFeature) {
 function stopPick() {
   if (!picking) return;
   picking = false;
+  pickAtFrame = false;
   view?.setPickMode(null);
   $("pickBar").hidden = true;
   $("viewTooltip").hidden = true;
@@ -778,7 +786,7 @@ $("pickCancel").onclick = stopPick;
 /** Put both ends of a joint on one picked feature: the anchors coincide and the axes agree. */
 function pickJointFromCad(jointId) {
   if ((state.model.frameLinks || []).some((link) => link.joint === jointId)) return notice("This joint follows a linked reference frame; unlink it before placing it from CAD.", "warn");
-  startPick(`Joint ${jointId}: click a bore, shaft or pin (cylindrical face) or a planar face.`, (feature) => {
+  startPick(`Joint ${jointId}: click a bore, shaft or pin (cylindrical face), a hole rim (circular edge) or a planar face.`, (feature) => {
     stopPick();
     placeJoint(jointId, feature);
   });
@@ -793,33 +801,58 @@ function placeJoint(jointId, feature) {
   renderTree();
   renderProperties();
   view?.setSelection(state.selection);
-  notice(`Joint ${jointId} placed on ${feature.part} · ${feature.label}. Both ends share the anchor${values.axisA ? " and axis" : ""}; Undo restores the previous placement.`);
+  notice(feature.part
+    ? `Joint ${jointId} placed on ${feature.part} · ${feature.label}. Both ends share the anchor${values.axisA ? " and axis" : ""}; Undo restores the previous placement.`
+    : `Joint ${jointId} moved ${feature.label}. Both ends keep a shared anchor; Undo restores the previous placement.`);
 }
-/** Drag a joint symbol in Pre-processing and drop it on a CAD face: it snaps to the face's axis or plane. */
+/**
+ * Where a dragged joint goes: the CAD feature under the pointer, or a constrained move from its
+ * current anchor in 1 mm steps — along its axis (Shift ignores CAD), across it (Alt), or in the
+ * view plane for joints without a single axis.
+ */
+function jointDragTarget(id, hit, input) {
+  const joint = state.model.joints.find((item) => item.id === id);
+  if (!joint || !input?.ray) return null;
+  if (!input.shift && !input.alt) {
+    const feature = featureFromHit(hit);
+    if (feature) return feature;
+  }
+  const body = state.model.bodies.find((item) => item.id === joint.a);
+  const axial = ["revolute", "cylindrical", "prismatic"].includes(joint.type) && joint.axisA;
+  const start = worldFromBody(body, joint.anchorA, joint.axisA || { x: 0, y: 0, z: 1 });
+  const [moved, how] = axial && !input.alt
+    ? [alongAxis(start.point, start.direction, input.ray), "along its axis"]
+    : [inPlane(start.point, axial ? start.direction : input.view, input.ray), axial ? "across its axis" : "in the view plane"];
+  if (!moved) return null;
+  return { type: "drag", point: moved.point, axis: start.direction, label: `${how} by ${(moved.offset * 1000).toFixed(0)} mm` };
+}
+/** Drag a joint symbol in Pre-processing: it snaps to a CAD feature, or moves along or across its axis. */
 const jointDrag = {
   accepts(entity) {
     if (workspace !== "model" || state.busy || state.model.kind !== "spatial-assembly" || !entity.startsWith("joint-")) return false;
     const id = entity.slice("joint-".length);
-    return Boolean(state.step?.parts?.some((part) => part.faces?.length)) && state.model.joints.some((joint) => joint.id === id)
-      && !(state.model.frameLinks || []).some((link) => link.joint === id);
+    return state.model.joints.some((joint) => joint.id === id) && !(state.model.frameLinks || []).some((link) => link.joint === id);
   },
+  id: null,
   start(entity) {
+    jointDrag.id = entity.slice("joint-".length);
     view.setSample(null);
     $("viewTooltip").hidden = true;
-    $("pickText").textContent = `Drop joint ${entity.slice("joint-".length)} on a bore, shaft or pin, or on a planar face. Esc cancels.`;
+    const cad = state.step?.parts?.some((part) => part.faces?.length || part.edges?.length);
+    $("pickText").textContent = `Joint ${entity.slice("joint-".length)}: ${cad ? "drop on a bore, shaft, pin, hole rim or face, or away from the CAD to slide along the axis" : "drag to slide along the axis"}. Shift: along the axis only · Alt: across the axis · Esc cancels.`;
     $("pickBar").hidden = false;
   },
-  move(hit, x, y) {
-    const feature = featureFromHit(hit);
-    view.showFeature(feature);
-    if (feature) placeTooltip(feature.label, feature.part, x, y);
+  move(hit, x, y, input) {
+    const target = jointDragTarget(jointDrag.id, hit, input);
+    view.showFeature(target);
+    if (target) placeTooltip(target.part ? target.label : `Move ${target.label}`, target.part, x, y);
     else $("viewTooltip").hidden = true;
   },
-  drop(entity, hit) {
-    const feature = featureFromHit(hit), id = entity.slice("joint-".length);
+  drop(entity, hit, input) {
+    const id = entity.slice("joint-".length), target = jointDragTarget(id, hit, input);
     jointDrag.cancel();
-    if (feature) placeJoint(id, feature);
-    else notice(`Joint ${id} is unchanged: drop it on a cylindrical or planar STEP face.`, "warn");
+    if (target) placeJoint(id, target);
+    else notice(`Joint ${id} is unchanged: the drag ran parallel to its axis or plane.`, "warn");
   },
   cancel() {
     view.showFeature(null);
@@ -858,17 +891,21 @@ const millimetres = (value) => `${(value * 1000).toFixed(2)} mm`;
 $("measureViewButton").onclick = () => {
   if (picking) return stopPick();
   measureFirst = null;
-  startPick("Measure: click the first CAD feature.", (feature) => {
+  // In Post-processing with a current result, measure the displayed frame.
+  const atFrame = workspace === "results" && Boolean(state.result?.samples?.length) && !stale();
+  if (atFrame) state.playing = false;
+  const when = () => (atFrame ? ` at t = ${format(state.result.samples[state.frame].time, 4)} s` : "");
+  startPick(`Measure${when()}: click the first CAD feature.`, (feature) => {
     if (!measureFirst) {
       measureFirst = feature;
-      $("pickText").textContent = `From ${feature.label}. Click the second feature.`;
+      $("pickText").textContent = `From ${feature.label}${when()}. Click the second feature.`;
       return;
     }
     const result = measureFeatures(measureFirst, feature);
     const d = result.delta;
-    $("pickText").textContent = `Distance ${millimetres(result.distance)} (Δx ${millimetres(d.x)}, Δy ${millimetres(d.y)}, Δz ${millimetres(d.z)})${result.angle === null ? "" : ` · axes ${result.angle.toFixed(2)}° apart`}. Click to measure again.`;
+    $("pickText").textContent = `Distance ${millimetres(result.distance)} (Δx ${millimetres(d.x)}, Δy ${millimetres(d.y)}, Δz ${millimetres(d.z)})${result.angle === null ? "" : ` · axes ${result.angle.toFixed(2)}° apart`}${when()}. Click to measure again.`;
     measureFirst = null;
-  });
+  }, atFrame);
   if (picking) $("measureViewButton").setAttribute("aria-pressed", "true");
 };
 // Hovering a tree row highlights the same entity in the 3D view.

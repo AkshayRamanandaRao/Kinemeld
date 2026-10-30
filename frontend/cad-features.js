@@ -16,7 +16,8 @@ function rotation(pose, spatial = true) {
     : new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (pose.ry || 0) * DEG);
 }
 
-/** The analytic face containing a triangle of a converted part, if the converter described it. */
+/** The analytic face containing a triangle of a converted part, if the converter described it.
+ *  Full circular edges are listed separately in `part.edges` and picked by line, not triangle. */
 export function faceAt(part, triangle) {
   return (part?.faces || []).find((face) => triangle >= face.triangles[0] && triangle < face.triangles[0] + face.triangles[1]) || null;
 }
@@ -36,6 +37,11 @@ export function cadPlacement(binding, body) {
 
 /** A face in model world coordinates: an anchor point, an axis (cylinder axis or plane normal) and a label. */
 export function worldFeature(face, placement, hitPoint = null) {
+  if (face.type === "circle") {
+    const axis = placement.direction(face.axis);
+    return { type: "circle", point: placement.point(face.centre), axis, radius: face.radius,
+      label: `Circle Ø${(face.radius * 2000).toFixed(1)} mm · axis ${describe(axis)}` };
+  }
   if (face.type === "cylinder") {
     const axis = placement.direction(face.axis);
     return { type: "cylinder", point: placement.point(face.centre), axis, radius: face.radius, length: face.length,
@@ -91,6 +97,41 @@ export function frameFromFeature(model, frame, feature) {
   // Near ry = ±90° the extraction amplifies the CAD axis tolerance; 1e-5° is far below modelling significance.
   const degrees = (angle) => Number((angle / DEG).toFixed(5)) || 0;
   return { translation: local.point, rotation: { rx: degrees(euler.x), ry: degrees(euler.y), rz: degrees(euler.z) } };
+}
+
+/** A body-frame point and direction in model world coordinates at the initial configuration. */
+export function worldFromBody(body, point, direction) {
+  if (!body) return { point: vector(point), direction: vector(direction).normalize() };
+  const turn = rotation(body.pose);
+  return { point: vector(point).applyQuaternion(turn).add(vector(body.pose)), direction: vector(direction).applyQuaternion(turn).normalize() };
+}
+
+const snap = (value, step) => (step > 0 ? Math.round(value / step) * step : value);
+
+/**
+ * The point on the line through `origin` along `axis` closest to `ray`, moved in `step`
+ * increments from `origin`. Null when the ray runs along the line.
+ */
+export function alongAxis(origin, axis, ray, step = 0.001) {
+  const u = axis.clone().normalize(), d = ray.direction.clone().normalize(), w = origin.clone().sub(ray.origin);
+  const b = u.dot(d), denominator = 1 - b * b;
+  if (denominator < 1e-9) return null;
+  const offset = snap((b * d.dot(w) - u.dot(w)) / denominator, step);
+  return { point: origin.clone().addScaledVector(u, offset), offset };
+}
+
+/**
+ * Where `ray` meets the plane through `origin` with `normal`, moved in `step` increments along
+ * two in-plane directions. Null when the ray runs parallel to the plane.
+ */
+export function inPlane(origin, normal, ray, step = 0.001) {
+  const n = normal.clone().normalize(), along = ray.direction.dot(n);
+  if (Math.abs(along) < 1e-9) return null;
+  const hit = ray.origin.clone().addScaledVector(ray.direction, origin.clone().sub(ray.origin).dot(n) / along);
+  const u = new THREE.Vector3().crossVectors(n, Math.abs(n.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)).normalize();
+  const v = new THREE.Vector3().crossVectors(n, u);
+  const offset = hit.sub(origin), a = snap(offset.dot(u), step), c = snap(offset.dot(v), step);
+  return { point: origin.clone().addScaledVector(u, a).addScaledVector(v, c), offset: Math.hypot(a, c) };
 }
 
 /** Distance between two picked features' points and, when both have axes, the angle between them. */

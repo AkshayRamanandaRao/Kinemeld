@@ -110,7 +110,7 @@ try {
     return { x: rect.left + (point.x + 1) / 2 * rect.width, y: rect.top + (1 - point.y) / 2 * rect.height };
   });
   await page.mouse.move(glyph.x, glyph.y);
-  await page.waitForFunction(() => /drag onto a CAD face/.test(document.querySelector('#viewTooltip')?.textContent || ''));
+  await page.waitForFunction(() => /onto a CAD feature to snap/.test(document.querySelector('#viewTooltip')?.textContent || ''));
   await page.mouse.down();
   await page.mouse.move(target.x, target.y, { steps: 10 });
   assert(await page.locator('#pickBar').isVisible());
