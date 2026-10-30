@@ -3,6 +3,29 @@
 All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/) while the project is in preview (0.x).
 
+## 0.9.0 — Interaction II
+
+### Pre-processing
+- **Hole rims:** the STEP converter reports every full circular edge (hole rims, shaft ends)
+  with centre, axis and radius, under `cadquery-ocp` 7.9 and 8. While picking or dragging,
+  rims are drawn on their parts; a rim near the pointer wins over the face it bounds unless
+  it is hidden behind a surface. Joints, frames and measurements use its centre and axis.
+- **Constrained dragging:** a dragged joint symbol snaps to the CAD feature under the
+  pointer, and otherwise slides along its own axis in 1 mm steps. Shift slides along the
+  axis even over CAD, Alt moves across it, and joints without a single axis move in the
+  plane facing you. Dragging now works in any 3D assembly, with or without CAD.
+
+### Post-processing
+- **Measure at the animated pose:** in Post-processing, Measure evaluates features at each
+  body's solved pose in the displayed frame and states the time.
+
+### Tests
+- `tests/interaction-ii-ui.mjs` places the wheel-end bearing on the hub's Ø55 rim, measures
+  the 70 mm between its rims, Shift-drags the bearing along its axis and checks that a
+  measurement at an animated frame sits on the displayed rim. Unit tests cover circle
+  features, body/world placement and the axis and plane drag geometry;
+  `backend/test_step_geometry.py` checks the reported rims.
+
 ## 0.8.0 — Studies in the demo set
 
 ### Featured parameter studies

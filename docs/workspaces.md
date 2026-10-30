@@ -18,28 +18,45 @@ higher than this estimate; MBDyn reports a singular assembly when constraints co
 ![Picking the hub cylinder of the wheel-end assembly to place the hub bearing](images/cad-picking.png)
 
 STEP imports keep each face's analytic geometry: cylinders (bores, shafts, pins) with
-their axis, centre, radius and length, and planes with a point and outward normal. In a 3D
-assembly with imported parts:
+their axis, centre, radius and length, and planes with a point and outward normal. They also
+keep each full circular edge — a hole rim or shaft end — with its centre, axis and radius.
+In a 3D assembly with imported parts:
 
 - **Place from CAD feature…** (joint inspector) enters pick mode. Hovering a face shows its
   axis, and for a cylinder its bore circle, with a label such as *Cylinder Ø55.0 mm · axis
   −x*. Clicking places **both ends** of the joint on the feature, so the anchors coincide
   and, for revolute, cylindrical and prismatic joints, the axes agree by construction. On a
-  plane, the anchor is the clicked point and the axis is the face normal. Universal joints
-  keep their perpendicular cross axes.
-- **Drag a joint symbol** onto a face to do the same in one gesture: the face under the
-  pointer is previewed while dragging, dropping off a face leaves the joint unchanged, and
-  **Esc** cancels.
+  plane, the anchor is the clicked point and the axis is the face normal. While picking,
+  hole rims are drawn as thin orange circles; a rim near the pointer wins over the face it
+  bounds, and its centre and axis place the joint (*Circle Ø55.0 mm · axis −x*). Rims hidden
+  behind a surface cannot be picked. Universal joints keep their perpendicular cross axes.
+
+  ![Hole rims drawn while picking; the hub's Ø55 rim is under the pointer](images/cad-rims.png)
+
+- **Drag a joint symbol** to move it:
+  - over a CAD face or rim, it snaps to that feature as above;
+  - elsewhere, it slides along its own axis (revolute, cylindrical and prismatic joints) in
+    1 mm steps, keeping its axis;
+  - **Shift** slides along the axis even over CAD; **Alt** moves it across the axis, in the
+    plane through the anchor; joints without a single axis (spherical, universal, weld) move
+    in the plane facing you.
+
+  The tooltip names the feature or the distance moved; **Esc** cancels, and each drag is one
+  undo step. Dragging works in any 3D assembly, with or without CAD.
 - **Named reference frames → Place from CAD feature…** puts the frame's origin on the
   feature and its local **+Z** along the cylinder axis or plane normal. Joint ends linked to
   the frame follow it.
 - **Measure** (ruler in the view header, or **M**) reports the distance between two picked
-  features, its x/y/z components, and the angle between their axes (0° for parallel axes).
+  features — faces or rims — its x/y/z components, and the angle between their axes (0° for
+  parallel axes).
 
-Features are evaluated at the initial configuration: a part attached to a body follows the
-body's initial pose, an unattached part stays where the STEP file placed it, and the view
-shows the initial pose while you pick. Every placement is one undo step. Faces that are not
-cylinders or planes (fillets, splines, tori) cannot be picked; enter those anchors by value.
+In Pre-processing, features are evaluated at the initial configuration: a part attached to a
+body follows the body's initial pose, an unattached part stays where the STEP file placed it,
+and the view shows the initial pose while you pick. In **Post-processing**, Measure uses the
+frame on screen instead: each attached part follows its body's solved pose at that time, and
+the result states the time (*… at t = 0.2250 s*), so clearances and travel can be read
+during the motion. Every placement is one undo step. Faces that are not cylinders or planes
+(fillets, splines, tori) and partial arcs cannot be picked; enter those anchors by value.
 
 ## 2 · Solve
 

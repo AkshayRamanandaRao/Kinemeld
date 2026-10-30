@@ -62,6 +62,8 @@ try {
   let target = await rimPoint();
   await page.mouse.move(target.x, target.y);
   await tooltip(/Circle Ø55\.0 mm · axis [−+]x/);
+  // KINEMELD_SCREENSHOT=docs/images/cad-rims.png captures the documentation image.
+  if (process.env.KINEMELD_SCREENSHOT) await page.screenshot({ path: process.env.KINEMELD_SCREENSHOT });
   await page.mouse.click(target.x, target.y);
   await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('Joint hub_axis placed on'));
   const rimX = await value('anchorA-x');
