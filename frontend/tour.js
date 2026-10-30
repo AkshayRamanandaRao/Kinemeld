@@ -49,7 +49,7 @@ const steps = [
   },
   {
     title: "Compare with the finished study",
-    text: "The Wheel-end drop test featured study is this model, built and verified: free fall, first contact time and the contact energy balance are checked against independent calculations. Save your project to keep the model, CAD, attachments and results together.",
+    text: "The Wheel-end drop test featured study is this model, built and verified: free fall, first contact time and the contact energy balance are checked against independent calculations. It also includes a parameter study: in Solve → Parameter study, run the preloaded tyre stiffness sweep (10–40 kN/m) and compare the five contact forces. Save your project to keep the model, CAD, attachments and results together.",
     target: () => "#examplesButton",
     action: { label: "Open the finished study", run: (actions) => actions.openStudy?.("wheel-end-drop") },
   },

@@ -20,11 +20,12 @@ try {
   await page.locator('.example-card').filter({ has: page.getByRole('heading', { name: 'Wheel-end drop test', exact: true }) }).getByRole('button').click();
   await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('Wheel-end drop test loaded'), null, { timeout: 240000 });
 
-  // Choose the tyre contact stiffness; the suggested values bracket the current 20 kN/m.
+  // Choose the tyre contact stiffness, preloaded around the current 20 kN/m.
   await page.locator('#modelTree [data-entity^="contact-"]').first().click();
   await page.locator('[data-step="simulate"]').click();
   assert.equal(await page.locator('#studyParameter').inputValue(), 'contacts/tire_plane/stiffness', 'the selected contact preselects its inputs');
-  assert.equal(await page.locator('#studyValues').inputValue(), '10000, 15000, 20000, 30000, 40000');
+  // The featured wheel-end drop opens with its own tyre-stiffness study values.
+  assert.equal(await page.locator('#studyValues').inputValue(), '10000, 15000, 30000, 40000');
   assert.match(await page.locator('#studyHint').textContent(), /Current value 20000 N\/m, always solved as the baseline/);
   assert.equal(await page.locator('#studyUnit').textContent(), 'N/m');
   await page.locator('#studyValues').fill('40000, 10000');

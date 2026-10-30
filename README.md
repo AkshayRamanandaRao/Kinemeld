@@ -33,6 +33,17 @@ mass and inertia computed from the solids, a tyre contact and drop conditions, t
 solve and the tyre-load plot. [Watch the MP4](docs/demos/workflow-wheel-end.mp4) · the
 **guided tour** (compass icon) walks through the same steps.
 
+### Parameter study: landing-gear sink speed
+
+[![Parameter study of the landing-gear drop test: four sink speeds solved by MBDyn and compared on one plot](docs/demos/study-gear-drop.png)](docs/demos/study-gear-drop.mp4)
+
+The oleo-pneumatic gear drop test opens with its study preloaded: the initial velocity of all
+bodies swept from 1.5 to 3 m/s around the 2 m/s baseline. MBDyn solves the four cases; the
+plot overlays their tyre loads and the table lists each case's peak, RMS and final value. The
+peak tyre load rises from 18.0 to 27.5 kN, and in every case the mechanical, stored and
+dissipated energy balance within 0.1 % of the impact energy.
+[Watch the MP4](docs/demos/study-gear-drop.mp4) · [parameter studies](docs/workspaces.md#parameter-studies)
+
 ### AI-assisted set-up
 
 [![The local AI assistant adds a wheel bearing, tyre contact and drop conditions for review](docs/demos/ai-assistant-setup.png)](docs/demos/ai-assistant-setup.mp4)
@@ -59,7 +70,7 @@ without a GPU; the four-minute wait for the model is condensed.
 <td width="50%"><img src="docs/demos/quarter-car.gif" alt="Double-wishbone quarter-car swept through wheel travel, with knuckle camber and toe plotted"><br>
 <b>Double-wishbone quarter-car</b> — SLA arms, tie rod and coil-over swept through ±60 mm. Camber gain 2.1°, bump steer under 0.7°. <a href="docs/demos/quarter-car.mp4">MP4</a></td>
 <td width="50%"><img src="docs/demos/gear-drop.gif" alt="Landing-gear drop test with oleo strut force components plotted"><br>
-<b>Oleo-pneumatic gear drop test</b> — 290 kg at 2 m/s onto a gas/oil strut and damped tyre. Orifice spike, gas spring, static settle. <a href="docs/demos/gear-drop.mp4">MP4</a></td>
+<b>Oleo-pneumatic gear drop test</b> — 290 kg at 2 m/s onto a gas/oil strut and damped tyre. Orifice spike, gas spring, static settle; includes a sink-speed study. <a href="docs/demos/gear-drop.mp4">MP4</a></td>
 </tr>
 <tr>
 <td><img src="docs/demos/aircraft-nose-gear.gif" alt="Aircraft nose-gear STEP assembly through an 80 mm shock-strut stroke"><br>
@@ -69,7 +80,7 @@ without a GPU; the four-minute wait for the model is condensed.
 </tr>
 <tr>
 <td><img src="docs/demos/wheel-end-drop.gif" alt="STEP wheel end dropped onto a rigid floor with tyre contact force plotted"><br>
-<b>Wheel-end drop test</b> — original STEP knuckle, hub and tyre dropped at 1 m/s; first contact matches free fall and the lost energy equals contact dissipation. <a href="docs/demos/wheel-end-drop.mp4">MP4</a></td>
+<b>Wheel-end drop test</b> — original STEP knuckle, hub and tyre dropped at 1 m/s; first contact matches free fall and the lost energy equals contact dissipation. Its tyre-stiffness study matches an independent drop calculation within 0.5 %. <a href="docs/demos/wheel-end-drop.mp4">MP4</a></td>
 <td><img src="docs/demos/slider-crank.gif" alt="Slider-crank engine running up to speed with crank angular velocity plotted"><br>
 <b>Slider-crank engine run-up</b> — loop closed by spherical, universal and prismatic joints; motor torque against a pumping load. <a href="docs/demos/slider-crank.mp4">MP4</a></td>
 </tr>
@@ -179,7 +190,7 @@ for scope and limitations.
 
 ## Roadmap
 
-Next: featured parameter studies in the demo set, verified against independent physics.
+Next: picking circular edges, measuring at the animated pose and constrained dragging.
 Longer term: contact friction,
 flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
 and the [changelog](CHANGELOG.md).

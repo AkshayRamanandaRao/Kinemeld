@@ -3,6 +3,38 @@
 All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/) while the project is in preview (0.x).
 
+## 0.8.0 — Studies in the demo set
+
+### Featured parameter studies
+- **Landing-gear drop test, sink speed 1.5–3 m/s:** the study opens preloaded; MBDyn solves
+  four cases and the peak tyre load rises from 18.0 to 27.5 kN (load factor 5.19 to 7.94).
+  In every case mechanical, stored and dissipated energy balance within 0.08 % of the impact
+  energy, and the strut never bottoms.
+- **Wheel-end drop test, tyre stiffness 10–40 kN/m:** every case's peak contact force matches
+  an independent Runge–Kutta solution of the drop on the same contact law within 0.5 %
+  (620 to 1,291 N).
+- `verify_featured_studies.py` runs every case of both studies.
+
+### Studies
+- Featured catalog entries can define a parameter study (input, values, response, label).
+  The gallery card says a study is included, the Solve card opens preloaded, and the plot
+  switches to the study's response when it finishes.
+- Projects save the current study set-up and restore it when reopened.
+- **All bodies** inputs sweep an initial velocity that every body shares (a drop or sink
+  speed) without breaking joint consistency.
+
+### Demos and guides
+- New homepage recording: the landing-gear sink-speed study from the gallery to the animated
+  3 m/s case (`tests/record-study-demo.mjs`).
+- The guided tour's last step points to the wheel-end tyre-stiffness study.
+- The featured study guide documents both studies with their tables; a duplicated robot-arm
+  section is merged.
+
+### Tests
+- `tests/featured-study-ui.mjs` opens the gear drop, runs its study and saves and reopens the
+  set-up; `backend/test_featured_studies.py` checks study definitions and case semantics; the
+  tour test checks the preloaded study.
+
 ## 0.7.0 — Parameter studies
 
 ### Solve

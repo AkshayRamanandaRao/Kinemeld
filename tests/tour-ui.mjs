@@ -56,11 +56,15 @@ try {
  assert.match(await page.locator('#tourText').textContent(),/Run simulation \(F5\)/);
  await page.locator('#tourNext').click();assert.match(await title(),/Post-processing/);
  await page.locator('#tourNext').click();assert.match(await title(),/finished study/);
+ assert.match(await page.locator('#tourText').textContent(),/Parameter study, run the preloaded tyre stiffness sweep/);
  assert.equal(await page.locator('#tourNext').textContent(),'Finish');
  await page.locator('#tourAction').click();
  await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('Wheel-end drop test loaded'),null,{timeout:240000});
  assert.match(await page.locator('#stepStatus').textContent(),/attached/);
- report.checks.push('The final step opens the finished featured study');
+ await page.locator('[data-step="simulate"]').click();
+ assert.equal(await page.locator('#studyParameter').inputValue(),'contacts/tire_plane/stiffness');
+ assert.equal(await page.locator('#studyValues').inputValue(),'10000, 15000, 30000, 40000');
+ report.checks.push('The final step opens the finished featured study with its tyre stiffness study preloaded');
  await page.route('**/api/tour-preference',route=>route.request().method()==='POST' ? route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'unavailable'})}) : route.continue());
  await page.locator('#tourDisable').check();
  await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('tour preference could not be saved'));
@@ -71,4 +75,7 @@ try {
  assert.deepEqual(errors,[]);report.ok=true;
  console.log('Guided tour: new assembly, wheel-end STEP import, workspaces, finished study and preference handling passed.');
 } catch(e){report.ok=false;report.failure=e.stack;process.exitCode=1;console.error(e);await page.screenshot({path:'tests/evidence/tour-ui-failure.png',fullPage:true}).catch(()=>{});}
-finally{report.errors=errors;report.completed=new Date().toISOString();await mkdir('tests/evidence',{recursive:true});await writeFile('tests/evidence/tour-ui-verification.json',JSON.stringify(report,null,2));await browser.close();}
+finally{
+ // Leave the server's first-run preference off, as other tests expect no tour to open.
+ await fetch(`${base}/api/tour-preference`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})}).catch(()=>{});
+ report.errors=errors;report.completed=new Date().toISOString();await mkdir('tests/evidence',{recursive:true});await writeFile('tests/evidence/tour-ui-verification.json',JSON.stringify(report,null,2));await browser.close();}
