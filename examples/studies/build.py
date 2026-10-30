@@ -316,7 +316,7 @@ def gear_spin_up():
     tower.add("brick", {"x": 0.96, "y": 0.08, "z": 0.06}, (0, 0, 1.63), label="drop-tower-head")
     tower.add("brick", {"x": 1.2, "y": 0.5, "z": 0.02}, (0, 0, -0.01), label="platform")
     return project("Landing-gear spin-up drag: reverse-spun wheel drop", [airframe, piston, wheel], joints, {"duration": 0.4, "step": 0.0002}, fixture=tower,
-                   view={"camera": [1.75, -2.2, 0.95], "target": [0, 0, 0.5], "signal": 18, "selection": "node-wheel", "trails": False},
+                   view={"camera": [1.05, -1.55, 0.72], "target": [0, 0, 0.36], "signal": 15, "selection": "node-wheel", "trails": False},
                    forces=oleo, contacts=contact)
 
 

@@ -40,7 +40,7 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
       const next = new Map((after[collection] || []).map((entry) => [entry.id, entry]));
       for (const [id, entry] of next) {
         if (!old.has(id)) {
-          const detail = collection === "joints" ? `${entry.type} joint ${entry.a} ↔ ${entry.b}` : collection === "contacts" ? `sphere-plane contact on ${entry.body}, radius ${number(entry.radius)} m` : collection === "forces" ? `${entry.type === "oleo-strut" ? "oleo strut" : "spring-damper"} ${entry.a} ↔ ${entry.b}` : "";
+          const detail = collection === "joints" ? `${entry.type} joint ${entry.a} ↔ ${entry.b}` : collection === "contacts" ? `sphere-plane contact on ${entry.body}, radius ${number(entry.radius)} m${entry.friction > 0 ? `, friction ${number(entry.friction)}` : ""}` : collection === "forces" ? `${entry.type === "oleo-strut" ? "oleo strut" : "spring-damper"} ${entry.a} ↔ ${entry.b}` : "";
           lines.push(`Added ${label.toLowerCase()} ${id}${detail ? `: ${detail}` : ""}`);
           continue;
         }

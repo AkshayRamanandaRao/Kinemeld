@@ -8,7 +8,7 @@ const ELEMENT_COLUMNS = {
   cylinder: { position: "position_m", velocity: "velocity_m_s", angle: "angle_rad", angularVelocity: "angularVelocity_rad_s" },
   rotary: { angle: "angle_rad", velocity: "velocity_rad_s", torque: "torque_Nm" },
   torque: { torque: "torque_Nm", power: "power_W" },
-  contact: { gap: "gap_m", penetration: "penetration_m", force: "force_N", power: "power_W", energy: "energy_J", dampingPower: "dampingPower_W", dissipatedEnergy: "dissipatedEnergy_J" },
+  contact: { gap: "gap_m", penetration: "penetration_m", force: "force_N", power: "power_W", energy: "energy_J", dampingPower: "dampingPower_W", dissipatedEnergy: "dissipatedEnergy_J", frictionForce: "frictionForce_N", slip: "slip_m_s", frictionPower: "frictionPower_W", frictionEnergy: "frictionEnergy_J" },
   "joint-force": { force: "force_N", power: "power_W" },
   drive: { angle: "angle_rad", speed: "speed_rad_s", torque: "torque_Nm", power: "power_W" },
 };

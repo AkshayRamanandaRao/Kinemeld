@@ -38,6 +38,8 @@ const NAMES = {
   compressionMeteringArea: ["compression orifice area", "m²"],
   reboundMeteringArea: ["rebound orifice area", "m²"],
   radius: ["radius", "m"],
+  friction: ["friction coefficient", ""],
+  slipVelocity: ["friction slip velocity", "m/s"],
   amplitude: ["amplitude", ""],
   offset: ["offset", ""],
   frequencyHz: ["frequency", "Hz"],
