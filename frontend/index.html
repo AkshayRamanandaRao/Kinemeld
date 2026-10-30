@@ -217,6 +217,15 @@
             <button id="solveRunButton" class="primary full-width"><span data-icon="play"></span>Run MBDyn</button>
             <button id="previewButton" class="text-button full-width"><span data-icon="wave"></span>Reference preview (independent check)</button>
           </section>
+          <section class="card study-card" id="studyCard">
+            <h3><span data-icon="layers"></span>Parameter study</h3>
+            <p class="field-help">Solve the model for several values of one input, then compare the responses case by case.</p>
+            <label>Input to vary<select id="studyParameter" aria-label="Input to vary"></select></label>
+            <label>Values<span class="number-field"><input id="studyValues" type="text" inputmode="decimal" spellcheck="false" aria-label="Values to solve" /><span id="studyUnit"></span></span></label>
+            <p class="field-help" id="studyHint">Up to 12 values separated by commas. The current value is always solved as the baseline.</p>
+            <button id="studyRunButton" class="secondary full-width" type="button"><span data-icon="play"></span>Run study</button>
+            <div id="studyProgress" class="study-progress" role="status" hidden><span id="studyProgressText"></span><progress id="studyProgressBar" max="1" value="0"></progress></div>
+          </section>
         </div>
         <div class="pane pane-results">
           <div class="panel-heading"><span>Results</span><span id="resultsBadge" class="badge">Empty</span></div>
@@ -228,6 +237,14 @@
               <div><small>Samples</small><strong id="samplesMetric">—</strong></div>
               <div><small>Run</small><strong id="runId" class="run-id">No solver run</strong></div>
             </div>
+          </section>
+          <section class="card study-results" id="studyResults" hidden>
+            <h3><span data-icon="layers"></span>Parameter study</h3>
+            <p class="field-help" id="studySummary"></p>
+            <label id="studyChannelField" hidden>Channel<select id="studyChannel" aria-label="Study response channel"></select></label>
+            <div class="study-table-wrap"><table id="studyTable" class="study-table"></table></div>
+            <p class="field-help">Select a case to animate it. Projects save the baseline result; the study itself is kept for this session.</p>
+            <div class="card-actions"><button id="studyCsvButton" class="secondary" type="button"><span data-icon="download"></span>Export table</button><button id="studyClearButton" class="text-button" type="button">Clear study</button></div>
           </section>
           <section class="card">
             <h3><span data-icon="compare"></span>Compare runs</h3>
