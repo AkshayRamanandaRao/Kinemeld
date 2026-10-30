@@ -6,7 +6,7 @@ mod private_runtime;
 use project_open::ProjectOpenState;
 
 use mbdyn_studio_core::{
-    BackendService, ProjectDocument, ProjectSession, SaveMode, MAX_PROJECT_BYTES,
+    BackendService, ProjectDocument, ProjectSession, RecoveryStore, SaveMode, MAX_PROJECT_BYTES,
 };
 use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use serde::Deserialize;
@@ -81,6 +81,19 @@ fn question(title: &str, description: &str) -> bool {
         == MessageDialogResult::Yes
 }
 
+/// The project as the frontend last showed it, on top of the open session's document.
+fn document_from(session: Option<&ProjectSession>, payload: &Value) -> Result<ProjectDocument, String> {
+    let model = payload.get("model").cloned().ok_or("Missing project model.")?;
+    let mut document = match session { Some(s) => s.document().clone(), None => ProjectDocument::new(model.clone()).map_err(|e| e.to_string())? };
+    document.model = model;
+    document.result = payload.get("result").filter(|value| !value.is_null()).cloned();
+    document.view = payload.get("view").cloned().unwrap_or(Value::Null);
+    if let Some(assets) = payload.get("assets").filter(|value| !value.is_null()) { document.extra.insert("assets".into(), assets.clone()); }
+    else { document.extra.remove("assets"); }
+    document.check().map_err(|e| e.to_string())?;
+    Ok(document)
+}
+
 fn smoke_report(root: &Path, value: &Value) -> Result<(), String> {
     let path = root
         .join("runs")
@@ -144,6 +157,11 @@ fn run() -> Result<(), String> {
     let smoke = env::args().any(|arg| arg == "--smoke");
     let root = workspace()?;
     let data = data_directory(&root)?;
+    let recovery = RecoveryStore::new(data.join("recovery")).map_err(|error| format!("Cannot prepare the recovery folder in {}: {error}", data.display()))?;
+    // A snapshot from a session that ended without saving waits for the user's decision;
+    // until then autosave must not replace it.
+    let mut recovery_pending = !matches!(recovery.read(), Ok(None));
+    let mut recovered_from: Option<PathBuf> = None;
     let python = private_runtime::python_for(&root, env::var_os("MBDYN_STUDIO_PYTHON"))?;
     let service = BackendService::start_with_data_dir(&root, &python, &data).map_err(|error| format!("Cannot start the local Python solver service: {error}. Repair the application-local Python runtime, install Python 3.10+, or set MBDYN_STUDIO_PYTHON to its executable."))?;
     let base = service.client().base_url();
@@ -207,7 +225,11 @@ fn run() -> Result<(), String> {
         match event {
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
                 if busy || agent_busy || projects.is_opening() { MessageDialog::new().set_level(MessageLevel::Info).set_title("Work in progress").set_description("Wait for the current simulation, agent request or project open to finish before closing the application.").show(); }
-                else if !projects.dirty || question("Unsaved project", "Discard unsaved changes and close Kinemeld?") { *flow = ControlFlow::Exit; }
+                else if !projects.dirty || question("Unsaved project", "Discard unsaved changes and close Kinemeld?") {
+                    // A clean close leaves nothing to recover; an undecided earlier snapshot is kept.
+                    if !recovery_pending { let _ = recovery.clear(); }
+                    *flow = ControlFlow::Exit;
+                }
             }
             Event::UserEvent(body) => {
                 let Ok(request) = serde_json::from_str::<Request>(&body) else { return; };
@@ -246,23 +268,63 @@ fn run() -> Result<(), String> {
                     "save" => {
                         if busy { return Err("Wait for the active simulation before saving.".into()); }
                         projects.ensure_idle()?;
-                        let model = request.payload.get("model").cloned().ok_or("Missing project model.")?;
-                        let mut document = match projects.session.as_ref() { Some(s) => s.document().clone(), None => ProjectDocument::new(model.clone()).map_err(|e| e.to_string())? };
-                        document.model = model;
-                        document.result = request.payload.get("result").filter(|value| !value.is_null()).cloned();
-                        document.view = request.payload.get("view").cloned().unwrap_or(Value::Null);
-                        if let Some(assets) = request.payload.get("assets").filter(|value| !value.is_null()) { document.extra.insert("assets".into(), assets.clone()); }
-                        else { document.extra.remove("assets"); }
-                        document.check().map_err(|e| e.to_string())?;
+                        let document = document_from(projects.session.as_ref(), &request.payload)?;
                         match projects.session.as_mut() { Some(s) => s.replace_document(document).map_err(|e| e.to_string())?, None => projects.session = Some(ProjectSession::new(document).map_err(|e| e.to_string())?) }
                         let session = projects.session.as_mut().ok_or("Project session unavailable.")?;
                         let save_as = request.payload.get("saveAs").and_then(Value::as_bool).unwrap_or(false) || session.path().is_none();
                         let outcome = if save_as {
-                            let Some(path) = FileDialog::new().add_filter("Kinemeld project", &["mbdyn-studio"]).set_file_name("project.mbdyn-studio").save_file() else { return Ok(json!({"cancelled":true})); };
+                            // A recovered project suggests the file it came from.
+                            let mut dialog = FileDialog::new().add_filter("Kinemeld project", &["mbdyn-studio"]);
+                            match recovered_from.as_ref().and_then(|path| Some((path.parent()?, path.file_name()?.to_str()?))) {
+                                Some((folder, name)) => { dialog = dialog.set_directory(folder).set_file_name(name); }
+                                None => { dialog = dialog.set_file_name("project.mbdyn-studio"); }
+                            }
+                            let Some(path) = dialog.save_file() else { return Ok(json!({"cancelled":true})); };
                             let mode = if path.exists() { SaveMode::ReplaceExisting } else { SaveMode::CreateNew };
                             session.save_as(&path, mode)
                         } else { session.save() }.map_err(|e| e.to_string())?;
-                        projects.dirty = false; Ok(json!({"path":outcome.path,"backup":outcome.backup}))
+                        projects.dirty = false;
+                        recovered_from = None;
+                        // The saved file now holds this work; a failed removal only means a stale prompt later.
+                        let _ = recovery.clear();
+                        Ok(json!({"path":outcome.path,"backup":outcome.backup}))
+                    }
+                    "autosave" => {
+                        if recovery_pending || busy || !projects.dirty || projects.is_opening() { return Ok(json!({"skipped":true})); }
+                        let document = document_from(projects.session.as_ref(), &request.payload)?;
+                        let path = projects.session.as_ref().and_then(ProjectSession::path).map(Path::to_path_buf).or_else(|| recovered_from.clone());
+                        let snapshot = recovery.write(&document, path.as_deref()).map_err(|e| e.to_string())?;
+                        Ok(json!({"savedAt":snapshot.saved_at}))
+                    }
+                    "recovery" => match recovery.read() {
+                        Ok(Some(snapshot)) => Ok(json!({"savedAt":snapshot.saved_at,"path":snapshot.project_path,"name":snapshot.document.model["name"]})),
+                        Ok(None) => { recovery_pending = false; Ok(json!({})) }
+                        Err(error) => {
+                            let aside = recovery.set_aside().map_err(|e| e.to_string())?;
+                            recovery_pending = false;
+                            Ok(json!({"damaged":error.to_string(),"setAside":aside}))
+                        }
+                    },
+                    "recovery-open" => {
+                        if busy { return Err("Wait for the active simulation before recovering a project.".into()); }
+                        projects.ensure_idle()?;
+                        if projects.dirty && !question("Unsaved project", "Discard unsaved changes and recover the autosaved project?") { return Ok(json!({"cancelled":true})); }
+                        let snapshot = recovery.read().map_err(|e| e.to_string())?.ok_or("No autosaved project is waiting for recovery.")?;
+                        // Recovered work opens untitled, so Save asks where to write it instead of
+                        // overwriting a file that may have changed since.
+                        let candidate = ProjectSession::new(snapshot.document.clone()).map_err(|e| e.to_string())?;
+                        let value = json!({"project":candidate.document(),"path":snapshot.project_path,"savedAt":snapshot.saved_at,"recovered":true});
+                        projects.set_pending(candidate)?;
+                        recovered_from = snapshot.project_path;
+                        Ok(value)
+                    }
+                    // The frontend shows the recovered project; autosave may now replace the snapshot.
+                    "recovery-adopted" => { recovery_pending = false; Ok(json!({})) }
+                    "recovery-discard" => {
+                        let aside = recovery.set_aside().map_err(|e| e.to_string())?;
+                        recovery_pending = false;
+                        recovered_from = None;
+                        Ok(json!({"setAside":aside}))
                     }
                     "smoke" if smoke => {
                         let report = smoke_save(&root, &data, &request.payload)?;

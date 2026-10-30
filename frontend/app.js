@@ -151,7 +151,10 @@ const stepMass = setupStepMass({
 });
 function markNativeDirty() {
   if (!applyingNativeProject) { projectRevision++; browserDirty = true; }
-  if (nativeDesktop && !applyingNativeProject) nativeDesktop.notify("dirty");
+  if (nativeDesktop && !applyingNativeProject) {
+    nativeDesktop.notify("dirty");
+    scheduleAutosave();
+  }
 }
 const signature = () => JSON.stringify(state.model);
 const sourceInfo = (model = state.model) =>
@@ -2197,37 +2200,15 @@ async function nativeSave(saveAs) {
   $("saveButton").disabled = true;
   $("saveAsButton").disabled = true;
   try {
-    const model = structuredClone(state.model);
     const modelSignature = signature();
     const originalResult = state.result;
     const originalReference = state.reference;
-    const originalStep = state.step, stepMetadata = state.step ? structuredClone(state.step.metadata) : null;
-    let result = state.result ? structuredClone(state.result) : null;
-    if (result?.source === "MBDyn" && !result.csvText && result.files?.csv) {
-      if (!/^\/api\/runs\/[0-9a-f]{32}\/results\.csv$/.test(result.files.csv))
-        throw new Error(
-          "The saved result contains an unsupported CSV location.",
-        );
-      const response = await fetch(result.files.csv);
-      if (!response.ok)
-        throw new Error(
-          "The full solver CSV is unavailable. The project was not saved; preserve the run folder and retry.",
-        );
-      result.csvText = await response.text();
-    }
-    const viewState = currentViewState();
-    const payload = {
-      model,
-      result,
-      view: viewState,
-      assets: originalReference || stepMetadata ? {...(originalReference ? {reference:originalReference.metadata} : {}), ...(stepMetadata ? {step:stepMetadata} : {})} : null,
-      saveAs,
-    };
-    if (new Blob([JSON.stringify(payload)]).size > 32 * 1024 * 1024)
-      throw new Error("Project exceeds 32 MiB. Export the CSV, clear the loaded result, then save the model and geometry.");
+    const originalStep = state.step, stepJson = JSON.stringify(state.step?.metadata);
+    const payload = { ...(await projectPayload()), saveAs };
     const saved = await nativeDesktop.call("save", payload);
     if (saved.cancelled) return;
-    if (signature() !== modelSignature || state.result !== originalResult || state.reference !== originalReference || state.step !== originalStep || JSON.stringify(state.step?.metadata) !== JSON.stringify(stepMetadata)) {
+    cancelAutosave();
+    if (signature() !== modelSignature || state.result !== originalResult || state.reference !== originalReference || state.step !== originalStep || JSON.stringify(state.step?.metadata) !== stepJson) {
       markNativeDirty();
       notice(`Saved a snapshot to ${saved.path}; newer edits remain unsaved.`, "warn");
       return;
@@ -2243,6 +2224,116 @@ async function nativeSave(saveAs) {
     state.saving = false;
     $("saveButton").disabled = state.busy;
     $("saveAsButton").disabled = state.busy;
+  }
+}
+// The full solver CSV of a run, fetched once (and shared while in flight) for saves and autosaves.
+const resultCsv = new WeakMap();
+function fullCsv(source) {
+  if (!resultCsv.has(source)) {
+    const text = fetch(source.files.csv).then((response) => {
+      if (!response.ok)
+        throw new Error("The full solver CSV is unavailable. The project was not saved; preserve the run folder and retry.");
+      return response.text();
+    });
+    resultCsv.set(source, text);
+    text.catch(() => resultCsv.delete(source));
+  }
+  return resultCsv.get(source);
+}
+/** The project as the desktop saves it: model, result with its full CSV (unless left out), view and asset metadata. */
+async function projectPayload(includeResult = true) {
+  const model = structuredClone(state.model);
+  const reference = state.reference, stepMetadata = state.step ? structuredClone(state.step.metadata) : null;
+  const source = includeResult ? state.result : null, view = currentViewState();
+  let result = source ? structuredClone(source) : null;
+  if (result?.source === "MBDyn" && !result.csvText && result.files?.csv) {
+    if (!/^\/api\/runs\/[0-9a-f]{32}\/results\.csv$/.test(result.files.csv))
+      throw new Error("The saved result contains an unsupported CSV location.");
+    result.csvText = await fullCsv(source);
+  }
+  const payload = {
+    model,
+    result,
+    view,
+    assets: reference || stepMetadata ? {...(reference ? {reference:reference.metadata} : {}), ...(stepMetadata ? {step:stepMetadata} : {})} : null,
+  };
+  if (new Blob([JSON.stringify(payload)]).size > 32 * 1024 * 1024)
+    throw new Error("Project exceeds 32 MiB. Export the CSV, clear the loaded result, then save the model and geometry.");
+  return payload;
+}
+// ---------- Desktop autosave and crash recovery ----------
+// While the desktop project has unsaved edits, a snapshot goes to the user's data folder once
+// editing pauses, and at least once a minute during continuous editing. Saving or closing
+// normally removes it; a snapshot found at start-up is offered back.
+const AUTOSAVE_QUIET_MS = 15000, AUTOSAVE_MAX_MS = 60000;
+let autosaveTimer = null, autosaveDeadline = 0, autosaveEnabled = false, autosaveFailed = false;
+function scheduleAutosave() {
+  if (!nativeDesktop || !autosaveEnabled) return;
+  const now = Date.now();
+  if (!autosaveTimer) autosaveDeadline = now + AUTOSAVE_MAX_MS;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(autosave, Math.max(0, Math.min(AUTOSAVE_QUIET_MS, autosaveDeadline - now)));
+}
+function cancelAutosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = null;
+}
+async function autosave() {
+  autosaveTimer = null;
+  if (!browserDirty) return;
+  if (state.saving || state.opening || state.busy) return scheduleAutosave();
+  try {
+    let payload;
+    try {
+      payload = await projectPayload();
+    } catch (error) {
+      // A result too large for a project still leaves the model, geometry and view worth keeping.
+      if (!/exceeds 32 MiB/.test(error.message)) throw error;
+      payload = await projectPayload(false);
+    }
+    const saved = await nativeDesktop.call("autosave", payload, 30000);
+    if (saved.savedAt) {
+      $("dirtyMark").title = `Unsaved changes · autosaved for recovery at ${new Date(saved.savedAt).toLocaleTimeString()}`;
+      autosaveFailed = false;
+    }
+  } catch (error) {
+    // Report once per failure streak; editing continues and the next change retries.
+    if (!autosaveFailed) notice(`Autosave for crash recovery failed: ${error.message}`, "warn");
+    autosaveFailed = true;
+  }
+}
+async function offerRecovery() {
+  let pending;
+  try {
+    pending = await nativeDesktop.call("recovery", {}, 10000);
+  } catch (error) {
+    notice(`Could not check for autosaved work: ${error.message}`, "warn");
+    return;
+  }
+  if (pending.damaged) notice(`An autosaved project could not be read and was kept at ${pending.setAside}.`, "warn");
+  if (!pending.savedAt) {
+    autosaveEnabled = true;
+    return;
+  }
+  $("recoveryText").textContent = `Kinemeld closed without saving changes to ${pending.name ? `“${pending.name}”` : "a project"}${pending.path ? ` (${pending.path})` : ""}. They were autosaved at ${new Date(pending.savedAt).toLocaleString()}.`;
+  $("recoveryDialog").showModal();
+  const recover = await new Promise((resolve) => {
+    $("recoveryOpen").onclick = () => resolve(true);
+    $("recoveryDiscard").onclick = () => resolve(false);
+    $("recoveryDialog").oncancel = (event) => { event.preventDefault(); };
+  });
+  $("recoveryDialog").close();
+  if (recover) await nativeOpen("recovery-open");
+  else await setRecoveryAside();
+  autosaveEnabled = true;
+  if (browserDirty) scheduleAutosave();
+}
+async function setRecoveryAside(reason = "") {
+  try {
+    const aside = await nativeDesktop.call("recovery-discard", {}, 10000);
+    if (aside.setAside) notice(`${reason}The autosaved project was set aside at ${aside.setAside}.`, reason ? "warn" : "");
+  } catch (error) {
+    notice(`${reason}The autosaved project could not be set aside: ${error.message}`, "warn");
   }
 }
 function currentViewState() {
@@ -2488,8 +2579,10 @@ async function confirmNativeClean(token, dirtyRevision, openedRevision) {
     }
   }
 }
-async function nativeOpen() {
+/** Open a project chosen in a native dialog, or with op "recovery-open" the autosaved one. */
+async function nativeOpen(op = "open") {
   if (state.opening || state.saving || state.busy) return;
+  const recovering = op === "recovery-open";
   state.opening = true;
   const revision = projectRevision;
   let accepted = false;
@@ -2498,8 +2591,11 @@ async function nativeOpen() {
   let nextReference;
   let nextStep;
   try {
-    candidate = await nativeDesktop.call("open");
-    if (candidate.cancelled) return;
+    candidate = await nativeDesktop.call(op);
+    if (candidate.cancelled) {
+      if (recovering) await setRecoveryAside();
+      return;
+    }
     const project = candidate.project;
     if (!project?.model || !fields[project.model.kind])
       throw new Error("This project uses a model family this app cannot open.");
@@ -2534,6 +2630,16 @@ async function nativeOpen() {
     const openedRevision=projectRevision;
     status("Confirming project open · saving and running are paused");
     const dirtyRevision=await confirmNativeOpen(acceptedToken);
+    if (recovering) {
+      // Recovered work is unsaved by definition: skip the clean handshake and keep it dirty.
+      try { await nativeDesktop.call("recovery-adopted", {}, 10000); }
+      catch (error) { notice(`Recovered, but autosave stays paused for this session: ${error.message}`, "warn"); }
+      markNativeDirty();
+      $("dirtyMark").title = "Unsaved changes";
+      notice(`Recovered the work autosaved at ${new Date(candidate.savedAt).toLocaleTimeString()}. It is unsaved: Save asks where to write it${candidate.path ? `, starting at ${candidate.path}` : ""}.`);
+      status("Recovered autosaved project · unsaved");
+      return;
+    }
     const clean=projectRevision === openedRevision ? await confirmNativeClean(acceptedToken,dirtyRevision,openedRevision) : false;
     const edited=projectRevision !== openedRevision || !clean;
     $("dirtyMark").title = edited ? "Unsaved changes" : "Saved project";
@@ -2547,7 +2653,8 @@ async function nativeOpen() {
     if (accepted) {
       try { await nativeDesktop.call("rollback-open",{token:acceptedToken}); } catch { nativeDesktop.notify("dirty"); }
     } else if (candidate && !candidate.cancelled) nativeDesktop.notify("discard-open");
-    notice(`Project was not opened: ${error.message}`, "error");
+    if (recovering) await setRecoveryAside(`The autosaved project could not be opened: ${error.message} `);
+    else notice(`Project was not opened: ${error.message}`, "error");
   } finally {
     state.opening = false;
   }
@@ -2983,6 +3090,7 @@ async function init() {
     } catch {}
     if (recovered) applyModel(recovered, false);
     else await validate(false);
+    if (nativeDesktop) await offerRecovery();
   } catch (error) {
     notice(
       `Cannot connect to the local workspace: ${error.message}. Start backend/server.py, then reload.`,

@@ -20,7 +20,7 @@ await page.route('**/api/run',async route=>{
 });
 await page.addInitScript(()=>{
   window.__nativeTest={saveCalls:0,notifications:[],csvFetches:0};
-  window.mbdynNative={notify(op){window.__nativeTest.notifications.push(op)},async call(op){if(op==='save'){window.__nativeTest.saveCalls++;return {path:'C:/fixture/project.mbdyn-studio'};}throw Error(`Unexpected native operation ${op}`)}};
+  window.mbdynNative={notify(op){window.__nativeTest.notifications.push(op)},async call(op){if(op==='recovery')return {};if(op==='autosave')return {skipped:true};if(op==='save'){window.__nativeTest.saveCalls++;return {path:'C:/fixture/project.mbdyn-studio'};}throw Error(`Unexpected native operation ${op}`)}};
   const fetchOriginal=window.fetch.bind(window);
   window.fetch=async(input,init)=>{
     const url=typeof input==='string'?input:input.url;
@@ -58,7 +58,8 @@ try {
     const first=Buffer.alloc(64),last=Buffer.alloc(64);await file.read(first,0,64,0);await file.read(last,0,64,info.size-64);
     assert.match(first.toString('utf8'),/^# source: MBDyn/);assert.match(last.toString('utf8'),/123\.456,.*1$/);
   } finally {await file.close();}
-  assert.equal(await page.evaluate(()=>window.__nativeTest.csvFetches),2);
+  // Full-resolution plot data, the rejected save and the CSV export each read the run's CSV once.
+  assert.equal(await page.evaluate(()=>window.__nativeTest.csvFetches),3);
   report.checks.push('Full oversized CSV remains downloadable after the rejected save');
   assert.deepEqual(errors,[]);report.ok=true;
 }catch(error){report.ok=false;report.failure=error.stack;process.exitCode=1;console.error(error);}

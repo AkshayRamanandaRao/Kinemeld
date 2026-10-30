@@ -315,6 +315,23 @@
         ><button class="primary" data-close>Done</button>
       </div>
     </dialog>
+    <dialog id="recoveryDialog" class="recovery-dialog" aria-labelledby="recoveryTitle" aria-describedby="recoveryText">
+      <div class="dialog-heading">
+        <div>
+          <span class="eyebrow">CRASH RECOVERY</span>
+          <h2 id="recoveryTitle">Recover unsaved work?</h2>
+        </div>
+      </div>
+      <p id="recoveryText" class="dialog-intro"></p>
+      <p class="dialog-intro">
+        Recover opens the autosaved project as unsaved work; save it to keep it. Discard keeps a copy in the
+        recovery folder and starts fresh.
+      </p>
+      <div class="dialog-actions">
+        <button id="recoveryDiscard" class="secondary" type="button">Discard</button
+        ><button id="recoveryOpen" class="primary" type="button">Recover</button>
+      </div>
+    </dialog>
     <input id="projectFile" type="file" accept=".json,.mbdyn-studio" hidden />
     <input id="stepFile" type="file" accept=".step,.stp" multiple hidden />
     <aside id="guidedTour" class="guided-tour" aria-labelledby="tourTitle" aria-describedby="tourText" hidden>

@@ -8,7 +8,7 @@ page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/api/tour-preference',route=>route.fulfill({json:{enabled:false}}));
 await page.addInitScript(()=>{
  window.guard={mode:'',waiting:'',release:null,accepted:0,rollbacks:0,notifications:[]};
- window.mbdynNative={notify(op){window.guard.notifications.push(op);},async call(op,payload={}){
+ window.mbdynNative={notify(op){window.guard.notifications.push(op);},async call(op,payload={}){if(op==='recovery')return {};if(op==='autosave')return {skipped:true};
   if(op==='open'){const examples=await (await fetch('/api/examples')).json();const model=examples.examples.find(x=>x.id==='mass-spring').model;if(window.guard.mode==='open'){window.guard.waiting='open';await new Promise(resolve=>window.guard.release=resolve);}return {project:{format:'mbdyn-studio/1',model},path:'C:/test/other.mbdyn-studio'};}
   if(op==='accept-open'){window.guard.accepted++;if(window.guard.mode==='accept'){window.guard.waiting='accept';await new Promise(resolve=>window.guard.release=resolve);}return {token:'1'};}
   if(op==='finalize-open')return {token:payload.token,dirtyRevision:'1'};
