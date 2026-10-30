@@ -122,7 +122,7 @@ Download the archive for your platform from the
 | Platform | Package | Solver | Also requires |
 | --- | --- | --- | --- |
 | Linux x86-64 | `Kinemeld-<version>-linux-x86_64.tar.gz` | MBDyn 1.7.3 bundled | Python 3.10+, WebKitGTK 4.1 (`libwebkit2gtk-4.1-0`) |
-| macOS (Apple silicon) | `Kinemeld-<version>-macos-arm64.zip` | MBDyn 1.7.3 bundled when the CI build succeeds | Python 3.10+ |
+| macOS (Apple silicon) | `Kinemeld-<version>-macos-arm64.zip` | MBDyn 1.7.3 bundled | Python 3.10+ |
 | Windows x64 | `Kinemeld-<version>-windows-x86_64.zip` | Configure MBDyn through WSL ([solver setup](docs/solver.md)) | Python 3.10+, WebView2 Runtime |
 
 Extract the archive and run `kinemeld` (Linux), `Kinemeld.app` (macOS, Control-click →
