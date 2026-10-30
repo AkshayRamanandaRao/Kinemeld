@@ -41,6 +41,13 @@ without a GPU) and that waiting is condensed. While waiting, the recorder holds 
 animation frames so the headless browser's software rendering does not compete with the model
 for the CPU. Model output is not edited or scripted.
 
+## Parameter study
+
+[`demos/study-gear-drop.mp4`](demos/study-gear-drop.mp4) opens the landing-gear drop test
+from the featured studies, shows its preloaded sink-speed study, runs the four cases through
+MBDyn, compares them on the plot and in the table, and plays the 3 m/s case at 0.25×. The
+peak loads in the captions are read from the running application.
+
 ## Recreate the recordings
 
 Start the service with a working MBDyn (`python start.py --no-browser`), make sure FFmpeg
@@ -49,6 +56,7 @@ is on `PATH` (or set `FFMPEG`), then run:
 ```bash
 node tests/record-demo-videos.mjs
 node tests/record-workflow-demo.mjs
+node tests/record-study-demo.mjs
 AI_MODEL=qwen3.5:4b node tests/record-ai-demo.mjs   # needs Ollama with the model installed
 ```
 

@@ -6,7 +6,7 @@ MBDyn solver. Items below describe intended work, not commitments or delivery
 checks, and validation against the solver and an independent reference where
 appropriate.
 
-## Current foundation (0.7)
+## Current foundation (0.8)
 
 - Editable planar and spatial rigid bodies, selected joints and closed loops,
   forces, springs, dampers, oleo struts, contact and selected prescribed motion.
@@ -30,6 +30,8 @@ appropriate.
   app; every release package checked on fresh Linux, macOS and Windows machines.
 - Parameter studies: one input solved for several values plus its baseline, every case on
   one plot, and a table of peaks, RMS and final values with CSV export.
+- Featured parameter studies on the wheel-end and landing-gear drop tests, verified case by
+  case against independent physics and shown in the demo set and guided tour.
 
 ## Release plan
 
@@ -53,10 +55,13 @@ Each step ships as its own release with an example, documentation and solver evi
 6. **0.7 — Parameter studies (released):** sweep one model input (a stiffness, a damping, a
    mass, a drop velocity) over a list of values, solve every case with MBDyn, overlay the
    responses and tabulate key results such as peak force, with CSV export.
-7. **0.8 — Studies in the demo set:** featured parameter studies on the industry-inspired
-   models, such as tyre stiffness against wheel-end peak load and strut gas pre-charge
-   against landing load, each saved with its study, checked against independent physics
-   and recorded for the homepage.
+7. **0.8 — Studies in the demo set (released):** featured parameter studies on the
+   industry-inspired models — tyre stiffness against wheel-end peak load and sink speed
+   against landing-gear tyre load — each opening with its study, checked case by case
+   against independent physics and recorded for the homepage.
+8. **0.9 — Interaction II:** pick circular edges (hole rims) as well as faces, measure at
+   the animated pose in Post-processing, and drag joint anchors along an axis or within a
+   plane without a target face.
 
 ## Further priorities
 
@@ -67,9 +72,8 @@ Each step ships as its own release with an example, documentation and solver evi
 - **Engineering examples:** extend suspension and landing-gear studies only
   with traceable geometry, hardpoints, material data and loading. Add independent
   checks, convergence evidence and comparison with measurements where available.
-- **Interaction and assistance:** pick circular edges, cones and tori, constrained dragging
-  along an axis or plane without a target face, and features at a solved pose; extend AI
-  actions only where the underlying physical and solver behavior is verified.
+- **Interaction and assistance:** pick cones and tori; extend AI actions only where the
+  underlying physical and solver behavior is verified.
 
 ## Longer-term work
 
