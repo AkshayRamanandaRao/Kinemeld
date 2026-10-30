@@ -3,6 +3,37 @@
 All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/) while the project is in preview (0.x).
 
+## 0.6.0 — Reliability and CAD
+
+### Desktop
+- **Crash-safe autosave:** unsaved work is written to a recovery snapshot in the user-data
+  folder once editing pauses (and at least once a minute), through a synced temporary file
+  and an atomic rename. Saving or closing normally removes it.
+- **Recovery at start-up:** after an unexpected exit, Kinemeld offers the snapshot back.
+  Recover opens it as an unsaved project and Save suggests the original file; Discard keeps it
+  as `recovery/declined-<time>.json` (newest three kept). Unreadable snapshots are set aside,
+  never deleted.
+
+### CAD
+- STEP import and mass properties work with **`cadquery-ocp` 8** as well as 7.9:
+  `backend/ocp_compat.py` maps the sequence classes OCP 8 moved to `OCP.collections`, and the
+  converters use `TopoDS.Face`, which both versions provide. CI now installs OCP 8; the full
+  backend suite passes with both.
+
+### Releases
+- **Clean-machine checks:** `scripts/check_package.py` unpacks each archive into an empty
+  folder, verifies the checksum and every manifest hash, starts the packaged service with a
+  fresh user-data folder, solves the pendulum and a featured 3D study with the bundled MBDyn,
+  and runs the desktop self-check. The release workflow runs it on fresh Ubuntu 24.04,
+  macOS 14 and Windows runners and publishes only when every package passes. A `dry_run`
+  input builds and checks without publishing.
+
+### Tests
+- `RecoveryStore` unit tests (atomic replacement, interrupted writes, size limit, damaged
+  snapshots, retention) and `tests/native-recovery-ui.mjs` (recover, discard, autosave
+  timing). Desktop bridge mocks answer the new operations; `oversized-save-ui` counts the
+  full-resolution plot's CSV read.
+
 ## 0.5.0 — Interaction: CAD feature picking
 
 ### Pre-processing

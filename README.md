@@ -134,8 +134,12 @@ python3 -m pip install -r requirements.txt
 ```
 
 Each archive has a `.sha256` checksum and a `package-manifest.json` listing every file's
-digest. Bundled MBDyn binaries are GPL-2.0-only; their corresponding source is attached
-to every release.
+digest, and is unpacked and checked on fresh Linux, macOS and Windows machines before a
+release is published. Bundled MBDyn binaries are GPL-2.0-only; their corresponding source
+is attached to every release.
+
+The desktop app autosaves unsaved work for crash recovery and offers it back after an
+unexpected exit; see [autosave and crash recovery](native/README.md#autosave-and-crash-recovery).
 
 ### From source
 
@@ -165,14 +169,16 @@ build the native desktop host see [desktop builds](native/README.md).
   user flows against a running server.
 - GitHub Actions builds MBDyn, runs the backend suite and the study verification, and builds
   and tests the desktop host on Linux, macOS and Windows for every change.
+- `scripts/check_package.py` — every release package unpacked on a fresh machine: file
+  hashes, the packaged service, real MBDyn runs and the desktop self-check.
 
 See [verification](docs/verification.md) and [multibody capabilities](docs/multibody-feature-map.md)
 for scope and limitations.
 
 ## Roadmap
 
-Next: crash-safe autosave and recovery, support for the current OpenCascade runtime,
-clean-machine installation checks, and more validated engineering examples. Longer term:
+Next: parameter studies that sweep a model input through MBDyn and compare the responses,
+and more validated engineering examples. Longer term:
 broader contact, flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
 and the [changelog](CHANGELOG.md).
 
