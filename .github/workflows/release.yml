@@ -8,6 +8,10 @@ on:
       version:
         description: "Version to release, without the leading v (for example 0.2.0)"
         required: true
+      dry_run:
+        description: "Build and check the packages without publishing a release"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -106,10 +110,53 @@ jobs:
             dist/*.tar.gz
             dist/*.sha256
 
-  publish:
-    name: Publish GitHub release
+  # Each package is unpacked on a fresh runner with only Python installed (plus WebKitGTK and a
+  # virtual display on Linux): files against the manifest, the packaged service with an empty
+  # user-data folder, real MBDyn runs, and the desktop executable's own self-check.
+  verify:
+    name: Clean-machine check ${{ matrix.platform }}-${{ matrix.arch }}
     needs: package
     if: always() && needs.package.result != 'cancelled'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, platform: linux, arch: x86_64, ext: tar.gz, solver: --expect-solver, desktop: true }
+          - { os: macos-14, platform: macos, arch: arm64, ext: zip, solver: --expect-solver, desktop: true }
+          - { os: windows-latest, platform: windows, arch: x86_64, ext: zip, solver: "", desktop: false }
+    steps:
+      - name: Fetch the checker only
+        uses: actions/checkout@v4
+        with:
+          path: checker
+          sparse-checkout: scripts/check_package.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Desktop runtime
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-0 xvfb
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist
+      - name: Files, service and solver
+        shell: bash
+        run: python checker/scripts/check_package.py dist/Kinemeld-*-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.ext }} --version "${VERSION#v}" ${{ matrix.solver }}
+      - name: Desktop self-check
+        if: matrix.desktop
+        # First runs of the macOS self-check on hosted runners are informational.
+        continue-on-error: ${{ matrix.platform == 'macos' }}
+        shell: bash
+        run: python checker/scripts/check_package.py dist/Kinemeld-*-${{ matrix.platform }}-${{ matrix.arch }}.${{ matrix.ext }} --version "${VERSION#v}" --native-smoke
+
+  publish:
+    name: Publish GitHub release
+    needs: [package, verify]
+    if: always() && needs.package.result == 'success' && needs.verify.result == 'success' && !inputs.dry_run
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
