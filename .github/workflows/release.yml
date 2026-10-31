@@ -41,7 +41,7 @@ jobs:
 
   solver-macos:
     name: MBDyn for macOS
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 75
     continue-on-error: true
     steps:
@@ -49,12 +49,13 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: backend/vendor
-          key: mbdyn-1.7.3-${{ runner.os }}-arm64-${{ hashFiles('backend/build_solver.sh') }}
+          key: mbdyn-1.7.3-macos-15-arm64-${{ hashFiles('backend/build_solver.sh') }}
       - run: |
           brew install gcc
           fortran="$(ls "$(brew --prefix)"/bin/gfortran-* | grep -E 'gfortran-[0-9]+$' | sort -V | tail -1)"
           version="${fortran##*-}"
-          CC="gcc-$version" CXX="g++-$version" FC="gfortran-$version" MBDYN_JOBS=3 bash backend/build_solver.sh
+          # Built on macOS 15; keep the solver itself runnable on macOS 14.
+          MACOSX_DEPLOYMENT_TARGET=14.0 CC="gcc-$version" CXX="g++-$version" FC="gfortran-$version" MBDYN_JOBS=3 bash backend/build_solver.sh
           bash scripts/bundle_solver.sh backend/vendor/mbdyn-1.7.3/mbdyn/mbdyn build/solver
       - uses: actions/upload-artifact@v4
         with:
@@ -128,7 +129,7 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-22.04, platform: linux, arch: x86_64, binary: native/target/release/mbdyn-studio-desktop, solver: solver-linux }
-          - { os: macos-14, platform: macos, arch: arm64, binary: native/target/release/mbdyn-studio-desktop, solver: solver-macos }
+          - { os: macos-15, platform: macos, arch: arm64, binary: native/target/release/mbdyn-studio-desktop, solver: solver-macos }
           - { os: windows-latest, platform: windows, arch: x86_64, binary: native/target/release/mbdyn-studio-desktop.exe, solver: solver-windows }
     steps:
       - uses: actions/checkout@v4
@@ -180,7 +181,7 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-24.04, platform: linux, arch: x86_64, ext: tar.gz, solver: --expect-solver, desktop: true }
-          - { os: macos-14, platform: macos, arch: arm64, ext: zip, solver: --expect-solver, desktop: true }
+          - { os: macos-15, platform: macos, arch: arm64, ext: zip, solver: --expect-solver, desktop: true }
           - { os: windows-latest, platform: windows, arch: x86_64, ext: zip, solver: --expect-solver, desktop: true }
     steps:
       - name: Fetch the checker only

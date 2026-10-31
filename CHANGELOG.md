@@ -9,6 +9,8 @@ rules in [docs/project-format.md](docs/project-format.md).
 - The in-app help no longer refers to a separate project for finite-element analysis.
 - Documentation, code comments and release notes describe CAD behaviour without naming
   other products, and the font notice points to the IBM Plex source only.
+- The macOS package is built and checked on macOS 15 (Apple silicon), as GitHub retires its
+  macOS 14 build machines; the bundled solver still targets macOS 14.
 
 ## 1.2.0 — CAD part by part: the nose-gear showcase
 
