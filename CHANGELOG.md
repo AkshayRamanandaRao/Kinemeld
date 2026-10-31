@@ -4,6 +4,12 @@ All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/); from 1.0, project files follow the compatibility
 rules in [docs/project-format.md](docs/project-format.md).
 
+## 1.2.1 — Documentation and help text
+
+- The in-app help no longer refers to a separate project for finite-element analysis.
+- Documentation, code comments and release notes describe CAD behaviour without naming
+  other products, and the font notice points to the IBM Plex source only.
+
 ## 1.2.0 — CAD part by part: the nose-gear showcase
 
 ### Pre-processing
