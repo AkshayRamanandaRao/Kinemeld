@@ -189,7 +189,9 @@ impl BackendService {
         #[cfg(windows)] { use std::os::windows::process::CommandExt; command.creation_flags(0x08000000); }
         let child = command.spawn()?;
         let mut service = Self { client, child:Some(child), log_path };
-        let deadline = Instant::now()+Duration::from_secs(15);
+        // A first launch can be slow while the operating system scans the bundled Python runtime;
+        // the loop still stops at once if the backend exits.
+        let deadline = Instant::now()+Duration::from_secs(90);
         while Instant::now() < deadline {
             let child = service.child.as_mut().ok_or_else(|| Error::Protocol("Backend ownership was lost during startup.".into()))?;
             match startup_ready(&service.client, child, &startup_nonce) {

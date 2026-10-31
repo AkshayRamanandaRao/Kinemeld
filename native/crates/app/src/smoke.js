@@ -1,5 +1,5 @@
 (() => {
-  const deadline = Date.now() + 30000;
+  const deadline = Date.now() + 90000;
   const timer = setInterval(async () => {
     if (!document.querySelector("#solverStatus")?.textContent.includes("MBDyn ready")) {
       if (Date.now() > deadline) { clearInterval(timer); window.mbdynNative.call("smoke-fail", {error:"Backend did not become ready in the embedded viewer."}); }

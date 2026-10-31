@@ -4,8 +4,12 @@ All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/); from 1.0, project files follow the compatibility
 rules in [docs/project-format.md](docs/project-format.md).
 
-## 1.2.1 — Documentation and help text
+## 1.2.1 — Documentation, help text and first launch
 
+- **First launch.** The desktop app waits up to 90 s for its local service and 30 s for the
+  solver's first response, instead of 15 s and 10 s. On a fresh install the operating system
+  can scan the bundled Python and solver before they first run, which made the first launch
+  report that the service could not start or that MBDyn was not configured.
 - The in-app help no longer refers to a separate project for finite-element analysis.
 - Documentation, code comments and release notes describe CAD behaviour without naming
   other products, and the font notice points to the IBM Plex source only.

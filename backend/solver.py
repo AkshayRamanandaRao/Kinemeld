@@ -74,7 +74,8 @@ def status():
         config = configuration()
         if config is None:
             return {"available": False, "version": None, "path": None, "detail": "MBDyn is not configured. See docs/solver.md. Deck export and reference preview remain available."}
-        result = subprocess.run(command(config, ["-v"]), capture_output=True, timeout=10, text=True, errors="replace")
+        # The first run of a newly installed solver can wait for an operating-system security scan.
+        result = subprocess.run(command(config, ["-v"]), capture_output=True, timeout=30, text=True, errors="replace")
         output = (result.stdout + result.stderr).replace("\x00", "").strip()
         match = re.search(r"MBDyn\s*-\s*MultiBody Dynamics\s+([^\r\n]+)", output, re.I)
         available = result.returncode == 0 and match is not None
