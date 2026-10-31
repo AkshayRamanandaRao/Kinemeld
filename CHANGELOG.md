@@ -11,7 +11,7 @@ rules in [docs/project-format.md](docs/project-format.md).
   part or several at a time, so an assembly can be brought in part by part. Earlier parts keep
   their attachments and identities, every part is listed with its file name, and Undo removes
   the last addition. **Import STEP files** still replaces the loaded CAD.
-- **Hole rims from any CAD system.** SolidWorks and others write a hole rim as two or four
+- **Hole rims from any CAD system.** Many CAD systems write a hole rim as two or four
   arcs; the importer now joins arcs that complete a circle, so such parts offer their pin holes
   for joint placement and measurement as well as single full circles.
 

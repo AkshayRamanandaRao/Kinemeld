@@ -50,7 +50,7 @@ The converter also records each face's analytic surface with the range of displa
 triangles it produced: cylinders with axis, centre, radius and length, and planes with
 a point and outward normal, in metres and assembly coordinates. Full circular edges (hole
 rims, shaft ends; up to 512 per part) are listed with centre, axis and radius. A rim
-written as several arcs — SolidWorks writes two or four — counts when its arcs complete
+written as several arcs, as many CAD systems do, counts when its arcs complete
 the circle; partial arcs such as fillet boundaries are left out. Joint anchors, joint
 axes and named frames can then be placed by picking or dragging onto those faces and rims,
 and features can be measured in the view, also at a solved frame; see

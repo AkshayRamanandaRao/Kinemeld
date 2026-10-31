@@ -2179,7 +2179,7 @@ function showGuide() {
     <p>Play or scrub the timeline, select nodes and response quantities, and export CSV. Attached STEP solids follow the corresponding solver body. Existing templates also offer a separately labelled <strong>Reference preview</strong>; this is not available for authored graphs or pinned upstream studies. Editing physical inputs makes older results stale.</p>
     <h3>5. Save and reopen</h3>
     <p>The Windows desktop uses native <strong>Save project</strong>, <strong>Save as</strong> and <strong>Open project</strong> dialogs. Projects retain the physical model, available results and full CSV, viewing state, original STEP bytes and part bindings. Conflicting disk changes are reported before overwrite. The browser version exports and imports portable project files; browser recovery retains only the current physical model.</p>
-    <p>See <a href="/docs/tutorials.md" target="_blank" rel="noreferrer">tutorials</a> for model assumptions and <a href="/docs/roadmap.md" target="_blank" rel="noreferrer">the roadmap</a> for remaining scope. Static, modal and buckling FEA belong to the separate Enigmiq CAD workflow. Official reference: <a href="https://www.mbdyn.org/Documentation.html" target="_blank" rel="noreferrer">MBDyn documentation</a>.</p>
+    <p>See <a href="/docs/tutorials.md" target="_blank" rel="noreferrer">tutorials</a> for model assumptions and <a href="/docs/roadmap.md" target="_blank" rel="noreferrer">the roadmap</a> for remaining scope. Official reference: <a href="https://www.mbdyn.org/Documentation.html" target="_blank" rel="noreferrer">MBDyn documentation</a>.</p>
   </article>`;
   pendingDownload = null;
   $("documentDownload").hidden = true;

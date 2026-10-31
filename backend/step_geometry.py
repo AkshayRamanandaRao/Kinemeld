@@ -250,9 +250,9 @@ def _worker(source):
                 if described:
                     faces.append({"triangles": [first_triangle, count], **described})
             explorer.Next()
-        # Full circles only: hole rims and shaft ends. Many CAD systems (SolidWorks, for one)
-        # write a rim as two or four arcs, so arcs on the same circle are summed; partial arcs
-        # (fillets, chamfer boundaries) are left out. Each edge is counted once.
+        # Full circles only: hole rims and shaft ends. Many CAD systems write a rim as two or
+        # four arcs, so arcs on the same circle are summed; partial arcs (fillets, chamfer
+        # boundaries) are left out. Each edge is counted once.
         edges = TopTools_IndexedMapOfShape()
         TopExp.MapShapes_s(shape, TopAbs_EDGE, edges)
         arcs = {}

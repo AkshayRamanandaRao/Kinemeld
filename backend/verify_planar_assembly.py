@@ -129,7 +129,7 @@ def main():
         results[-1]["checks"]["timeStepConvergence"] = ratio > 3
         results[-1]["passed"] = all(results[-1]["checks"].values())
     report = {"scope": "Actual MBDyn planar rigid-body trees: original single, serial, branched, rotating and reordered graphs.",
-              "limitations": "Does not validate contact, loops, prismatic joints, drivers, flexible bodies, physical hardware or commercial solver parity.",
+              "limitations": "Does not validate contact, loops, prismatic joints, drivers, flexible bodies, physical hardware or agreement with other multibody codes.",
               "passed": all(item.get("passed", False) for item in results), "cases": results}
     path = ROOT / "verification" / "planar-assembly.json"
     path.parent.mkdir(exist_ok=True)

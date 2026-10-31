@@ -77,7 +77,7 @@ the public checkout; the commands below produce fresh evidence on the target sys
   gating, rejected proposals and concurrent project changes. Their solver call
   is intercepted; this check does not claim a real solve.
 
-These checks cover the stated cases only, not commercial-suite parity,
+These checks cover the stated cases only, not agreement with other multibody codes,
 production validation, or general three-dimensional assemblies.
 
 ## Real MBDyn checks
