@@ -157,6 +157,10 @@ function markNativeDirty() {
     scheduleAutosave();
   }
 }
+// Invalidate pending writes as typing starts, before onchange commits the model.
+document.addEventListener("input", event => {
+  if (event.isTrusted && event.target.matches("#properties input, #properties select, #properties textarea, #durationInput, #stepInput")) projectRevision++;
+});
 const signature = () => JSON.stringify(state.model);
 const sourceInfo = (model = state.model) =>
   state.sourceExamples.find((example) => example.id === model.sourceExampleId);
@@ -259,13 +263,13 @@ function replaceStep(asset, dirty=true) {
 }
 async function createPrimitiveSolid(bodyId, spec) {
   if(state.busy || state.opening || state.saving)throw Error("Wait for the current operation before creating a solid.");
-  const before=signature(), previous=state.step, token=++stepLoad, body=state.model.bodies.find(item=>item.id===bodyId);
+  const before=projectRevision, previous=state.step, token=++stepLoad, body=state.model.bodies.find(item=>item.id===bodyId);
   if(!body)throw Error("Select a valid assembly body first.");
   const pose=structuredClone(body.pose);
   const response=await fetch("/api/step/primitive",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shape:spec.shape,dimensions:spec.dimensions,pose})});
   if(!response.ok){let detail;try{detail=await response.json();}catch{}throw Error(detail?.error || "STEP solid generation failed.");}
   const generated=await loadStepAsset([{name:`${bodyId}-${spec.shape}.step`,bytes:new Uint8Array(await response.arrayBuffer())}]);
-  if(signature()!==before || state.step!==previous || state.busy || state.opening || state.saving || token!==stepLoad)throw Error("The model or CAD geometry changed during generation; nothing was applied.");
+  if(projectRevision!==before || state.step!==previous || state.busy || state.opening || state.saving || token!==stepLoad)throw Error("The model or CAD geometry changed during generation; nothing was applied.");
   if(generated.parts.length!==1)throw Error("The generated solid did not contain exactly one part.");
   const existing=previous?.metadata.files || [], sourceBytes=existing.reduce((sum,file)=>sum+file.byteLength,0)+generated.metadata.files[0].byteLength;
   const triangles=(previous?.parts || []).reduce((sum,part)=>sum+part.indices.length/3,0)+generated.parts[0].indices.length/3;
@@ -278,7 +282,7 @@ async function createPrimitiveSolid(bodyId, spec) {
   target.mass=spec.properties.mass;target.inertia=structuredClone(spec.properties.inertia);
   if(draft.kind === 'spatial-assembly') target.centerOfMass={x:0,y:0,z:0};
   const validation=await checkModel(draft);
-  if(signature()!==before || state.step!==previous || state.busy || state.opening || state.saving || token!==stepLoad)throw Error("The model or CAD geometry changed during generation; nothing was applied.");
+  if(projectRevision!==before || state.step!==previous || state.busy || state.opening || state.saving || token!==stepLoad)throw Error("The model or CAD geometry changed during generation; nothing was applied.");
   if(!validation.valid)throw Error((validation.issues || []).map(issue=>issue.message).join(" ") || "The updated physical model is invalid.");
   validateStepForModel(asset,draft);
   pushHistory();state.model=draft;state.step=asset;if(view)view.stepAsset=asset;
@@ -2288,16 +2292,22 @@ function renderExamples() {
         ) }));
       continue;
     }
-    place(group, exampleCard(exampleArt(ex.model.kind), category, ex.title, ex.description, { label: "Open example →", run: () => {
-      applyModel(ex.model);
-      state.overlays = [];
-      state.compareRun = null;
-      renderCompareControls();
+    place(group, exampleCard(exampleArt(ex.model.kind), category, ex.title, ex.description, { label: "Open example →", run: async () => {
+      if (nativeDesktop) {
+        const text = JSON.stringify({format:"mbdyn-studio/1",model:ex.model});
+        if (!(await openProjectText(async () => text, text.length))) return;
+      } else {
+        applyModel(ex.model);
+        state.overlays = [];
+        state.compareRun = null;
+        renderCompareControls();
+      }
       $("examplesDialog").close();
       switchStep("model");
       notice(
         ex.model.kind === "source-example"
           ? "Original upstream example loaded. Its input is read-only; inspect the deck, run it, and explore native node trajectories."
+          : nativeDesktop ? "Example opened as an unsaved copy. Edit its parameters, validate, and run; Save asks for a new file."
           : "Example loaded. Edit its parameters, validate, and run. Undo restores your previous model.",
       );
     } }));
@@ -2363,8 +2373,9 @@ $("stepBind").onclick = () => {
 };
 $("stepRemove").onclick = () => {stepLoad++;replaceStep(null);notice("STEP geometry removed; the physical model is unchanged.");};
 $("stepPendulum").onclick = async () => {
-  const token=++stepLoad, before=signature();
+  const token=++stepLoad, before=projectRevision;
   try {
+    if(state.busy || state.opening || state.saving)throw Error("Wait for the current operation before loading CAD.");
     $("stepDetail").textContent="Preparing a STEP solid and matching MBDyn pendulum…";
     const example=state.examples.find(item=>item.id==="assembly-single");
     if(!example)throw Error("The matching planar pendulum example is unavailable.");
@@ -2372,37 +2383,39 @@ $("stepPendulum").onclick = async () => {
     if(!response.ok)throw Error("STEP service is unavailable. Restart Kinemeld to load the updated backend.");
     const asset=await loadStepAsset([{name:"pendulum.step",bytes:new Uint8Array(await response.arrayBuffer()),sha256:"21d27f30d5cc9459f70d7d3cc66f61a6e7c6b1a7e4f69b4fd72e2837090d96ac"}]);
     if(token!==stepLoad)return;
-    if(signature()!==before || state.busy)throw Error("The current project changed while the example loaded; no changes were applied.");
+    if(projectRevision!==before || state.busy || state.opening || state.saving)throw Error("The current project changed while the example loaded; your edits were kept.");
     if(asset.parts.length!==1)throw Error("The pendulum STEP source must contain one solid.");
     const model=structuredClone(example.model), node=assemblyInfo(model).initialNodes.find(n=>n.id==="upper_link");
     asset.metadata.bindings={[asset.parts[0].id]:{body:node.id,pose:{x:node.x,y:node.y,z:node.z,ry:node.ry}}};
     const validation=await checkModel(model);
     if(token!==stepLoad)return;
-    if(!validation.valid || signature()!==before || state.busy)throw Error("The model changed or could not be validated; the example was not applied.");
+    if(!validation.valid || projectRevision!==before || state.busy || state.opening || state.saving)throw Error("The model changed or could not be validated; the example was not applied.");
     validateStepForModel(asset,model);
     pushHistory();applyModel(model,false);replaceStep(asset,false);markNativeDirty();updateHistoryButtons();
     $("stepDialog").close();notice("Matching STEP solid and rigid pendulum loaded. Run MBDyn to see the solid move.");
   } catch(error) {if(token===stepLoad){renderStepControls();notice(`STEP pendulum could not be loaded: ${error.message}`,"error");}}
 };
 $("stepFile").onchange = async event => {
-  const files=[...event.target.files], token=++stepLoad;
+  const files=[...event.target.files], token=++stepLoad, before=projectRevision, previous=state.step, append=stepAppend;
   try {
     if (!files.length) return;
+    if(state.busy || state.opening || state.saving)throw Error("Wait for the current operation before importing CAD.");
     if (files.some(file => !/\.(step|stp)$/i.test(file.name))) throw Error("Choose STEP geometry files (.step or .stp). Saved projects may retain older visual references.");
     if (files.length>24 || files.reduce((n,file)=>n+file.size,0)>12*1024*1024) throw Error("Select up to 24 STEP files totalling at most 12 MiB.");
     $("stepDetail").textContent="Converting STEP solids locally…";
     const inputs=[];for(const file of files) inputs.push({name:file.name,bytes:new Uint8Array(await file.arrayBuffer())});
-    const previous=stepAppend ? state.step : null;
-    const asset=previous ? await appendStepAsset(previous,inputs) : await loadStepAsset(inputs);
-    if(token!==stepLoad || (previous && state.step!==previous))return;
-    replaceStep(asset);notice(previous ? `Added ${files.length===1 ? files[0].name : `${files.length} STEP files`}: ${asset.parts.length} parts in ${asset.metadata.files.length} files. Earlier attachments are kept.` : "STEP solids loaded. Attach them to assembly bodies to follow motion; define mass, inertia and joints in the physical model.");
+    const asset=append && previous ? await appendStepAsset(previous,inputs) : await loadStepAsset(inputs);
+    if(token!==stepLoad)return;
+    if(projectRevision!==before || state.step!==previous || state.busy || state.opening || state.saving)throw Error("The current project changed during STEP import; your edits were kept. Import the files again to retry.");
+    replaceStep(asset);notice(append && previous ? `Added ${files.length===1 ? files[0].name : `${files.length} STEP files`}: ${asset.parts.length} parts in ${asset.metadata.files.length} files. Earlier attachments are kept.` : "STEP solids loaded. Attach them to assembly bodies to follow motion; define mass, inertia and joints in the physical model.");
   } catch(error) {if(token===stepLoad){renderStepControls();notice(`STEP import failed: ${error.message}`,"error");}}
   finally {event.target.value="";}
 };
 /** Load original parts from the shipped suspension STEP set; `pattern` selects a subset by file name. */
 async function loadSuspensionParts(pattern = null) {
-  const token=++stepLoad;
+  const token=++stepLoad, before=projectRevision;
   try {
+    if(state.busy || state.opening || state.saving)throw Error("Wait for the current operation before loading CAD.");
     $("stepDetail").textContent="Loading and converting the original suspension STEP parts…";
     const responseCatalog=await fetch("/api/step/suspension");
     if(!responseCatalog.ok)throw Error("STEP service is unavailable. Restart Kinemeld to load the updated backend.");
@@ -2414,6 +2427,7 @@ async function loadSuspensionParts(pattern = null) {
     }
     if(!inputs.length)throw Error("No matching STEP parts were found.");
     const asset=await loadStepAsset(inputs);if(token!==stepLoad)return false;
+    if(projectRevision!==before || state.busy || state.opening || state.saving)throw Error("The current project changed while the parts loaded; your edits were kept.");
     replaceStep(asset);
     return true;
   } catch(error) {if(token===stepLoad){renderStepControls();notice(`Suspension STEP import failed: ${error.message}`,"error");}return false;}
@@ -2483,6 +2497,7 @@ async function nativeSave(saveAs) {
       notice(`Saved a snapshot to ${saved.path}; newer edits remain unsaved.`, "warn");
       return;
     }
+    browserDirty = false;
     $("dirtyMark").title = "Saved project";
     status(`Project saved · ${saved.path}`);
     notice(
@@ -2536,7 +2551,7 @@ async function projectPayload(includeResult = true) {
 // editing pauses, and at least once a minute during continuous editing. Saving or closing
 // normally removes it; a snapshot found at start-up is offered back.
 const AUTOSAVE_QUIET_MS = 15000, AUTOSAVE_MAX_MS = 60000;
-let autosaveTimer = null, autosaveDeadline = 0, autosaveEnabled = false, autosaveFailed = false;
+let autosaveTimer = null, autosaveDeadline = 0, autosaveEnabled = false, autosaveFailed = false, autosaveGeneration = 0;
 function scheduleAutosave() {
   if (!nativeDesktop || !autosaveEnabled) return;
   const now = Date.now();
@@ -2545,6 +2560,7 @@ function scheduleAutosave() {
   autosaveTimer = setTimeout(autosave, Math.max(0, Math.min(AUTOSAVE_QUIET_MS, autosaveDeadline - now)));
 }
 function cancelAutosave() {
+  autosaveGeneration++;
   clearTimeout(autosaveTimer);
   autosaveTimer = null;
 }
@@ -2552,6 +2568,8 @@ async function autosave() {
   autosaveTimer = null;
   if (!browserDirty) return;
   if (state.saving || state.opening || state.busy) return scheduleAutosave();
+  const revision = projectRevision, generation = autosaveGeneration, result = state.result;
+  const current = () => revision === projectRevision && generation === autosaveGeneration && result === state.result && browserDirty && !state.saving && !state.opening && !state.busy;
   try {
     let payload;
     try {
@@ -2561,12 +2579,15 @@ async function autosave() {
       if (!/exceeds 32 MiB/.test(error.message)) throw error;
       payload = await projectPayload(false);
     }
+    if (!current()) { if (browserDirty) scheduleAutosave(); return; }
     const saved = await nativeDesktop.call("autosave", payload, 30000);
+    if (!current()) { if (browserDirty) scheduleAutosave(); return; }
     if (saved.savedAt) {
       $("dirtyMark").title = `Unsaved changes · autosaved for recovery at ${new Date(saved.savedAt).toLocaleTimeString()}`;
       autosaveFailed = false;
     }
   } catch (error) {
+    if (!current()) { if (browserDirty) scheduleAutosave(); return; }
     // Report once per failure streak; editing continues and the next change retries.
     if (!autosaveFailed) notice(`Autosave for crash recovery failed: ${error.message}`, "warn");
     autosaveFailed = true;
@@ -2786,6 +2807,7 @@ function commitOpenedProject(project, reference, step) {
     }
     state.history=[];state.future=[];updateHistoryButtons();
     projectRevision++;
+    cancelAutosave();
     browserDirty=false;
   } catch (error) {
     clearTimeout(validationTimer);
@@ -2852,22 +2874,22 @@ async function confirmNativeClean(token, dirtyRevision, openedRevision) {
     }
   }
 }
-/** Open a project chosen in a native dialog, or with op "recovery-open" the autosaved one. */
-async function nativeOpen(op = "open") {
-  if (state.opening || state.saving || state.busy) return;
-  const recovering = op === "recovery-open";
+/** Open a native file, recovered work, or a pathless copy through the same transaction. */
+async function nativeOpen(op = "open", payload = {}) {
+  if (state.opening || state.saving || state.busy) return false;
+  const recovering = op === "recovery-open", untitled = op === "new-project";
   state.opening = true;
-  const revision = projectRevision;
+  const revision = projectRevision, token = ++referenceLoad, stepToken = ++stepLoad;
   let accepted = false;
   let acceptedToken;
   let candidate;
   let nextReference;
   let nextStep;
   try {
-    candidate = await nativeDesktop.call(op);
+    candidate = await nativeDesktop.call(op, payload);
     if (candidate.cancelled) {
       if (recovering) await setRecoveryAside();
-      return;
+      return false;
     }
     const project = candidate.project;
     if (!project?.model || !fields[project.model.kind])
@@ -2881,8 +2903,6 @@ async function nativeOpen(op = "open") {
         "The saved result samples are incomplete, malformed or unsupported.",
       );
     if (project.assets && (typeof project.assets !== "object" || Object.keys(project.assets).some(key => !["reference","step"].includes(key)))) throw new Error("The project contains unsupported visual assets.");
-    const token = ++referenceLoad;
-    const stepToken = ++stepLoad;
     nextReference = project.assets?.reference ? await restoreReferenceGeometry(project.assets.reference) : null;
     nextStep = project.assets?.step ? await restoreStepAsset(project.assets.step) : null;
     validateStepForModel(nextStep,project.model);
@@ -2903,15 +2923,17 @@ async function nativeOpen(op = "open") {
     const openedRevision=projectRevision;
     status("Confirming project open · saving and running are paused");
     const dirtyRevision=await confirmNativeOpen(acceptedToken);
-    if (recovering) {
-      // Recovered work is unsaved by definition: skip the clean handshake and keep it dirty.
-      try { await nativeDesktop.call("recovery-adopted", {}, 10000); }
-      catch (error) { notice(`Recovered, but autosave stays paused for this session: ${error.message}`, "warn"); }
+    if (recovering || untitled) {
+      // Recovered work and copies have no saved file: skip the clean handshake and keep them dirty.
+      if (recovering) {
+        try { await nativeDesktop.call("recovery-adopted", {}, 10000); }
+        catch (error) { notice(`Recovered, but autosave stays paused for this session: ${error.message}`, "warn"); }
+      }
       markNativeDirty();
       $("dirtyMark").title = "Unsaved changes";
-      notice(`Recovered the work autosaved at ${new Date(candidate.savedAt).toLocaleTimeString()}. It is unsaved: Save asks where to write it${candidate.path ? `, starting at ${candidate.path}` : ""}.`);
-      status("Recovered autosaved project · unsaved");
-      return;
+      notice(recovering ? `Recovered the work autosaved at ${new Date(candidate.savedAt).toLocaleTimeString()}. It is unsaved: Save asks where to write it${candidate.path ? `, starting at ${candidate.path}` : ""}.` : "Project opened as an unsaved copy. Save asks for a new file.");
+      status(recovering ? "Recovered autosaved project · unsaved" : "Unsaved project opened");
+      return true;
     }
     const clean=projectRevision === openedRevision ? await confirmNativeClean(acceptedToken,dirtyRevision,openedRevision) : false;
     const edited=projectRevision !== openedRevision || !clean;
@@ -2920,6 +2942,7 @@ async function nativeOpen(op = "open") {
       ? "Project opened. Edits made while confirmation was pending remain unsaved."
       : result ? "Project opened. The saved response is labelled with its recorded source." : "Project opened and validated.") + (Object.keys(state.step?.metadata.unverifiedBindings || {}).length ? " Review saved STEP attachments before using them." : ""));
     status(`Project opened · ${candidate.path}${edited ? " · unsaved edits" : ""}`);
+    return true;
   } catch (error) {
     applyingNativeProject = false;
     nextReference?.dispose();
@@ -2928,6 +2951,7 @@ async function nativeOpen(op = "open") {
     } else if (candidate && !candidate.cancelled) nativeDesktop.notify("discard-open");
     if (recovering) await setRecoveryAside(`The autosaved project could not be opened: ${error.message} `);
     else notice(`Project was not opened: ${error.message}`, "error");
+    return false;
   } finally {
     state.opening = false;
   }
@@ -2955,13 +2979,16 @@ $("saveButton").onclick = async () => {
 $("importButton").onclick = () =>
   nativeDesktop ? nativeOpen() : $("projectFile").click();
 async function openProjectText(readText, size) {
-  const revision = projectRevision;
+  if (state.busy || state.saving || state.opening) return false;
+  const revision = projectRevision, token = ++referenceLoad, stepToken = ++stepLoad;
   let nextReference;
   let nextStep;
   try {
-    if (browserDirty && !window.confirm("Opening this project replaces the current unsaved model, geometry and results. Export the current project first if you need to keep them. Continue?")) return false;
+    if (!nativeDesktop && browserDirty && !window.confirm("Opening this project replaces the current unsaved model, geometry and results. Export the current project first if you need to keep them. Continue?")) return false;
     if (size > 32 * 1024 * 1024) throw new Error("Project file exceeds 32 MiB.");
-    const project = JSON.parse(await readText());
+    const text = await readText();
+    if (new Blob([text]).size > 32 * 1024 * 1024) throw new Error("Project file exceeds 32 MiB.");
+    const project = JSON.parse(text);
     if (project.format !== "mbdyn-studio/1" || !project.model)
       throw new Error("Unsupported project format. Expected mbdyn-studio/1.");
     const check = await checkModel(project.model);
@@ -2969,8 +2996,11 @@ async function openProjectText(readText, size) {
       throw new Error((check.issues || []).map((i) => i.message).join(" "));
     if (project.result && !validSavedResult(project.result)) throw new Error("The saved result is incomplete or unsupported.");
     if (project.assets && (typeof project.assets !== "object" || Object.keys(project.assets).some(key => !["reference","step"].includes(key)))) throw new Error("The project contains unsupported visual assets.");
-    const token = ++referenceLoad;
-    const stepToken = ++stepLoad;
+    if (token !== referenceLoad || stepToken !== stepLoad) throw new Error("A newer geometry operation started; reopen the project to retry.");
+    if (nativeDesktop) {
+      if (revision !== projectRevision) throw new Error("The current project changed while the file was loading; your edits were kept. Open it again to retry.");
+      return await nativeOpen("new-project", {project});
+    }
     nextReference = project.assets?.reference ? await restoreReferenceGeometry(project.assets.reference) : null;
     nextStep = project.assets?.step ? await restoreStepAsset(project.assets.step) : null;
     validateStepForModel(nextStep,project.model);
@@ -3009,7 +3039,6 @@ async function newAssembly() {
   if (state.busy || state.saving || state.opening) return;
   const text = JSON.stringify(NEW_ASSEMBLY);
   if (await openProjectText(async () => text, text.length)) {
-    browserDirty = false;
     switchStep("model");
     notice("New 3D assembly. Import STEP parts, then add bodies, joints and loads in Pre-processing.");
   }
@@ -3018,12 +3047,12 @@ $("newButton").onclick = newAssembly;
 async function openFeatured(study) {
   if (state.busy || state.saving || state.opening) return;
   notice(`Loading ${study.title} and converting its CAD geometry…`, "warn");
-  const response = await fetch(`/api/featured/${encodeURIComponent(study.id)}`);
-  if (!response.ok) return notice(`The featured study could not be loaded (${response.status}).`, "error");
-  const text = await response.text();
-  if (await openProjectText(async () => text, text.length)) {
+  if (await openProjectText(async () => {
+    const response = await fetch(`/api/featured/${encodeURIComponent(study.id)}`);
+    if (!response.ok) throw new Error(`The featured study could not be loaded (${response.status}).`);
+    return response.text();
+  })) {
     $("examplesDialog").close();
-    browserDirty = false;
     notice(`${study.title} loaded. ${study.next || "Open Solve and run MBDyn, then explore the motion in Post-processing."}`);
   }
 }
@@ -3299,6 +3328,8 @@ new ResizeObserver(() => {
 }).observe($("plot"));
 
 async function init() {
+  const revision = projectRevision, referenceToken = referenceLoad, stepToken = stepLoad;
+  const startupCurrent = () => revision === projectRevision && referenceToken === referenceLoad && stepToken === stepLoad && !state.opening && !state.saving && !state.busy;
   try {
     savedTheme = localStorage.getItem("mbdyn-studio-theme");
     if (savedTheme) document.documentElement.dataset.theme = savedTheme;
@@ -3352,7 +3383,7 @@ async function init() {
         "warn",
       );
     let recovered;
-    try {
+    if (startupCurrent()) try {
       const saved = JSON.parse(
         localStorage.getItem("mbdyn-studio-project") || "null",
       );
@@ -3361,8 +3392,10 @@ async function init() {
         if (check.valid) recovered = saved.model;
       }
     } catch {}
-    if (recovered) applyModel(recovered, false);
-    else await validate(false);
+    if (startupCurrent()) {
+      if (recovered) applyModel(recovered, false);
+      else await validate(false);
+    }
     if (nativeDesktop) await offerRecovery();
   } catch (error) {
     notice(

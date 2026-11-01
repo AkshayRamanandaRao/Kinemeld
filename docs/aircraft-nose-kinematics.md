@@ -6,7 +6,7 @@
 
 This is an **inferred kinematic demonstration only** using all 11 unchanged occurrences of the [source aircraft nose-gear STEP assembly](../examples/open-aircraft-nose-gear/README.md). The source has known initial solid overlaps. The substitutes used for two scissor joints admit different freedoms from physical pins, and all material densities, masses, mounting and driving assumptions are illustrative. **Do not interpret this fixture's joint reactions as aircraft load, actuator capacity, bearing design, stress or certification results.** It is not a drop test and has no tire–ground contact, brake, steering, pneumatic or hydraulic strut model.
 
-The **model title carries this warning inside the application**. Use this example to see how original STEP occurrences can follow a constrained model and how the linkage moves when a slider is prescribed; it is not a complete engineering model of the source mechanism.
+The model is titled **Aircraft nose-gear kinematics**; its engineering limits are documented here. Use this example to see how original STEP occurrences can follow a constrained model and how the linkage moves when a slider is prescribed; it is not a complete engineering model of the source mechanism.
 
 ## What the model represents
 
@@ -22,7 +22,7 @@ Known **initial source overlaps** remain unchanged: approximately 9,199 mm³ pis
 
 ## Run it
 
-1. Open `examples/open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio`. The title says **KINEMATIC ONLY · loads invalid · source overlaps**. The six rigid bodies, seven joints and 11 STEP attachments belong to this illustrative fixture, not recovered CAD mates.
+1. Open `examples/open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio`, titled **Aircraft nose-gear kinematics**. The six rigid bodies, seven joints and 11 STEP attachments belong to this illustrative fixture, not recovered CAD mates.
 2. Select **oleo** and inspect **Prescribed slider motion**: amplitude `0.005 m`, frequency `1 Hz`. The modeled displacement is `q(t) = 0.005(1−cos(2πt)) m`, starting from rest and reaching `0.010 m` at `0.5 s`.
 3. Select **Validate model**, then **Run simulation**. In Results choose **Slider position (reconstructed)** and joint **oleo**. Scrub from 0 to 0.5 s while observing the STEP piston, wheels and links. Save and reopen the project to retain the CAD bindings and recorded result.
 4. Restrict interpretation to the displayed positions and geometric constraints. The generic reaction plots are available because MBDyn solves constraint forces, but they are **not valid aircraft-load predictions** for this fixture.

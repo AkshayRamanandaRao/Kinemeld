@@ -2,7 +2,7 @@
 
 Kinemeld is a preview multibody workbench built around a separately configured
 MBDyn solver. Items below describe intended work, not commitments or delivery
- dates. Every feature should include an example, user documentation, failure
+dates. Every feature should include an example, user documentation, failure
 checks, and validation against the solver and an independent reference where
 appropriate.
 
@@ -80,23 +80,30 @@ Each step ships as its own release with an example, documentation and solver evi
     from CAD that writes them as arcs, model names, and an end-to-end showcase on an
     aircraft nose gear built from its eleven STEP parts.
 
-## Further priorities
+## Execution priorities
 
-- **Reliability and publication:** protect edits during asynchronous CAD and
-  project operations, qualify native dialogs,
-  and finish dependency and license audits for every bundled component.
-- **Engineering examples:** extend suspension and landing-gear studies only
-  with traceable geometry, hardpoints, material data and loading. Add independent
-  checks, convergence evidence and comparison with measurements where available.
-- **Interaction and assistance:** pick cones and tori; extend AI actions only where the
-  underlying physical and solver behavior is verified.
+Work proceeds in the order below, one item at a time. After an item is completed,
+report its changes, evidence and remaining limits, then ask for approval before
+implementing the next item. Released capabilities above are not pending work.
+
+| Priority | Item | Status | Completion checks |
+| --- | --- | --- | --- |
+| P0 | Refresh the aircraft nose-gear recordings | Complete (1 November 2026) | Clean titles and captions; engineering scope retained in the study guide. Both the featured clip and end-to-end workflow were recorded again; matching MP4/GIF pairs decoded and representative frames inspected. See [verification](verification.md#recording-refresh-1-november-2026). |
+| P1 | Preserve edits during asynchronous CAD and project operations | Complete (1 November 2026) | Delayed STEP replacement/append, generated solids, example/project loads, startup restore and autosave preserve newer edits, including typed input before blur. The integrated project-safety suite passes; negative controls reproduce the original failures. See [verification](verification.md#asynchronous-edit-preservation-1-november-2026). |
+| P2 | Qualify native project dialogs | Windows complete (1 November 2026); macOS/Linux pending | Twelve automated GUI cases pass against an extracted Windows app using real WebView2/native dialogs: Save/Open, cancellation, overwrite refusal, backups, conflicts, dirty documents, crash recovery and startup/shutdown. Reopened and recovered files retain model, 11 CAD bindings, 501 result samples and full CSV. See [verification](verification.md#windows-native-gui-verification-1-november-2026). |
+| P3 | Complete bundled dependency provenance and notices | Pending | Inventory each platform package, map exact versions to source and notices, include required corresponding source, regenerate hashes and verify unpacked packages. Record unresolved redistribution requirements before publication. |
+| P4 | Strengthen engineering examples, starting with nose gear | Pending | Document traceable geometry, hardpoints, materials and loading; check independent kinematics and timestep convergence. Extend suspension and landing-gear studies individually. Hardware load validation requires measured data and engineering review. |
+| P5 | Pick cones and tori from CAD | Pending | Cover analytic feature extraction, transformed occurrences, viewport selection, joint/frame placement and project save/reopen with geometric and interface checks. |
+| P6 | Extend assistant actions over verified workflows | Pending | Support only capabilities verified above; check proposal review, model validation, Undo and rejection of stale proposals. |
 
 ## Longer-term work
 
-Broader surface contact, true stiction, flexible bodies, controls and co-simulation,
-aerodynamics, design studies and optimization each need their own model contract,
-editor, solver integration and numerical benchmarks. A solver capability is not
-an application feature until the complete workflow has been implemented and tested.
+After P6, the provisional order is: (1) true stiction and broader surface contact,
+(2) controls and co-simulation, (3) flexible bodies, (4) design studies and
+optimization, and (5) aerodynamics. Confirm the specific user case before starting
+each capability. Each needs its own model contract, editor, solver integration and
+independent numerical benchmarks. A solver capability is not an application feature
+until the complete workflow has been implemented and tested.
 
 ## Verification and distribution
 
@@ -104,7 +111,9 @@ The current integration has been exercised with MBDyn 1.7.3 and selected
 examples. Other versions, general models, engineering accuracy, production use
 and safety-critical qualification remain unverified. Every release package is unpacked
 and checked on fresh Linux, macOS and Windows runners before publication (file hashes,
-the packaged service, real MBDyn runs and the desktop self-check); native dialog
-tests and a complete review of redistributed dependencies and licenses remain open.
+the packaged service, real MBDyn runs and the desktop self-check). The Windows native
+dialog suite now passes on a configured development machine; macOS/Linux dialog
+tests, clean-machine GUI qualification and a complete review of redistributed
+dependencies and licenses remain open.
 Release archives bundle MBDyn 1.7.3 on Linux, macOS and Windows with the corresponding source
 attached; no package bundles Python or the CAD runtime.

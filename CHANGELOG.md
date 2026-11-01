@@ -4,6 +4,24 @@ All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/); from 1.0, project files follow the compatibility
 rules in [docs/project-format.md](docs/project-format.md).
 
+## Unreleased
+
+- Preserve newer model edits, CAD attachments and solver results when delayed
+  imports, generated solids, example loads or project opens finish. Stale autosave
+  payloads and acknowledgements cannot replace the active document's recovery state.
+- New assemblies and opened examples start as unsaved native documents, with their
+  own file identity. Save asks for a destination; cancellation and failed opens keep
+  the current document and its recovery origin.
+- Added an automated Windows GUI suite for real native dialogs, full project
+  round trips, conflicts and crash recovery. Accepted close ignores queued events
+  and shuts down the owned service; Windows checks pass, while macOS/Linux dialog
+  qualification remains open.
+- Refreshed both aircraft nose-gear MP4/GIF pairs with concise model titles and
+  captions. Engineering assumptions and interpretation limits remain in the study
+  guide. The workflow recorder now generates and checks its GIF alongside its MP4.
+- Ordered the remaining roadmap work with completion checks and a review before
+  each next item; removed the already-released contact friction feature from "next".
+
 ## 1.2.1 — Documentation, help text and first launch
 
 - **First launch.** The desktop app waits up to 90 s for its local service and 30 s for the

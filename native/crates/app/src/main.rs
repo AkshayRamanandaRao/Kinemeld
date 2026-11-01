@@ -161,7 +161,6 @@ fn run() -> Result<(), String> {
     // A snapshot from a session that ended without saving waits for the user's decision;
     // until then autosave must not replace it.
     let mut recovery_pending = !matches!(recovery.read(), Ok(None));
-    let mut recovered_from: Option<PathBuf> = None;
     let python = private_runtime::python_for(&root, env::var_os("MBDYN_STUDIO_PYTHON"))?;
     let service = BackendService::start_with_data_dir(&root, &python, &data).map_err(|error| format!("Cannot start the local Python solver service: {error}. Repair the application-local Python runtime, install Python 3.10+, or set MBDYN_STUDIO_PYTHON to its executable."))?;
     let base = service.client().base_url();
@@ -219,15 +218,18 @@ fn run() -> Result<(), String> {
     let mut projects = ProjectOpenState::default();
     let mut busy = false;
     let mut agent_busy = false;
+    let mut exiting = false;
     event_loop.run(move |event, _, flow| {
         let _keep_context = &context;
-        *flow = ControlFlow::Wait;
+        *flow = if exiting { ControlFlow::Exit } else { ControlFlow::Wait };
+        if exiting && !matches!(&event, Event::LoopDestroyed) { return; }
         match event {
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
                 if busy || agent_busy || projects.is_opening() { MessageDialog::new().set_level(MessageLevel::Info).set_title("Work in progress").set_description("Wait for the current simulation, agent request or project open to finish before closing the application.").show(); }
                 else if !projects.dirty || question("Unsaved project", "Discard unsaved changes and close Kinemeld?") {
                     // A clean close leaves nothing to recover; an undecided earlier snapshot is kept.
                     if !recovery_pending { let _ = recovery.clear(); }
+                    exiting = true;
                     *flow = ControlFlow::Exit;
                 }
             }
@@ -265,6 +267,15 @@ fn run() -> Result<(), String> {
                         projects.set_pending(candidate)?; Ok(value)
                     }
                     "accept-open" => { let token=projects.accept()?; Ok(json!({"token":token})) }
+                    "new-project" => {
+                        if busy { return Err("Wait for the active simulation before opening a project.".into()); }
+                        projects.ensure_idle()?;
+                        if projects.dirty && !question("Unsaved project", "Discard unsaved changes and open an unsaved copy?") { return Ok(json!({"cancelled":true})); }
+                        let document: ProjectDocument = serde_json::from_value(request.payload.get("project").cloned().ok_or("Missing project document.")?).map_err(|e| e.to_string())?;
+                        let candidate = ProjectSession::new(document).map_err(|e| e.to_string())?;
+                        let value = json!({"project":candidate.document()});
+                        projects.set_pending(candidate)?; Ok(value)
+                    }
                     "save" => {
                         if busy { return Err("Wait for the active simulation before saving.".into()); }
                         projects.ensure_idle()?;
@@ -275,7 +286,7 @@ fn run() -> Result<(), String> {
                         let outcome = if save_as {
                             // A recovered project suggests the file it came from.
                             let mut dialog = FileDialog::new().add_filter("Kinemeld project", &["mbdyn-studio"]);
-                            match recovered_from.as_ref().and_then(|path| Some((path.parent()?, path.file_name()?.to_str()?))) {
+                            match projects.recovered_from.as_ref().and_then(|path| Some((path.parent()?, path.file_name()?.to_str()?))) {
                                 Some((folder, name)) => { dialog = dialog.set_directory(folder).set_file_name(name); }
                                 None => { dialog = dialog.set_file_name("project.mbdyn-studio"); }
                             }
@@ -284,7 +295,7 @@ fn run() -> Result<(), String> {
                             session.save_as(&path, mode)
                         } else { session.save() }.map_err(|e| e.to_string())?;
                         projects.dirty = false;
-                        recovered_from = None;
+                        projects.recovered_from = None;
                         // The saved file now holds this work; a failed removal only means a stale prompt later.
                         let _ = recovery.clear();
                         Ok(json!({"path":outcome.path,"backup":outcome.backup}))
@@ -292,7 +303,7 @@ fn run() -> Result<(), String> {
                     "autosave" => {
                         if recovery_pending || busy || !projects.dirty || projects.is_opening() { return Ok(json!({"skipped":true})); }
                         let document = document_from(projects.session.as_ref(), &request.payload)?;
-                        let path = projects.session.as_ref().and_then(ProjectSession::path).map(Path::to_path_buf).or_else(|| recovered_from.clone());
+                        let path = projects.session.as_ref().and_then(ProjectSession::path).map(Path::to_path_buf).or_else(|| projects.recovered_from.clone());
                         let snapshot = recovery.write(&document, path.as_deref()).map_err(|e| e.to_string())?;
                         Ok(json!({"savedAt":snapshot.saved_at}))
                     }
@@ -315,7 +326,7 @@ fn run() -> Result<(), String> {
                         let candidate = ProjectSession::new(snapshot.document.clone()).map_err(|e| e.to_string())?;
                         let value = json!({"project":candidate.document(),"path":snapshot.project_path,"savedAt":snapshot.saved_at,"recovered":true});
                         projects.set_pending(candidate)?;
-                        recovered_from = snapshot.project_path;
+                        projects.pending_recovered_from = snapshot.project_path;
                         Ok(value)
                     }
                     // The frontend shows the recovered project; autosave may now replace the snapshot.
@@ -323,7 +334,7 @@ fn run() -> Result<(), String> {
                     "recovery-discard" => {
                         let aside = recovery.set_aside().map_err(|e| e.to_string())?;
                         recovery_pending = false;
-                        recovered_from = None;
+                        projects.recovered_from = None;
                         Ok(json!({"setAside":aside}))
                     }
                     "smoke" if smoke => {
@@ -341,7 +352,7 @@ fn run() -> Result<(), String> {
                     let script = format!("window.__mbdynNativeResolve({}, {});", request.id, response);
                     let _ = webview.evaluate_script(&script);
                 }
-                if exit_after { *flow = ControlFlow::Exit; }
+                if exit_after { exiting = true; *flow = ControlFlow::Exit; }
             }
             Event::LoopDestroyed => { if let Some(mut owned) = service.take() { let _ = owned.stop(); } }
             _ => {}

@@ -58,6 +58,40 @@ Files retain the validated model, saved results, STEP sources and body attachmen
 projects with STL references can still be reopened. Native save makes a backup on
 replacement and detects external file changes.
 
+**New 3D assembly** and **Open example** create an unsaved native document. Its first
+Save asks for a destination, including after a cancelled Save dialog; it does not
+reuse the previously opened project's path. An example opens as an unsaved copy,
+so saving cannot silently replace its source file. A failed or superseded project
+open retains the previous document and its file identity.
+
+Saving captures a snapshot before fetching the run's full CSV. Edits made while
+that snapshot is being prepared or saved remain unsaved. Autosave drops an older
+snapshot when the active document changes and retries the current unsaved work.
+
+### Automated Windows GUI checks
+
+The project-safety suite (`npm run test:project-safety`, with a running backend)
+uses Playwright and controlled bridge fixtures for delayed responses and rollback.
+The separate Windows GUI suite launches the actual native executable and its
+WebView2 viewer, uses its real native bridge, and operates the Windows file and
+confirmation dialogs through process-scoped Win32 controls:
+
+```powershell
+$env:KINEMELD_NATIVE_EXE = (Resolve-Path native/target/release/mbdyn-studio-desktop.exe).Path
+$env:KINEMELD_NATIVE_SOLVER_CONFIG = (Resolve-Path backend/solver.json).Path
+$env:MBDYN_STUDIO_PYTHON = (Get-Command python).Source
+npm run test:native-dialogs
+```
+
+Point `KINEMELD_NATIVE_EXE` at an extracted package's `Kinemeld.exe` to test that
+package. `KINEMELD_NATIVE_PROJECT` optionally selects a saved project; the default
+is the shipped nose-gear project, solved with the configured MBDyn when needed.
+The test uses isolated project files and user data, enables a loopback debugging
+port only in the test process, and writes its assertions and screenshots under
+`tests/evidence/`. It requires Windows, WebView2, Python, the optional CAD runtime,
+a working solver and the repository's Playwright dependency. It does not establish
+macOS/Linux dialog behaviour or a clean-machine installation.
+
 The snapshot check also identifies an existing project through case and hard-link aliases. If the original is missing, it conservatively treats a different-cased name as the same destination even in a case-sensitive Windows directory; choose a more distinct name to save a copy. It detects changes observed before the check; it cannot make noncooperating external writes atomic with the subsequent replacement. Save locks are per path, so concurrent saves through distinct hard-link names are not serialized. Retain replacement backups when coordinating with other writers.
 
 ## Autosave and crash recovery

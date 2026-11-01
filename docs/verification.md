@@ -1,9 +1,90 @@
-# Verification record — October 2026
+# Verification record
 
 This records historical checks performed on a local development version. It is
 not a claim of general-purpose CAE qualification or measured usability superiority.
 Run records, generated reports and local logs are ignored and are not included in
 the public checkout; the commands below produce fresh evidence on the target system.
+
+## Windows native GUI verification (1 November 2026)
+
+`npm run test:native-dialogs` passes **12/12 cases with no skips** against an
+extracted local Windows package. It connects Playwright to the actual WebView2
+viewer and uses a PID-scoped Win32 helper for operating-system dialogs. The native
+bridge and dialogs are not replaced with fixtures. Package resources are located
+automatically; no source-workspace override is used. All 312 package file hashes
+were checked before the run.
+
+Both the pre-solved fixture and the default shipped nose-gear project pass the
+complete matrix. The default path runs MBDyn in the actual app before checking
+the result round trip.
+
+- Native Open, Save As and reopen retain the model, all 11 STEP bindings, 501
+  MBDyn samples and the 3,611,262-byte full CSV. Ordinary Save keeps a byte-exact
+  backup. Save As cancellation and overwrite refusal leave prior files unchanged.
+- External edits reject Save without overwriting the changed file; a fresh Save As
+  succeeds. New asks for a destination again after each cancelled Save and
+  autosaves without inheriting the previous file path.
+- Declining dirty Open, cancelling its picker, and opening malformed JSON preserve
+  current work. A forced process exit is followed by recovery of the full CAD and
+  result snapshot; a real recovered Save As matches its pre-crash semantic content.
+- Declining Close retains work. Confirmed Close clears the recovery snapshot,
+  exits with code zero and stops the owned backend. Separate clean/dirty close
+  probes pass with the GUI driver attached and detached. Accepted exit now ignores
+  queued application events while the event loop finishes closing.
+- Representative native file/confirmation dialogs and the recovered workbench
+  were inspected from the GUI-test screenshots. JSON reports and PNGs are generated
+  under `tests/evidence/native-dialogs-*`.
+
+The tested executable SHA-256 is
+`d7b23b1a8c11c6cec736b66175f778b22afd4b40f00f54035c012f8b84cbbe1d`;
+the tested `frontend/app.js` SHA-256 is
+`8c939fc7389da07948227ba43a14fbb036a965bb4ae28a6b737d395f92ee8f5b`.
+This is a configured Windows machine using its installed Python/CAD runtime and
+local WSL MBDyn 1.7.3. The QA archive bundles no Python, CAD runtime or solver.
+Clean-machine GUI installation and macOS/Linux native dialogs remain unverified;
+this is not a distribution or dependency-license qualification.
+
+## Asynchronous edit preservation (1 November 2026)
+
+- Reproduced a delayed STEP replacement dropping a newer attachment, a delayed
+  startup restore replacing a newer edit, and an older autosave reaching the host
+  after the active document changed. Regression tests fail when the corresponding
+  guards are bypassed in a served test copy; the application source is unchanged
+  by these negative controls.
+- The final `npm run test:project-safety` passes: 10 CAD/project cases, eight
+  startup and pending-input cases, five native-copy identity cases, five autosave
+  races, the existing open/rollback/acknowledgement workflows and two bridge tests.
+  Model edits, CAD bindings, full solver CSV and recorded results are compared;
+  a newer real MBDyn run is included in the autosave checks.
+- `npm run check`, changed-script syntax and whitespace checks pass. Normal STEP
+  append/Undo/save/reopen and primitive generation/Undo/Redo/solve/save/reopen pass.
+- The release-profile Rust suite passes 31 tests, including untitled native
+  sessions, rollback to the previous file, recovery-origin finalization, backups,
+  external-change rejection and service ownership. One direct helper entry is
+  intentionally ignored and exercised through its parent startup tests.
+
+The browser tests above use controlled native bridges for deterministic races.
+They are separate from the real Windows dialog suite described in
+[the desktop guide](../native/README.md#automated-windows-gui-checks).
+
+## Recording refresh (1 November 2026)
+
+- Re-recorded `aircraft-nose-gear` and `workflow-nose-gear` from real MBDyn 1.7.3
+  solutions in headless Chrome on Windows. The featured MP4 is 1280 × 720 / 6.33 s;
+  the workflow MP4 is 1280 × 720 / 106.23 s. Matching GIFs are 720 × 406 and
+  800 × 450. All four files decoded without errors; representative motion frames
+  and the workflow's final MP4/GIF captions were visually inspected.
+- Model and featured-overlay changes affect display names only; source CAD bytes,
+  bindings, model parameters and solver settings are unchanged. Engineering limits
+  remain in the [study guide](aircraft-nose-kinematics.md).
+- Ten focused backend tests passed (`test_aircraft_nose_kinematics` and
+  `test_featured_studies`), as did `npm run check`, recorder syntax checks and the
+  nose-gear browser import, solve, animation and save/reopen regression.
+- The existing independent kinematics and timestep verifier passed: maximum
+  scissor-point error `4.23 × 10⁻¹⁵ m`, refinement difference `1.01 × 10⁻¹³ m` and
+  constraint residual `5.29 × 10⁻¹⁴ m`. These establish numerical consistency of the
+  prescribed fixture; they do not validate aircraft hardware loads. Native dialogs
+  and the remaining roadmap items were not exercised in this increment.
 
 ## Contact friction increment (1.1)
 

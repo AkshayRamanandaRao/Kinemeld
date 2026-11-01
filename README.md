@@ -34,9 +34,9 @@ bolts and two wheels — are imported one by one. Six bodies are built with a st
 shock-strut slide, the torque-link scissor and two wheel bearings; the CAD is attached, every
 joint is placed by pointing at its pin bolt or bore in the CAD, and mass and inertia come
 from the solids. An 80 mm shock-strut stroke is prescribed and solved with MBDyn; the
-post-processing shows the stroke, the 10.5° torque-link fold and the 144–163 N force the
-strut must deliver. A kinematic illustration: the source CAD overlaps in places and the
-scissor uses spherical and universal joints to avoid redundant constraints.
+post-processing shows the stroke, the 10.5° torque-link fold and the idealised slide reaction.
+This is a kinematic illustration; see the [study's engineering scope](docs/aircraft-nose-kinematics.md)
+for modelling assumptions and interpretation limits.
 [Watch the MP4](docs/demos/workflow-nose-gear.mp4) · [the part files](examples/open-aircraft-nose-gear)
 · the **guided tour** (compass icon) builds a wheel-end drop test step by step.
 
@@ -210,10 +210,12 @@ for scope and limitations.
 
 ## Roadmap
 
-Next: Coulomb friction for sphere–plane contact, verified against an independent solution.
-Longer term:
-flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
-and the [changelog](CHANGELOG.md).
+The current increment preserves edits during asynchronous CAD/project operations and
+verifies native project dialogs on Windows. macOS/Linux dialog checks remain open.
+Next: dependency provenance, stronger engineering examples, then CAD picking and
+assistant extensions. Each item is reviewed before starting the next. See the
+[prioritized roadmap](docs/roadmap.md) for acceptance checks and longer-term work,
+and the [changelog](CHANGELOG.md) for released changes.
 
 ## License and attribution
 

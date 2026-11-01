@@ -2,7 +2,7 @@
   "format": "mbdyn-studio/1",
   "model": {
     "kind": "spatial-assembly",
-    "name": "Aircraft gear \u00b7 KINEMATIC ONLY \u00b7 loads invalid \u00b7 source overlaps",
+    "name": "Aircraft nose-gear kinematics",
     "parameters": {
       "gravity": {
         "x": 0,

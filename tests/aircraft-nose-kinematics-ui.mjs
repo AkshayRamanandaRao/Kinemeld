@@ -11,7 +11,7 @@ page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>
 try {
  await page.goto(base);await page.waitForFunction(()=>document.querySelector('#solverStatus')?.textContent.includes('MBDyn ready'));
  await page.locator('#projectFile').setInputFiles('examples/open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio');await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('Project imported and validated'),null,{timeout:180000});
- assert.match(await page.locator('#stepStatus').textContent(),/11 attached/);assert.match(await page.locator('body').innerText(),/KINEMATIC ONLY.*loads invalid.*source overlaps/);
+ assert.match(await page.locator('#stepStatus').textContent(),/11 attached/);assert.match(await page.locator('body').innerText(),/Aircraft nose-gear kinematics/);assert.doesNotMatch(await page.locator('body').innerText(),/KINEMATIC ONLY|loads invalid|source overlaps/);
  await page.locator('#stepButton').click();assert.match(await page.locator('#stepDetail').textContent(),/11 attached/);assert(await page.locator('#stepReview').isHidden());await page.locator('#stepClose').click();
  const event=page.waitForResponse(r=>r.url().endsWith('/api/run')&&r.request().method()==='POST',{timeout:120000});await page.locator('#runButton').click();const run=await (await event).json();assert(run.ok,JSON.stringify(run));await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('MBDyn completed successfully'));
  const first=run.samples[0].sliders.find(s=>s.id==='oleo'),last=run.samples.at(-1).sliders.find(s=>s.id==='oleo');assert(Math.abs((last.position-first.position)-.01)<1e-9);assert(run.metrics.maxConstraintError<1e-8);

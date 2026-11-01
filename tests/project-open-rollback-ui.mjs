@@ -15,6 +15,7 @@ await page.addInitScript(()=>{
     notify(op){const s=window.__nativeTest;if(op==='finalize-open')s.previous=null;if(op==='discard-open')s.pending=null;},
     async call(op,payload={}){if(op==='recovery')return {};if(op==='autosave')return {skipped:true};
       const s=window.__nativeTest;
+      if(op==='new-project'){s.pending={project:structuredClone(payload.project)};return structuredClone(s.pending);}
       if(op==='save') {s.current={path:s.current?.path||'C:/test/current.mbdyn-studio',project:structuredClone({format:'mbdyn-studio/1',schemaVersion:1,model:payload.model,result:payload.result,view:payload.view,assets:payload.assets})};return {path:s.current.path};}
       if(op==='open'){s.pending=structuredClone(s.candidate);return structuredClone(s.pending);}
       if(op==='accept-open'){if(!s.pending)throw Error('No pending open');s.previous=s.current;s.current=s.pending;s.pending=null;return {token:'1'};}

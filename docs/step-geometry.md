@@ -14,6 +14,13 @@ the last addition. A set holds up to 24 files, 12 MiB and 200,000 display triang
 [`examples/open-aircraft-nose-gear/parts`](../examples/open-aircraft-nose-gear/parts) has
 the eleven parts of an aircraft nose gear as separate files to try this with.
 
+You can keep editing while CAD converts. If the model, geometry or attachments
+change before an import or generated solid is ready, Kinemeld keeps the newer
+work and asks you to retry the operation. Starting another import or project open
+also supersedes the older request. Undoing an intervening edit does not make an
+older conversion safe to apply. Failed conversion and cancelled file selection
+leave the current document intact.
+
 For a complete moving-solid example, choose **Load moving STEP pendulum**. This
 loads an original rectangular STEP solid and a matching rigid-body model with
 the binding already set. Its dimensions, density, inertia and initial frame are
