@@ -164,6 +164,18 @@ def verify(solver, sources):
         raise ValueError("Corresponding source must retain the build/packaging scripts.")
     for record in manifest["buildInputs"]:
         check_record(sources, record)
+    source_files = {"source-manifest.json"} | {record["path"] for record in manifest["buildInputs"]}
+    notice_files = set()
+    for component in manifest["components"]:
+        source_files.update(record["path"] for key in ("sources", "evidence") for record in component[key])
+        notice_files.update(record["path"] for record in component["notices"])
+    actual_sources = {path.relative_to(sources).as_posix() for path in sources.rglob("*") if path.is_file()}
+    if actual_sources != source_files:
+        raise ValueError(f"Unlisted or missing corresponding-source files: {sorted(actual_sources ^ source_files)}")
+    allowed_solver = covered | notice_files | {"DEPENDENCIES.json", "COPYING", "SOURCE.txt", "BUILD-ORIGINS.tsv", "CYGWIN-PACKAGES.txt"}
+    actual_solver = {path.relative_to(solver).as_posix() for path in solver.rglob("*") if path.is_file()}
+    if actual_solver - allowed_solver:
+        raise ValueError(f"Unlisted solver payload files: {sorted(actual_solver - allowed_solver)}")
     source_manifest = json.loads((sources / "source-manifest.json").read_text(encoding="utf-8"))
     if source_manifest != manifest:
         raise ValueError("Binary and corresponding-source manifests differ.")

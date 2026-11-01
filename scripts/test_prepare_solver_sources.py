@@ -54,6 +54,17 @@ class SolverSourceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "every bundled binary"):
             audit.verify(self.solver, self.sources)
 
+    def test_unlisted_sources_or_payload_cannot_enter_a_companion(self):
+        self.prepare()
+        extra = self.sources / "archives/original-with-y12.tar.gz"
+        extra.write_bytes(b"unreviewed leftover source")
+        with self.assertRaisesRegex(ValueError, "Unlisted or missing corresponding-source"):
+            audit.verify(self.solver, self.sources)
+        extra.unlink()
+        (self.solver / "unreviewed.dll").write_bytes(b"unreviewed leftover library")
+        with self.assertRaisesRegex(ValueError, "Unlisted solver payload"):
+            audit.verify(self.solver, self.sources)
+
     def test_changed_binary_notice_source_and_build_inputs_are_rejected(self):
         result = self.prepare()
         paths = [self.solver / "bin/mbdyn", self.solver / result["components"][0]["notices"][0]["path"],
