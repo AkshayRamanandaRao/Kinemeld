@@ -1,0 +1,412 @@
+{
+  "format": "kinemeld-engineering-example/1",
+  "study": "suspension",
+  "project": "examples/open-suspension/suspension.mbdyn-studio",
+  "modelSha256": "9a8d4470bcf938e5ffaa9d9eb871d0c3ba944458a5fd4323d8c989df4a44bbfc",
+  "generator": "examples/open-suspension/generate.py",
+  "generatorSha256Lf": "6fb2b3993b407fc9d72ecb96f6db93f26e9ac406991b2cc5396a994749ba1929",
+  "geometryProvenance": "MIT individual CAD exports at d822c401ad51aae76cfd4fbbe80d13b42800f339; STEP declares metres; no source assembly mates",
+  "upstream": "https://github.com/Prammit-06/Double_Wishbone_Suspension_CAD/tree/d822c401ad51aae76cfd4fbbe80d13b42800f339",
+  "units": {
+    "length": "m",
+    "mass": "kg",
+    "time": "s",
+    "angles": "degrees in saved poses; radians in reference equations"
+  },
+  "assets": [
+    {
+      "name": "Assembly 1 - Upper Control Arm_Default-As Machined-.step",
+      "sha256": "0eb1a5b7fd865bfd6b74d8772abf8963841e9d916ad40964e716a65fdf8d7416",
+      "sourcePath": "examples/step-suspension/Assembly 1 - Upper Control Arm_Default-As Machined-.step"
+    },
+    {
+      "name": "Assembly 1 - Lower Control Arm_Default-As Machined-.step",
+      "sha256": "b2e09857d05a62b8e657c333da30d7cf65881601f64b22ea5478b033dc826b9e",
+      "sourcePath": "examples/step-suspension/Assembly 1 - Lower Control Arm_Default-As Machined-.step"
+    },
+    {
+      "name": "Assembly 1 - Knuckle_Left Knuckle.step",
+      "sha256": "670681b02f1923520f49d46eb6fe0166040eb43869283566f04fba7f2a4313b9",
+      "sourcePath": "examples/step-suspension/Assembly 1 - Knuckle_Left Knuckle.step"
+    },
+    {
+      "name": "Assembly 1 - Hub.step",
+      "sha256": "5a035846fcd27121ac5337484b4f5e791b5deb3349030faff4768eed0c0ffbdb",
+      "sourcePath": "examples/step-suspension/Assembly 1 - Hub.step"
+    },
+    {
+      "name": "Assembly 1 - Front Tyre.step",
+      "sha256": "a0b7e75748354b03547decf398d0257d79442c051c330956d208136fac7255d0",
+      "sourcePath": "examples/step-suspension/Assembly 1 - Front Tyre.step"
+    }
+  ],
+  "bindings": {
+    "0:part-1": {
+      "body": "upper",
+      "pose": {
+        "x": 0.18,
+        "y": 0,
+        "z": -0.095,
+        "rx": 0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "1:part-1": {
+      "body": "lower",
+      "pose": {
+        "x": 0,
+        "y": 0,
+        "z": -0.225225,
+        "rx": 0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "2:part-1": {
+      "body": "knuckle",
+      "pose": {
+        "x": 0.035,
+        "y": 0,
+        "z": 0.0125,
+        "rx": 0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "3:part-1": {
+      "body": "wheel",
+      "pose": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "rx": 0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "4:part-1": {
+      "body": "wheel",
+      "pose": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "rx": 0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    }
+  },
+  "hardpoints": [
+    {
+      "joint": "upper_pivot",
+      "type": "revolute",
+      "end": "A",
+      "body": "ground",
+      "localM": {
+        "x": -0.156,
+        "y": -0.125,
+        "z": 0.04000000000000001
+      },
+      "worldM": [
+        -0.156,
+        -0.125,
+        0.04000000000000001
+      ],
+      "axisLocal": {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      },
+      "basis": "One selected upper-arm bore line: source local (-11,0,17.5) mm, direction +Z; second support is not established."
+    },
+    {
+      "joint": "upper_pivot",
+      "type": "revolute",
+      "end": "B",
+      "body": "upper",
+      "localM": {
+        "x": -0.191,
+        "y": 0,
+        "z": 0.1125
+      },
+      "worldM": [
+        -0.156,
+        -0.125,
+        0.04000000000000001
+      ],
+      "axisLocal": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "basis": "One selected upper-arm bore line: source local (-11,0,17.5) mm, direction +Z; second support is not established."
+    },
+    {
+      "joint": "lower_pivot",
+      "type": "revolute",
+      "end": "A",
+      "body": "ground",
+      "localM": {
+        "x": -0.20122500000000001,
+        "y": 0.12249999999999998,
+        "z": -0.209
+      },
+      "worldM": [
+        -0.20122500000000001,
+        0.12249999999999998,
+        -0.209
+      ],
+      "axisLocal": {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      },
+      "basis": "One selected lower-arm bore line: source local (-110,0,11) mm, direction +X; second support is not established."
+    },
+    {
+      "joint": "lower_pivot",
+      "type": "revolute",
+      "end": "B",
+      "body": "lower",
+      "localM": {
+        "x": -0.11,
+        "y": 0,
+        "z": 0.23622500000000002
+      },
+      "worldM": [
+        -0.20122500000000001,
+        0.12249999999999998,
+        -0.209
+      ],
+      "axisLocal": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "basis": "One selected lower-arm bore line: source local (-110,0,11) mm, direction +X; second support is not established."
+    },
+    {
+      "joint": "upper_ball",
+      "type": "spherical",
+      "end": "A",
+      "body": "upper",
+      "localM": {
+        "x": 0,
+        "y": -0.04,
+        "z": 0
+      },
+      "worldM": [
+        0.035,
+        -0.012500000000000002,
+        0.0
+      ],
+      "axisLocal": null,
+      "basis": "Inferred spherical center with a 40 mm virtual extension; arm and knuckle bores have different radii, not a proven physical fit."
+    },
+    {
+      "joint": "upper_ball",
+      "type": "spherical",
+      "end": "B",
+      "body": "knuckle",
+      "localM": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "worldM": [
+        0.035,
+        -0.0125,
+        0.0
+      ],
+      "axisLocal": null,
+      "basis": "Inferred spherical center with a 40 mm virtual extension; arm and knuckle bores have different radii, not a proven physical fit."
+    },
+    {
+      "joint": "lower_ball",
+      "type": "spherical",
+      "end": "A",
+      "body": "lower",
+      "localM": {
+        "x": 0,
+        "y": 0.04,
+        "z": 0
+      },
+      "worldM": [
+        0.035,
+        0.012500000000000002,
+        -0.16899999999999998
+      ],
+      "axisLocal": null,
+      "basis": "Inferred spherical center with a 40 mm virtual extension; arm and knuckle bores have different radii, not a proven physical fit."
+    },
+    {
+      "joint": "lower_ball",
+      "type": "spherical",
+      "end": "B",
+      "body": "knuckle",
+      "localM": {
+        "x": 0.0,
+        "y": -0.169,
+        "z": -0.025
+      },
+      "worldM": [
+        0.035,
+        0.01249999999999999,
+        -0.169
+      ],
+      "axisLocal": null,
+      "basis": "Inferred spherical center with a 40 mm virtual extension; arm and knuckle bores have different radii, not a proven physical fit."
+    },
+    {
+      "joint": "hub_axis",
+      "type": "revolute",
+      "end": "A",
+      "body": "knuckle",
+      "localM": {
+        "x": -0.07500000000000001,
+        "y": -0.0875,
+        "z": -0.0125
+      },
+      "worldM": [
+        -0.04000000000000001,
+        -5.204170427930421e-18,
+        -0.0875
+      ],
+      "axisLocal": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "basis": "Selected X-parallel knuckle feature; hub origin placed at X=-40 mm; physical bearing fit and rim omitted."
+    },
+    {
+      "joint": "hub_axis",
+      "type": "revolute",
+      "end": "B",
+      "body": "wheel",
+      "localM": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "worldM": [
+        -0.04,
+        0.0,
+        -0.0875
+      ],
+      "axisLocal": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "basis": "Selected X-parallel knuckle feature; hub origin placed at X=-40 mm; physical bearing fit and rim omitted."
+    }
+  ],
+  "densityAssumptions": [
+    {
+      "binding": "0:part-1",
+      "body": "upper",
+      "densityKgM3": 7850.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "1:part-1",
+      "body": "lower",
+      "densityKgM3": 7850.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "2:part-1",
+      "body": "knuckle",
+      "densityKgM3": 7850.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "3:part-1",
+      "body": "wheel",
+      "densityKgM3": 7850.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "4:part-1",
+      "body": "wheel",
+      "densityKgM3": 1100.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    }
+  ],
+  "gravityM_s2": {
+    "x": 0,
+    "y": 0,
+    "z": -9.81
+  },
+  "initialVelocities": {
+    "upper": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "lower": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "knuckle": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "wheel": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    }
+  },
+  "forceLaws": [
+    {
+      "id": "spring",
+      "type": "linear-spring-damper",
+      "a": "ground",
+      "b": "lower",
+      "anchorA": {
+        "x": -0.15,
+        "y": 0.0125,
+        "z": 0.35
+      },
+      "anchorB": {
+        "x": 0,
+        "y": 0,
+        "z": 0.08
+      },
+      "stiffness": 2500.0,
+      "damping": 30.0,
+      "restLength": 0.53
+    }
+  ],
+  "contacts": [],
+  "jointMotions": {},
+  "interpretationLimits": [
+    "Inferred linkage with 40 mm virtual outboard-joint extensions, not the original assembled vehicle.",
+    "No tie rod, tire/road contact, compliant bushings, preload or measured K&C data.",
+    "Kinematic reference conditions on the solved lower-arm coordinate; it does not independently predict the dynamic trajectory.",
+    "Uniform densities and spring/damper data are illustrative."
+  ],
+  "hardwareValidation": "not-performed"
+}

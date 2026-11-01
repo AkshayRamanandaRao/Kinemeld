@@ -38,3 +38,10 @@ These checks establish numerical consistency with **this idealization** only. Th
 From the source checkout, `python -B backend/test_aircraft_nose_kinematics.py` checks original STEP identity, mapping, initial joints and mass definitions; `python -B backend/verify_aircraft_nose_kinematics.py` runs the independent two-circle and MBDyn timestep comparison. With the local application and MBDyn running, `node tests/aircraft-nose-kinematics-ui.mjs` checks STEP import, simulation, animation and project save/reopen. Browser tests are included in the source archive, not the local Windows package.
 
 To advance to an aircraft study, correct and verify CAD clearance and physical pin geometry, supply actual wheel and bearing properties, strut gas/hydraulic laws and friction, aircraft-supported mass and tire/ground behavior, then correlate independent test data. The [landing-gear engineering workflow](landing-gear-engineering-workflow.md) details those steps.
+
+The [engineering input record](../examples/open-aircraft-nose-kinematics/engineering.json)
+now pins the saved model, generator, exact CAD, density assumptions, body frames,
+and both ends of every hardpoint. The [four-example engineering verifier](engineering-example-verification.md)
+reintegrates all six body mass properties, checks 1/0.5/0.25 ms runs against the
+slider and two-circle reference, and repeats with half the prescribed amplitude.
+The retained snapshot records source/deck hashes and actual solver run IDs.

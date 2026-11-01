@@ -60,6 +60,7 @@ jobs:
         run: |
           python -B verify_featured_studies.py
           python -B verify_constraint_analysis.py
+          python -B verify_engineering_examples.py
 
   native:
     name: Desktop host (${{ matrix.os }})

@@ -82,9 +82,12 @@ Each step ships as its own release with an example, documentation and solver evi
 
 ## Execution priorities
 
-Work proceeds in the order below, one item at a time. After an item is completed,
-report its changes, evidence and remaining limits, then ask for approval before
-implementing the next item. Released capabilities above are not pending work.
+Work proceeds through the remaining items with a separate implementation and
+verification record for each. On 1 November 2026 the project owner authorized
+continuing across the roadmap without approval between items. Report changes,
+evidence and remaining limits as work progresses. Released capabilities above
+are not pending work. Robotics is the primary use case; the automotive and
+nose-gear studies remain useful independent validation cases.
 
 | Priority | Item | Status | Completion checks |
 | --- | --- | --- | --- |
@@ -92,18 +95,19 @@ implementing the next item. Released capabilities above are not pending work.
 | P1 | Preserve edits during asynchronous CAD and project operations | Complete (1 November 2026) | Delayed STEP replacement/append, generated solids, example/project loads, startup restore and autosave preserve newer edits, including typed input before blur. The integrated project-safety suite passes; negative controls reproduce the original failures. See [verification](verification.md#asynchronous-edit-preservation-1-november-2026). |
 | P2 | Qualify native project dialogs | Windows complete (1 November 2026); macOS/Linux pending | Twelve automated GUI cases pass against an extracted Windows app using real WebView2/native dialogs: Save/Open, cancellation, overwrite refusal, backups, conflicts, dirty documents, crash recovery and startup/shutdown. Reopened and recovered files retain model, 11 CAD bindings, 501 result samples and full CSV. See [verification](verification.md#windows-native-gui-verification-1-november-2026). |
 | P3 | Complete bundled dependency provenance and notices | Complete — audit and unpublished candidates (1 November 2026) | Exact platform inventories, full notices, runtime sources/patches and filtered MBDyn source; 47 audit checks pass. All three candidate packages pass fresh-runner source/hash/service/solver/native checks. Published v1.2.1 assets remain unchanged; historical Y12, macOS SDK and optional private-runtime rights limits are recorded in the [audit](dependency-audit.md). |
-| P4 | Strengthen engineering examples, starting with nose gear | Pending | Document traceable geometry, hardpoints, materials and loading; check independent kinematics and timestep convergence. Extend suspension and landing-gear studies individually. Hardware load validation requires measured data and engineering review. |
+| P4 | Strengthen engineering examples, starting with nose gear | Numerical/provenance checks complete (1 November 2026) | Four hash-bound engineering records; 16 real solver runs with three timestep levels and parameter variants; independent robot kinematics/torques and drop/suspension references. Fifteen body mass/COM/tensors match the stated assumptions for 25 CAD occurrences. See [engineering verification](engineering-example-verification.md). Material calibration and hardware correlation remain outside these numerical checks. |
 | P5 | Pick cones and tori from CAD | Pending | Cover analytic feature extraction, transformed occurrences, viewport selection, joint/frame placement and project save/reopen with geometric and interface checks. |
 | P6 | Extend assistant actions over verified workflows | Pending | Support only capabilities verified above; check proposal review, model validation, Undo and rejection of stale proposals. |
 
 ## Longer-term work
 
-After P6, the provisional order is: (1) true stiction and broader surface contact,
-(2) controls and co-simulation, (3) flexible bodies, (4) design studies and
-optimization, and (5) aerodynamics. Confirm the specific user case before starting
-each capability. Each needs its own model contract, editor, solver integration and
-independent numerical benchmarks. A solver capability is not an application feature
-until the complete workflow has been implemented and tested.
+After P6, the robotics-focused order is: (1) true stiction and broader contact,
+(2) actuator controls and co-simulation, (3) flexible links, and (4) design studies
+and optimization. Aerodynamics is outside the active product scope. Each feature
+needs its own model contract, editor, solver integration and independent numerical
+benchmarks. A solver capability is not an application feature until the complete
+workflow has been implemented and tested. Hardware validation still requires
+measured data; it cannot be replaced by simulation checks.
 
 ## Verification and distribution
 
