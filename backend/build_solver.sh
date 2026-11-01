@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Build the official pinned source locally; install no system packages here.
 set -euo pipefail
-base="$(cd -- "$(dirname -- "$0")" && pwd)"
+base="$(cd -- "$(dirname -- "$0")" && pwd -P)"
 CC="${CC:-gcc}"; CXX="${CXX:-g++}"; FC="${FC:-gfortran}"
 for tool in "$CC" "$CXX" "$FC" make python3 tar; do
     command -v "$tool" >/dev/null || { echo "Missing build prerequisite: $tool" >&2; exit 1; }
 done
+[ ! -L "$base/vendor" ] || { echo 'Refusing to use a linked vendor directory.' >&2; exit 1; }
 mkdir -p "$base/vendor" "$base/evidence"
 archive="$base/vendor/mbdyn-1.7.3.tar.gz"
 if [ ! -f "$archive" ]; then
@@ -13,6 +14,7 @@ if [ ! -f "$archive" ]; then
 fi
 python3 -c 'import hashlib, sys; d = hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest(); sys.exit(0 if d == sys.argv[2] else "MBDyn archive digest mismatch")' "$archive" 3cf05cd1cb14c1af3d987aac119b6ecf0d835bc1aee06bc4cf7cc5a245c1f36d
 filtered="$base/vendor/mbdyn-1.7.3-kinemeld-no-y12.tar"
+[ ! -L "$filtered" ] || { echo 'Refusing to replace a linked source archive.' >&2; exit 1; }
 python3 "$base/../scripts/filter_mbdyn_source.py" "$archive" "$filtered" --manifest "$base/evidence/mbdyn-source-transform.json"
 # Build only from the verified archive, never a stale or locally edited tree.
 vendor_dir="$(cd -- "$base/vendor" && pwd -P)"

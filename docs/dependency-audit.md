@@ -46,8 +46,12 @@ or legal permission where the upstream package itself leaves it unclear.
   upstream copyright are retained separately. Dynamically loaded runtimes remain
   replaceable ordinary files.
 - **Y12:** the archived MBDyn README does not establish a redistribution grant.
-  New builds force `--without-y12`, reconfigure old build caches and check the actual
-  generated configuration. Existing binaries are not retroactively cleared.
+  New builds remove precisely eleven unused Y12 Fortran implementations, force
+  `--without-y12` and check the actual generated configuration. The identical
+  filtered source is distributed, with a pinned output hash and a manifest of all
+  removed paths/hashes. Retained source bytes are unchanged. Builds extract fresh
+  from that source rather than reusing an edited cache. Existing binaries are not
+  retroactively cleared.
 - **Packaging:** both packagers include the full notice tree. Public solver
   packaging requires a matching source directory and produces a hashed
   `*-solver-sources.tar.gz` companion. Checks cover every archive file, including

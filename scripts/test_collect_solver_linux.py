@@ -1,6 +1,7 @@
 """Focused Linux source collector boundary tests (portable; no live apt/network required)."""
 import hashlib
 import io
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -10,6 +11,38 @@ import collect_solver_linux as collector
 
 
 class LinuxCollectorTests(unittest.TestCase):
+    def test_runner_mirror_file_resolves_to_indexed_https_source_and_retains_evidence(self):
+        data = b"source metadata"
+        sha = hashlib.sha256(data).hexdigest()
+        source_path = "pool/main/l/lapack/lapack_3.10.0-2ubuntu1.dsc"
+        uri = "mirror+file:/etc/apt/apt-mirrors.txt/" + source_path
+        stanza = f"Package: lapack\nVersion: 3.10.0-2ubuntu1\nDirectory: pool/main/l/lapack\nChecksums-Sha256:\n {sha} {len(data)} lapack_3.10.0-2ubuntu1.dsc\n"
+        mirror_list = b"http://azure.archive.ubuntu.com/ubuntu/ priority:1\nhttp://archive.ubuntu.com/ubuntu/ priority:2\n"
+        with tempfile.TemporaryDirectory() as folder, patch.object(collector, "run", side_effect=[stanza, f"'{uri}' lapack_3.10.0-2ubuntu1.dsc {len(data)} SHA256:{sha}"]), patch.object(collector, "read_mirror_list", return_value=mirror_list) as read, patch.object(collector.urllib.request, "urlopen", return_value=io.BytesIO(data)) as download:
+            records, evidence = collector.source_artifacts("lapack", "3.10.0-2ubuntu1", Path(folder))
+            actual = "https://archive.ubuntu.com/ubuntu/" + source_path
+            self.assertEqual(records[0]["url"], actual)
+            download.assert_called_once_with(actual, timeout=120)
+            read.assert_called_once_with("/etc/apt/apt-mirrors.txt")
+            retained = {Path(item["path"]).name: Path(item["path"]) for item in evidence}
+            self.assertEqual(retained["apt-mirrors.txt"].read_bytes(), mirror_list)
+            resolution = json.loads(retained["apt-mirror-resolutions.json"].read_text())[0]
+            self.assertEqual(resolution["originalUri"], uri)
+            self.assertEqual(resolution["selectedHttpsUrl"], actual)
+
+    def test_mirror_file_rejects_traversal_unindexed_paths_and_arbitrary_hosts(self):
+        source = "pool/main/l/lapack/lapack_1.dsc"
+        with tempfile.TemporaryDirectory() as folder, patch.object(collector, "read_mirror_list") as read:
+            for uri in ("mirror+file:/etc/passwd/" + source, "mirror+file:/etc/apt/../apt/apt-mirrors.txt/" + source,
+                        "mirror+file:/etc/apt/apt-mirrors.txt/pool/../secret", "mirror+file://evil/etc/apt/apt-mirrors.txt/" + source,
+                        "mirror+file:/etc/apt/apt-mirrors.txt/" + source + "?host=evil"):
+                with self.subTest(uri=uri), self.assertRaises(ValueError):
+                    collector.source_url(uri, source, Path(folder))
+            read.assert_not_called()
+        with tempfile.TemporaryDirectory() as folder, patch.object(collector, "read_mirror_list", return_value=b"https://evil.test/ubuntu/\nhttps://archive.ubuntu.com.evil.test/ubuntu/\nhttps://user@archive.ubuntu.com/ubuntu/\nhttps://archive.ubuntu.com:443/ubuntu/\nhttps://archive.ubuntu.com/ubuntu/../secret/\n"):
+            with self.assertRaisesRegex(ValueError, "No reviewed Ubuntu HTTPS mirror"):
+                collector.source_url("mirror+file:/etc/apt/apt-mirrors.txt/" + source, source, Path(folder))
+
     def test_quadmath_license_family_and_unknown_library(self):
         self.assertEqual(collector.family_for("libquadmath.so.0"), "quadmath")
         self.assertEqual(collector.family_for("libgfortran.so.5"), "gcc-runtime")

@@ -20,7 +20,7 @@ import zipfile
 
 from check_asset_notices import verify as verify_assets
 from collect_rust_notices import check_bundle as verify_rust
-from prepare_solver_sources import verify as verify_solver, digest
+from prepare_solver_sources import verify as verify_solver, verify_license_texts, digest
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ["backend", "frontend", "examples", "docs", "notices", "LICENSE", "THIRD_PARTY_NOTICES.md", "README.md", "start.py", "requirements.txt"]
@@ -175,6 +175,7 @@ def main():
     if bool(args.solver) != bool(args.solver_sources):
         parser.error("--solver and --solver-sources must be supplied together")
     verify_assets(ROOT)
+    verify_license_texts(ROOT / "notices/solver")
     verify_rust(ROOT / "notices/rust", target=RUST_TARGETS[args.platform], source_root=ROOT)
     if args.solver:
         solver_metadata = verify_solver(args.solver, args.solver_sources)

@@ -107,6 +107,15 @@ class SolverSourceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "manifests differ"):
             audit.verify(self.solver, self.sources)
 
+    def test_changed_reviewed_license_text_is_rejected(self):
+        import shutil
+        target = self.root / "license-texts"
+        shutil.copytree(audit.ROOT / "notices/solver", target)
+        audit.verify_license_texts(target)
+        (target / "GPL-2.0.txt").write_text("changed license text")
+        with self.assertRaisesRegex(ValueError, "reviewed provenance"):
+            audit.verify_license_texts(target)
+
 
 if __name__ == "__main__":
     unittest.main()

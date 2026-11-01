@@ -30,6 +30,15 @@ package metadata and build/packaging inputs recorded in `solver/DEPENDENCIES.jso
 Keep that companion available beside its binary package. LGPL shared libraries
 remain ordinary replaceable files in `solver/bin` or `solver/lib`.
 
+The new MBDyn corresponding source is the deterministic
+`mbdyn-1.7.3-kinemeld-no-y12.tar`, SHA-256
+`1fd09e766c30485423d57e0379b5248e095aeec59bcec59a3f4b518e19f0fcc3`.
+It removes only eleven unused Y12 Fortran implementations from the pinned official
+archive, preserves all retained source bytes, and records the removal hashes in
+[mbdyn-source-transform.json](notices/solver/mbdyn-source-transform.json). New
+builds compile that same filtered source with Y12 disabled; new releases do not
+redistribute the original archive containing those implementations.
+
 Python, `cadquery-ocp`, OpenCascade, GTK/WebKitGTK, WKWebView and the installed
 WebView2 runtime are not bundled in standard public release archives. Installing
 them separately does not change their terms. The optional private Python/OCP test

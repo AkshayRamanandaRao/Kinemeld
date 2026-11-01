@@ -4,6 +4,8 @@ from pathlib import Path
 import sys
 import tempfile
 import struct
+import tarfile
+import io
 import unittest
 from unittest.mock import patch
 
@@ -47,6 +49,21 @@ class SourceCollectionTests(unittest.TestCase):
             with patch.object(collector, 'download', return_value=index):
                 with self.assertRaisesRegex(ValueError, 'Unreviewed'):
                     collector.collect_cygwin(work, work, {'bin/unknown.dll': '/usr/bin/unknown.dll'})
+
+    def test_changed_cygwin_copy_is_rejected_before_package_lookup(self):
+        with tempfile.TemporaryDirectory() as folder:
+            work = Path(folder)
+            import lzma
+            index = work / 'cygwin-setup.xz'
+            index.write_bytes(lzma.compress(b'@ libgcc1\n'))
+            (work / 'bin').mkdir()
+            (work / 'bin/cyggcc_s-seh-1.dll').write_bytes(b'changed DLL')
+            original = work / 'original.dll'
+            original.write_bytes(b'original DLL')
+            with patch.object(collector, 'download', return_value=index), patch.object(collector, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'differs from its installed owner'):
+                    collector.collect_cygwin(work, work, {'bin/cyggcc_s-seh-1.dll': str(original)})
+                run.assert_not_called()
 
     def test_quadmath_is_not_classified_as_gcc_exception(self):
         from prepare_solver_sources import NAMES, LICENSES
@@ -95,6 +112,33 @@ class SourceCollectionTests(unittest.TestCase):
                  patch.object(collector, 'download', return_value=api):
                 with self.assertRaisesRegex(ValueError, 'official bottle'):
                     collector.collect_homebrew(root, root, {})
+
+    def test_homebrew_accepts_exact_bottle_recipe_and_rejects_modified_recipe(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            prefix = root / 'gcc/16.2.0'
+            (prefix / '.brew').mkdir(parents=True)
+            installed = prefix / '.brew/gcc.rb'
+            installed.write_bytes(b'class Gcc < Formula\n  # exact pre-bottling recipe\nend\n')
+            tap = root / 'tap-gcc.rb'
+            tap.write_bytes(b'class Gcc < Formula\n  bottle do\n    rebuild 1\n  end\nend\n')
+            bottle = root / 'gcc.bottle.tar.gz'
+            with tarfile.open(bottle, 'w:gz') as archive:
+                member = tarfile.TarInfo('gcc/16.2.0/.brew/gcc.rb')
+                member.size = installed.stat().st_size
+                archive.addfile(member, io.BytesIO(installed.read_bytes()))
+            api = {'bottle': {'stable': {'rebuild': 1, 'files': {'arm64_sequoia': {
+                'sha256': collector.digest(bottle), 'url': 'https://ghcr.io/verified-bottle'}}}}}
+            with patch.object(collector, 'run', return_value=str(bottle)):
+                recipe, evidence, metadata = collector.verify_homebrew_bottle(api, root, prefix, {}, installed, tap)
+                self.assertEqual(recipe.read_bytes(), installed.read_bytes())
+                self.assertEqual(json.loads(evidence.read_text())['rebuild'], 1)
+                installed.write_bytes(b'class Gcc < Formula\n  # unknown local modifications\nend\n')
+                with self.assertRaisesRegex(ValueError, 'both verified bottle and tap'):
+                    collector.verify_homebrew_bottle(api, root, prefix, {}, installed, tap)
+                api['bottle']['stable']['files']['arm64_sequoia']['sha256'] = '0' * 64
+                with self.assertRaisesRegex(ValueError, 'official API SHA-256'):
+                    collector.verify_homebrew_bottle(api, root, prefix, {}, installed, tap)
 
 
 if __name__ == '__main__':

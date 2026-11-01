@@ -39,7 +39,7 @@ jobs:
       - name: Restore MBDyn build
         uses: actions/cache@v4
         with:
-          path: backend/vendor
+          path: backend/vendor/mbdyn-1.7.3.tar.gz
           key: mbdyn-1.7.3-${{ runner.os }}-ubuntu22-${{ hashFiles('backend/build_solver.sh') }}
       - name: Build MBDyn 1.7.3
         run: |

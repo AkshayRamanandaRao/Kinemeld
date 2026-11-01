@@ -26,7 +26,7 @@ import zipfile
 
 from check_asset_notices import verify as verify_assets, unique_keys
 from collect_rust_notices import check_bundle as verify_rust
-from prepare_solver_sources import verify as verify_solver, child
+from prepare_solver_sources import verify as verify_solver, verify_license_texts, child
 
 
 def ok(message):
@@ -106,6 +106,7 @@ def verify_files(archive, target, version):
         if sha256(child(target, relative)) != expected_digest:
             fail(f"archive file does not match its manifest: {relative}")
     verify_assets(root)
+    verify_license_texts(root / "notices/solver")
     verify_rust(root / "notices/rust", target=manifest["rustTarget"])
     if manifest["bundledSolver"]:
         record = manifest.get("solverSources") or {}

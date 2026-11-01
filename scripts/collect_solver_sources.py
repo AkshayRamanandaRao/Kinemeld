@@ -179,14 +179,14 @@ def collect_cygwin(solver, work, origins):
         family = next((key for key, pattern in NAMES.items() if pattern.fullmatch(PurePosixPath(filename).name)), None)
         if family not in ("gcc-runtime", "quadmath", "cygwin", "libiconv", "gettext-runtime"):
             raise ValueError(f"Unreviewed Cygwin dependency: {filename}")
+        if digest(solver / filename) != digest(Path(original)):
+            raise ValueError(f"Bundled Cygwin library differs from its installed owner: {filename}")
         installed = run("cygcheck", "-f", original)
         match = re.fullmatch(r"(.+)-(\d[^\s]*-\d+)", installed)
         if not match:
             raise ValueError(f"Cannot identify installed Cygwin owner: {installed}")
         package, version = match.groups()
         fields = cygwin_entry(index, package, version)
-        if digest(solver / filename) != digest(Path(original)):
-            raise ValueError(f"Bundled Cygwin library differs from its installed owner: {filename}")
         relative, size, checksum = fields["source"].split()
         archive = download(CYGWIN_MIRROR + relative, work / PurePosixPath(relative).name, checksum, "sha512")
         if archive.stat().st_size != int(size):
@@ -200,6 +200,61 @@ def collect_cygwin(solver, work, origins):
                            "sources": [source(archive, CYGWIN_MIRROR + relative, version)],
                            "evidence": [reference(evidence), reference(index_file)]})
     return components
+
+
+def verify_homebrew_bottle(api, work, prefix, origins, installed_formula, formula):
+    """Bind installed/patched runtime code to Homebrew's exact published bottle."""
+    bottle = Path(run("brew", "--cache", "gcc"))
+    if not bottle.is_file():
+        run("brew", "fetch", "--force-bottle", "gcc")
+        bottle = Path(run("brew", "--cache", "gcc"))
+    checksum = digest(bottle)
+    matches = [(tag, record) for tag, record in api["bottle"]["stable"]["files"].items()
+               if record["sha256"] == checksum]
+    if len(matches) != 1:
+        raise ValueError("Cached Homebrew GCC bottle does not match an official API SHA-256")
+    tag, record = matches[0]
+    wanted = {}
+    for filename, original in origins.items():
+        if filename.startswith("bin/mbdyn"):
+            continue
+        resolved = Path(original).resolve()
+        if not resolved.is_relative_to(prefix):
+            raise ValueError(f"Unreviewed non-GCC Homebrew dependency: {original}")
+        wanted[f"gcc/{prefix.name}/{resolved.relative_to(prefix).as_posix()}"] = filename
+    recipe_member = f"gcc/{prefix.name}/.brew/gcc.rb"
+    recipe, identities = None, {}
+    sbom = work / "homebrew-bottle-sbom.spdx.json"
+    with tarfile.open(bottle, "r|gz") as archive:
+        for member in archive:
+            if not member.isfile():
+                continue
+            if member.name == recipe_member:
+                recipe = archive.extractfile(member).read()
+            elif member.name == f"gcc/{prefix.name}/sbom.spdx.json":
+                sbom.write_bytes(archive.extractfile(member).read())
+            elif member.name in wanted:
+                filename = wanted[member.name]
+                identity = macho_identity(bottle, archive.extractfile(member).read())
+                if identity != macho_identity(Path(origins[filename])):
+                    raise ValueError(f"Installed GCC library code/UUID differs from official bottle: {filename}")
+                identities[filename] = identity
+    if recipe is None or set(identities) != set(wanted.values()):
+        raise ValueError("Official Homebrew bottle lacks its recipe or a required runtime library")
+    # A bottle embeds its build recipe before Homebrew later adds its bottle DSL
+    # and sometimes updates a source mirror URL. Verify exact provider bytes,
+    # retaining both recipes, instead of normalizing arbitrary Ruby statements.
+    if installed_formula.read_bytes() not in (recipe, formula.read_bytes()):
+        raise ValueError("Installed Homebrew GCC formula differs from both verified bottle and tap recipes")
+    bottle_formula = work / "gcc-bottle.rb"
+    bottle_formula.write_bytes(recipe)
+    evidence = work / "homebrew-bottle-identity.json"
+    evidence.write_text(json.dumps({"url": record["url"], "sha256": checksum, "tag": tag,
+        "rebuild": api["bottle"]["stable"]["rebuild"], "version": prefix.name,
+        "formulaMember": recipe_member, "bottleFormulaSha256": digest(bottle_formula),
+        "tapFormulaSha256": digest(formula), "installedFormulaSha256": digest(installed_formula),
+        "libraries": identities}, indent=2) + "\n")
+    return bottle_formula, evidence, ([sbom] if sbom.exists() else [])
 
 
 def collect_homebrew(solver, work, origins):
@@ -225,8 +280,7 @@ def collect_homebrew(solver, work, origins):
     raw = f"https://raw.githubusercontent.com/Homebrew/homebrew-core/{tap_head}/"
     formula = download(raw + api["ruby_source_path"], work / "gcc-homebrew.rb", api["ruby_source_checksum"]["sha256"])
     installed_formula = prefix / ".brew/gcc.rb"
-    if digest(installed_formula) != digest(formula):
-        raise ValueError("Installed Homebrew GCC formula differs from its pinned source recipe")
+    bottle_formula, bottle_evidence, bottle_metadata = verify_homebrew_bottle(api, work, prefix, origins, installed_formula, formula)
     sources = [source(archive, stable["url"].replace("http://", "https://"), version), source(formula, raw + api["ruby_source_path"], version)]
     for patch in api.get("patches", []):
         url = patch.get("url") or raw + patch["file"]
@@ -252,8 +306,8 @@ def collect_homebrew(solver, work, origins):
     identities_file.write_text(json.dumps(identities, indent=2) + "\n")
     return [{"name": "homebrew-" + family, "family": family, "version": version, "sourceVersion": version,
              "files": files, "packageNotice": reference(copyright_notice(archive, family, work)), "sources": sources,
-             "evidence": [reference(receipt), reference(api_file), reference(keg_receipt), reference(installed_formula),
-                          reference(identities_file)]} for family, files in groups.items()]
+             "evidence": [reference(path) for path in [receipt, api_file, keg_receipt, installed_formula,
+                          identities_file, bottle_formula, bottle_evidence, *bottle_metadata]]} for family, files in groups.items()]
 
 
 def collect(solver, work):
@@ -271,9 +325,13 @@ def collect(solver, work):
         notice.write_bytes(b"MBDyn 1.7.3 original upstream notices\n\n" + b"\n\n".join(
             bundle.extractfile("mbdyn-1.7.3/" + name).read() for name in ("AUTHORS", "COPYING")))
     platform = "windows" if sys.platform.startswith("cygwin") else "macos" if sys.platform == "darwin" else "linux"
+    mbdyn_source = source(archive, MBDYN_URL, SOURCE_VERSION)
+    mbdyn_source["derivation"] = {"upstreamSha256": UPSTREAM_SHA, "recipe": "build/filter_mbdyn_source.py",
+                                  "manifest": "metadata/mbdyn/mbdyn-source-transform.json",
+                                  "urlIsUpstreamInput": True}
     components = [{"name": "mbdyn", "family": "mbdyn", "version": "1.7.3", "sourceVersion": SOURCE_VERSION,
                    "files": [name for name in origins if name.startswith("bin/mbdyn")],
-                   "packageNotice": reference(notice), "sources": [source(archive, MBDYN_URL, SOURCE_VERSION)],
+                   "packageNotice": reference(notice), "sources": [mbdyn_source],
                    "evidence": [reference(origins_file), reference(ROOT / "backend/evidence/mbconfig.h"), reference(transformation)]}]
     if platform == "windows":
         components.extend(collect_cygwin(solver, work, origins))

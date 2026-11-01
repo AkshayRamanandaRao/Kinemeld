@@ -1,6 +1,4 @@
 """Archive boundaries and corresponding-source gates, without launching a GUI."""
-import hashlib
-import json
 from pathlib import Path
 import tarfile
 import tempfile
@@ -24,7 +22,7 @@ class PackageComplianceTests(unittest.TestCase):
         host.parent.mkdir(parents=True)
         host.write_bytes(b"desktop host fixture")
         (self.app / "LICENSE").write_text("test license fixture")
-        for name in ("verify_assets", "verify_rust"):
+        for name in ("verify_assets", "verify_rust", "verify_license_texts"):
             mock = patch.object(check_package, name)
             mock.start()
             self.addCleanup(mock.stop)

@@ -42,6 +42,28 @@
       "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b",
       "sourceArchive": "gcc-16.2.0.tar.xz",
       "sourceMember": "gcc-16.2.0/libquadmath/COPYING.LIB"
+    },
+    {
+      "file": "COLAMD-2.1.txt",
+      "sha256": "0999b38a8d33473675093da07bc8d4b3550c67a73ec28c5ef711779181ef04cc",
+      "sourceArchive": "mbdyn-1.7.3.tar.gz",
+      "sourceMember": "mbdyn-1.7.3/libraries/libcolamd/colamd.c"
+    },
+    {
+      "file": "OpenLDAP-getopt.txt",
+      "sha256": "dd7bc425770704571a7bd102a27ef1a42218d95a750f64e04f96c60f42b2c849",
+      "sourceArchive": "mbdyn-1.7.3.tar.gz",
+      "sourceMember": "mbdyn-1.7.3/libraries/libobjs/getopt.c"
+    },
+    {
+      "file": "OpenLDAP-COPYRIGHT.txt",
+      "sha256": "2f5dc99f8d662dee90beb5ce7100ea0622c4a6bb1ce314d9aed50b5b6269299c",
+      "url": "https://raw.githubusercontent.com/openldap/openldap/OPENLDAP_REL_ENG_2_4_45/COPYRIGHT"
+    },
+    {
+      "file": "OpenLDAP-LICENSE.txt",
+      "sha256": "310fe25c858a9515fc8c8d7d1f24a67c9496f84a91e0a0e41ea9975b1371e569",
+      "url": "https://raw.githubusercontent.com/openldap/openldap/OPENLDAP_REL_ENG_2_4_45/LICENSE"
     }
   ]
 }

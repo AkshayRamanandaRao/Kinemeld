@@ -64,6 +64,18 @@ def child(root, name):
     return path
 
 
+def verify_license_texts(notices):
+    records = json.loads((notices / "license-provenance.json").read_text(encoding="utf-8"))["licenses"]
+    names = [record["file"] for record in records]
+    required = {name for files in LEGAL_FILES.values() for name in files}
+    if len(names) != len(set(names)) or not required <= set(names):
+        raise ValueError("Solver license provenance is duplicate or incomplete.")
+    for record in records:
+        path = child(notices, record["file"])
+        if not path.is_file() or digest(path) != record["sha256"]:
+            raise ValueError(f"Solver license text differs from reviewed provenance: {record['file']}")
+
+
 def checked_input(item, base):
     path = Path(item["path"])
     if not path.is_absolute():
@@ -159,6 +171,7 @@ def verify(solver, sources):
 
 
 def prepare(solver, sources, inventory):
+    verify_license_texts(ROOT / "notices/solver")
     spec = json.loads(inventory.read_text(encoding="utf-8"))
     if spec.get("format") != "kinemeld-solver-input/1":
         raise ValueError("Unsupported reviewed solver-input inventory.")
@@ -190,6 +203,8 @@ def prepare(solver, sources, inventory):
             source = checked_input(item, inventory.parent)
             record = put(source, sources, f"archives/{source.name}")
             record.update(url=item["url"], sourceVersion=item["sourceVersion"])
+            if "derivation" in item:
+                record["derivation"] = item["derivation"]
             component["sources"].append(record)
         component["evidence"] = []
         for item in original["evidence"]:

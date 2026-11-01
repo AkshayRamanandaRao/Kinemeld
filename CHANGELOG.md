@@ -6,6 +6,12 @@ rules in [docs/project-format.md](docs/project-format.md).
 
 ## Unreleased
 
+- Audit all three desktop dependency sets, retain missing Rust/Microsoft/solver
+  notices, and require exact runtime source packages with distribution patches
+  beside solver binaries. Check full archive coverage and reject stale or incomplete
+  notices and sources. Build from filtered MBDyn source with unused Y12 implementations
+  removed; preserve its provenance and COLAMD/OpenLDAP notices. See the
+  [dependency audit](docs/dependency-audit.md) for scope and unresolved rights.
 - Preserve newer model edits, CAD attachments and solver results when delayed
   imports, generated solids, example loads or project opens finish. Stale autosave
   payloads and acknowledgements cannot replace the active document's recovery state.

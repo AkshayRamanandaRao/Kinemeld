@@ -6,11 +6,18 @@ Archives are retained unchanged, including distribution source packages and thei
 patches. Metadata retains the package index/recipe used to resolve that version.
 build/ contains the exact Kinemeld build/bundle/CI scripts and configure arguments.
 
-MBDyn: verify and extract archives/mbdyn-1.7.3.tar.gz, then run the included
-build_solver.sh from a Kinemeld checkout at the release commit. It uses C++11,
+MBDyn: verify and extract archives/mbdyn-1.7.3-kinemeld-no-y12.tar, then run the
+configure and make commands recorded by build_solver.sh/configure-arguments.txt.
+It uses C++11,
 gfortran -fallow-argument-mismatch, --disable-runtime-loading and --without-y12.
 The release.yml build jobs record platform compiler/environment flags. MBDyn's
-own Makefiles/configure are in the unchanged upstream archive. mbconfig.h and
+own Makefiles/configure are unchanged in the filtered source archive. The source
+companion excludes only eleven unused Y12 Fortran implementations for which the
+upstream README supplied no grant. metadata/mbdyn/mbdyn-source-transform.json
+records every removed path/hash, the original archive URL/SHA and output SHA.
+filter_mbdyn_source.py reproduces the transformation from the upstream download;
+the original unfiltered archive is not shipped in new source companions.
+mbconfig.h and
 configure-arguments.txt capture the configuration actually used for this binary.
 
 Ubuntu runtimes: place the matching .dsc, .orig.tar.* and .debian.tar.* archives

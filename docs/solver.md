@@ -12,7 +12,11 @@ Release archives for Linux, macOS and Windows include MBDyn 1.7.3 built in CI fr
 pinned source below: with GCC on Ubuntu 22.04, with Homebrew GCC on macOS (Apple silicon),
 and with Cygwin's GCC on Windows. Each `solver/` folder holds the executable, the runtime
 libraries it loads (the GCC runtime; on Windows also the Cygwin DLL beside `mbdyn.exe`;
-LAPACK and BLAS where the build found them), `COPYING` and `SOURCE.txt`. The app uses it
+LAPACK and BLAS where the build found them), `COPYING`, full third-party notices and
+`DEPENDENCIES.json`. The paired `solver-sources` release artifact contains exact matching
+runtime source packages, distribution patches/recipes, checksums and build instructions.
+`SOURCE.txt` identifies that pairing. Package checks reject missing or changed notices,
+sources, build inputs and unlisted runtime libraries. The app uses the solver
 without configuration. Every package is unpacked on a fresh machine and solves real models
 before a release is published.
 
@@ -45,8 +49,14 @@ wsl -d YOUR_DISTRIBUTION -- bash /mnt/path/to/mbdyn-studio/backend/build_solver.
 
 The script checks the archive digest, compiles with four jobs and uses C++11 plus
 the legacy Fortran argument-compatibility flag required by this archived release.
-No MBDyn source modification is needed. The script leaves the original source,
-license and build logs in place. It generates configure/build logs in
+It removes only eleven unused Y12 Fortran implementation files through
+`scripts/filter_mbdyn_source.py`, then builds a fresh source tree with `--without-y12`.
+The deterministic filtered source archive is versioned `1.7.3-kinemeld-no-y12`, with SHA-256
+`1fd09e766c30485423d57e0379b5248e095aeec59bcec59a3f4b518e19f0fcc3`.
+The original verified download stays local; new source companions distribute the filtered
+archive, the removal manifest and the filtering/build scripts. Every retained upstream
+file is unchanged. This avoids reusing an edited or stale vendor tree.
+It generates configure/build logs and the actual configuration header/arguments in
 `backend/evidence`; these local artifacts are not included in the public checkout.
 
 For the Windows desktop, create `%LOCALAPPDATA%\MBDynStudio\solver.json` to identify the installed solver. `MBDYN_STUDIO_DATA_DIR` may override that per-user folder. The browser development server continues to use `backend/solver.json` by default. If a desktop user file is absent, the old resource-folder `backend/solver.json` is read as a fallback; a present user file always wins and is never overwritten automatically:
@@ -198,11 +208,47 @@ workflow, not an authentic Shuttle geometry or hydraulic/locking simulation.
 
 ## License boundary
 
-MBDyn 1.7.3's source copyright headers specify GNU GPL version 2. The archived
-package's `COPYING` file is empty and `mbdyn --license` directs users to GNU;
-the official GNU text is retained as `backend/MBDyn-GPL-2.0.txt`.
+MBDyn 1.7.3's source copyright headers specify GNU GPL version 2. The verified
+upstream archive includes a complete, nonempty `COPYING` file. The source and
+binary companions retain that text and the actual upstream copyright notices.
 Preserve its notices and provide the corresponding source and license if you
 redistribute its binary. The app's original source is licensed separately by its
 root LICENSE; linking to an external solver does not erase that solver's terms.
+
+The embedded COLAMD 2.1 code is by Stefan I. Larimore and Timothy A. Davis,
+University of Florida, developed with John Gilbert and Esmond Ng.
+Copyright 1998–2001 University of Florida. **Used by permission.** Its complete
+notice, original availability information and MBDyn's namespace modification are
+retained in `notices/solver/COLAMD-2.1.txt`. The optional OpenLDAP-derived getopt
+fallback retains its original authors/modification notices and complete OpenLDAP
+copyright/license documents even on systems using native getopt.
+
+The upstream Y12 README explicitly supplies no copyright/license grant. That is
+an unresolved provenance question for older distributed builds, which enabled Y12
+by default. New builds disable Y12 and their corresponding-source archives omit
+only its eleven Fortran implementations; the build/interface files and README
+remain. This change does not establish redistribution rights for older binaries.
+
+GCC's libgcc, libstdc++ and libgfortran use GPL-3.0-or-later with the GCC Runtime
+Library Exception; **libquadmath instead uses LGPL-2.1-or-later**. Cygwin uses
+LGPL-3.0-or-later with its linking exception and retained Newlib/BSD notices.
+GNU libiconv and gettext's libintl use LGPL-2.1-or-later; LAPACK/BLAS retain their
+BSD notices. These exceptions do not replace the matching runtime sources and
+license notices in each platform's release artifact.
+
+To collect and verify the exact build runner's packages after bundling:
+
+```sh
+python3 scripts/collect_solver_sources.py --solver build/solver --sources build/solver-sources
+python3 scripts/prepare_solver_sources.py verify --solver build/solver --sources build/solver-sources
+```
+
+Collection resolves Cygwin `source:` entries for the installed package version,
+the actual Homebrew keg receipt/formula commit and patches, or Ubuntu's exact
+source-package metadata and archives. It fails if an unknown library, mismatched
+binary identity, unavailable source version or changed checksum is found. The
+source companion's `build/REBUILD.txt` explains rebuilding and replacing the
+ordinary dynamic library files. These checks establish artifact identity and
+inventory coverage; they do not claim bit-for-bit reproducible builds.
 
 See also the [official installation guide](https://www.mbdyn.org/Installation.html).

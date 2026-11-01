@@ -1,14 +1,21 @@
 """Collect exact installed Debian/Ubuntu solver-library notices and source archives."""
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import shlex
 import shutil
 import struct
 import subprocess
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import unquote, urlsplit, urlunsplit
 import urllib.request
+
+MIRROR_LISTS = ("/etc/apt/apt-mirrors.txt", "/etc/apt/apt-mirrors-security.txt")
+UBUNTU_MIRRORS = {
+    "archive.ubuntu.com": "/ubuntu", "security.ubuntu.com": "/ubuntu",
+    "azure.archive.ubuntu.com": "/ubuntu", "old-releases.ubuntu.com": "/ubuntu",
+    "ports.ubuntu.com": "/ubuntu-ports",
+}
 
 
 def digest(path):
@@ -100,6 +107,47 @@ def fields(paragraph):
     return result
 
 
+def read_mirror_list(name):
+    path = Path(name)
+    if name not in MIRROR_LISTS or path.is_symlink() or not path.is_file() or path.stat().st_size > 65536:
+        raise ValueError(f"Unreviewed apt mirror-list file: {name}")
+    return path.read_bytes()
+
+
+def source_url(url, source_path, directory):
+    """Resolve runner mirror+file transport without treating arbitrary URIs as files."""
+    parsed = urlsplit(url)
+    if parsed.scheme != "mirror+file":
+        if parsed.scheme not in ("http", "https") or not parsed.netloc or parsed.username or parsed.password:
+            raise ValueError(f"Unreviewed apt source URL: {url}")
+        return urlunsplit(parsed._replace(scheme="https")), None
+    if parsed.netloc or parsed.query or parsed.fragment:
+        raise ValueError(f"Unsafe apt mirror URI: {url}")
+    name = next((name for name in MIRROR_LISTS if parsed.path.startswith(name + "/")), None)
+    expected = PurePosixPath(source_path)
+    if not name or not re.fullmatch(r"pool/(?:[A-Za-z0-9_+~.-]+/)*[A-Za-z0-9_+~.-]+", source_path) or any(part in (".", "..") for part in source_path.split("/")) or expected.is_absolute() or unquote(parsed.path[len(name) + 1:]) != source_path:
+        raise ValueError(f"Apt mirror URI differs from its indexed source path: {url}")
+    data = read_mirror_list(name)
+    candidates = []
+    for line in data.decode("utf-8").splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        mirror = urlsplit(line.split()[0])
+        if mirror.scheme not in ("http", "https") or mirror.hostname not in UBUNTU_MIRRORS or mirror.netloc != mirror.hostname or mirror.query or mirror.fragment:
+            continue
+        if mirror.path.rstrip("/") != UBUNTU_MIRRORS[mirror.hostname]:
+            continue
+        candidates.append(urlunsplit(mirror._replace(scheme="https", path=mirror.path.rstrip("/") + "/" + source_path)))
+    if not candidates:
+        raise ValueError(f"No reviewed Ubuntu HTTPS mirror in {name}")
+    # Prefer the canonical archive when present; every downloaded byte still has
+    # to match the exact SHA-256 from apt's source-package index.
+    selected = next((value for value in candidates if urlsplit(value).hostname == "archive.ubuntu.com"), candidates[0])
+    retained = directory / Path(name).name
+    retained.write_bytes(data)
+    return selected, {"originalUri": url, "mirrorList": name, "retainedMirrorList": reference(retained), "selectedHttpsUrl": selected}
+
+
 def source_artifacts(package, version, work):
     directory = work / "apt-source" / f"{package}_{version}"
     directory.mkdir(parents=True, exist_ok=True)
@@ -123,7 +171,7 @@ def source_artifacts(package, version, work):
     uris = run("apt-get", "--print-uris", "source", "--download-only", f"{package}={version}")
     uris_path = directory / "apt-source-uris.txt"
     uris_path.write_text(uris, encoding="utf-8")
-    records = []
+    records, resolutions = [], []
     for line in uris.splitlines():
         if not line.startswith("'"):
             continue
@@ -131,10 +179,9 @@ def source_artifacts(package, version, work):
         if len(parts) != 4 or parts[1] not in checksums:
             raise ValueError(f"Unpinned apt source URI: {line}")
         url, filename = parts[:2]
-        parsed = urlsplit(url)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc or parsed.username or parsed.password:
-            raise ValueError(f"Unreviewed apt source URL: {url}")
-        url = urlunsplit(parsed._replace(scheme="https"))
+        url, resolution = source_url(url, metadata.get("Directory", "") + "/" + filename, directory)
+        if resolution:
+            resolutions.append(resolution)
         expected, size = checksums[filename]
         if int(parts[2]) != size:
             raise ValueError(f"Source URI/index size mismatch: {filename}")
@@ -149,7 +196,13 @@ def source_artifacts(package, version, work):
         records.append(dict(reference(path), url=url, sourceVersion=version))
     if {Path(row["path"]).name for row in records} != set(checksums) or not any(row["path"].endswith(".dsc") for row in records):
         raise ValueError(f"Incomplete exact source package: {package}={version}")
-    return records, [reference(metadata_path), reference(uris_path)]
+    evidence = [reference(metadata_path), reference(uris_path)]
+    if resolutions:
+        resolution_path = directory / "apt-mirror-resolutions.json"
+        resolution_path.write_text(json.dumps(resolutions, indent=2) + "\n", encoding="utf-8")
+        evidence.append(reference(resolution_path))
+        evidence.extend({item["retainedMirrorList"]["path"]: item["retainedMirrorList"] for item in resolutions}.values())
+    return records, evidence
 
 
 def collect(solver, work, origins):
