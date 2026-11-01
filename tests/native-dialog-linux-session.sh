@@ -7,9 +7,13 @@ export GTK_MODULES=atk-bridge
 export NO_AT_BRIDGE=0
 export WEBKIT_DISABLE_DMABUF_RENDERER=1
 export LIBGL_ALWAYS_SOFTWARE=1
+export GDK_BACKEND=x11
+unset WAYLAND_DISPLAY
 session_root="$(mktemp -d)"
 trap 'kill "${wm_pid:-}" 2>/dev/null || true; rm -rf -- "$session_root"' EXIT
 export XDG_CONFIG_HOME="$session_root/config"
+export XDG_RUNTIME_DIR="$session_root/runtime"
+mkdir -m 700 "$XDG_RUNTIME_DIR"
 mkdir -p "$XDG_CONFIG_HOME/xdg-desktop-portal"
 printf '[preferred]\ndefault=gtk\n' > "$XDG_CONFIG_HOME/xdg-desktop-portal/portals.conf"
 openbox > "$session_root/openbox.log" 2>&1 &

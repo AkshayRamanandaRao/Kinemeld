@@ -42,8 +42,7 @@ environment = os.environ.copy()
 environment["MBDYN_STUDIO_PYTHON"] = sys.executable
 environment.pop("MBDYN_STUDIO_WORKSPACE", None)
 if platform == "windows":
-    environment.update(KINEMELD_NATIVE_EXE=str(exe), KINEMELD_NATIVE_SOLVER_CONFIG=str(config))
-    command = ["node", str(root / "tests/native-dialog-ui.mjs")]
+    command = [sys.executable, str(root / "tests/native-dialog-platform.py"), "--exe", str(exe), "--solver-config", str(config)]
 elif platform == "linux":
     # System Python has the runner's AT-SPI bindings; the service uses the CAD-enabled Python.
     command = ["dbus-run-session", "--", "xvfb-run", "-a", "-s", "-screen 0 1600x1000x24", "bash", str(root / "tests/native-dialog-linux-session.sh"), str(exe), str(config)]

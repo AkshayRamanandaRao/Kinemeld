@@ -2,9 +2,9 @@
 #import <AppKit/AppKit.h>
 
 @interface KinemeldGuiTest : NSObject
-@property NSString *root;
-@property NSDictionary *plan;
-@property NSMutableArray *events;
+@property(nonatomic, strong) NSString *root;
+@property(nonatomic, strong) NSDictionary *plan;
+@property(nonatomic, strong) NSMutableArray *events;
 @property NSUInteger index;
 @property NSInteger stage;
 @property NSTimeInterval since;

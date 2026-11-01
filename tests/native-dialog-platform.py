@@ -38,6 +38,8 @@ class LinuxControls:
     """AT-SPI buttons/fields, constrained to this private desktop's owned processes."""
     def __init__(self, root, app_pid, portal_pids):
         import pyatspi
+        from gi.repository import Atspi
+        Atspi.set_timeout(1000, 1000)
         self.api, self.root, self.app_pid = pyatspi, root, app_pid
         self.groups = {app_pid, *portal_pids}
         self.current, self.index, self.stage, self.since = None, 0, 0, 0
@@ -62,7 +64,8 @@ class LinuxControls:
         for app in self.api.Registry.getDesktop(0):
             try:
                 pid = app.get_process_id()
-                if self.owned(pid):
+                # RFD blocks the app's GTK thread while its separate portal is modal.
+                if pid != self.app_pid and self.owned(pid):
                     for window in app:
                         if window.getState().contains(self.api.STATE_SHOWING):
                             result.append((pid, window))
@@ -74,8 +77,8 @@ class LinuxControls:
     def label(item):
         return (item.name or "").replace("_", "").replace("&", "").strip().lower()
 
-    def buttons(self, window):
-        return [item for item in self.walk(window) if item.getRole() == self.api.ROLE_PUSH_BUTTON and item.getState().contains(self.api.STATE_ENABLED)]
+    def buttons(self, window, enabled=True):
+        return [item for item in self.walk(window) if item.getRole() == self.api.ROLE_PUSH_BUTTON and (not enabled or item.getState().contains(self.api.STATE_ENABLED))]
 
     def press(self, button):
         action = button.queryAction()
@@ -88,6 +91,8 @@ class LinuxControls:
             title = subprocess.run(["xdotool", "getwindowname", candidate], capture_output=True, text=True, check=True).stdout.strip()
             if title == name:
                 return candidate
+        if not name and len(candidates) == 1:
+            return candidates[0]  # GTK's portal can expose an empty AT-SPI name.
         raise RuntimeError(f"No owned X window matches {pid}: {name}")
 
     def record(self, action, pid, window):
@@ -116,19 +121,17 @@ class LinuxControls:
             self.result(f"Timed out locating native control; windows={windows}")
             return
         action = self.plan["actions"][self.index]
+        if action["kind"] == "close":
+            xid = self.xid(self.app_pid, "Kinemeld")
+            self.events.append({"action": action, "pid": self.app_pid, "window": "Kinemeld", "xid": xid})
+            self.next()
+            subprocess.run(["wmctrl", "-ic", hex(int(xid))], check=True)
+            return
         for pid, window in self.windows():
             nodes = list(self.walk(window))
             buttons = self.buttons(window)
-            names = {self.label(item) for item in buttons}
+            names = {self.label(item) for item in self.buttons(window, enabled=False)}
             is_file = any(item.getRole() == self.api.ROLE_FILE_CHOOSER for item in nodes)
-            if action["kind"] == "close":
-                if pid != self.app_pid or window.name != "Kinemeld":
-                    continue
-                xid = self.xid(pid, window.name)
-                self.record(action, pid, window)
-                self.next()
-                subprocess.run(["wmctrl", "-ic", hex(int(xid))], check=True)
-                return
             if action["kind"] == "button":
                 # Do not confuse a chooser's Cancel with its overwrite confirmation.
                 candidates = [node for node in nodes if node.getRole() in (self.api.ROLE_ALERT, self.api.ROLE_DIALOG)]
@@ -147,7 +150,7 @@ class LinuxControls:
                 continue
             if not is_file:
                 continue
-            opening = "open" in names
+            opening = bool({"open", "select"} & names)
             if action["kind"] == "cancel":
                 if (action.get("dialog") == "open") != opening:
                     continue
@@ -160,24 +163,79 @@ class LinuxControls:
             if self.stage == 0:
                 self.record(action, pid, window)
                 subprocess.run(["xdotool", "windowactivate", "--sync", xid], check=True)
-                subprocess.run(["xdotool", "key", "--clearmodifiers", "--window", xid, "ctrl+l"], check=True)
+                subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+l"], check=True)
                 self.stage, self.since = 1, time.monotonic()
                 return
             if time.monotonic() - self.since < 0.4:
+                return
+            if self.stage == 2:
+                button = next((item for item in buttons if self.label(item) in ("open", "select", "save")), None)
+                if button:
+                    self.next(); self.press(button)
                 return
             entries = [item for item in self.walk(window) if item.getRole() in (self.api.ROLE_TEXT, self.api.ROLE_ENTRY) and item.getState().contains(self.api.STATE_EDITABLE) and item.getState().contains(self.api.STATE_FOCUSED)]
             if not entries:
                 continue
             entries[0].queryEditableText().setTextContents(action["path"])
-            # Native Return validates the entered pathname and activates the picker.
-            self.next()
-            subprocess.run(["xdotool", "key", "--clearmodifiers", "--window", xid, "Return"], check=True)
+            self.stage, self.since = 2, time.monotonic()
             return
 
     def next(self):
         self.index += 1
         self.stage, self.since = 0, time.monotonic()
         self.result()
+
+
+class WindowsControls:
+    """Reuse the existing PID-scoped Win32 picker driver without requiring WebView2 CDP."""
+    def __init__(self, root, app_pid):
+        self.root, self.app_pid, self.current, self.index, self.events = root, app_pid, None, 0, []
+
+    def call(self, command, *args):
+        helper = Path(__file__).with_name("native-dialog-controls.py")
+        result = subprocess.run([os.environ.get("MBDYN_STUDIO_PYTHON", sys.executable), str(helper), "--pid", str(self.app_pid), command, *args], capture_output=True, text=True, timeout=25)
+        if result.returncode:
+            raise RuntimeError(f"Win32 {command}: {result.stdout or result.stderr}")
+        value = json.loads(result.stdout)
+        assert value["ok"], value
+        return value
+
+    def advance(self):
+        plan = load(self.root / "action.json")
+        if not plan:
+            return
+        if plan["id"] != self.current:
+            self.plan, self.current, self.index, self.events = plan, plan["id"], 0, []
+        if self.index >= len(self.plan["actions"]):
+            return
+        action = self.plan["actions"][self.index]
+        kind = action["kind"]
+        if kind == "close":
+            evidence = self.call("close")
+        else:
+            title = "^Open$" if kind == "open" or action.get("dialog") == "open" else "^Save As$"
+            if kind == "button":
+                title = "Confirm Save As" if action["text"] == "refuse-overwrite" else "^Unsaved project$"
+            evidence = self.call("wait", "--title", title)
+            self.call("screenshot", "--title", title, "--out", str(self.root / f"native-{self.current}-{self.index}.png"))
+            if kind in ("open", "save"):
+                self.call("file", "--title", title, "--path", str(Path(action["path"])))
+            elif kind == "cancel":
+                self.call("cancel", "--title", title)
+            else:
+                button = "No" if action["text"] == "refuse-overwrite" else action["text"]
+                self.call("button", "--title", title, "--text", f"^{button}$")
+        self.events.append({"action": action, "pid": self.app_pid, "control": evidence})
+        self.index += 1
+        atomic(self.root / "action-result.json", {"id": self.current, "done": self.index >= len(self.plan["actions"]), "events": self.events})
+
+    def terminate(self, process):
+        children = self.call("children")["children"]
+        process.kill(); process.wait(timeout=10)
+        remaining = self.call("children")["children"]
+        for child in remaining:
+            if any(before["pid"] == child["pid"] for before in children):
+                self.call("terminate-child", "--child-pid", str(child["pid"]))
 
 
 def health(url):
@@ -190,6 +248,9 @@ def health(url):
 
 def terminate(process):
     if process and process.poll() is None:
+        if sys.platform == "win32":
+            WindowsControls(Path.cwd(), process.pid).terminate(process)
+            return
         os.killpg(process.pid, signal.SIGKILL)
         process.wait(timeout=10)
 
@@ -201,7 +262,7 @@ def main():
     parser.add_argument("--project", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    assert sys.platform in ("linux", "darwin"), "Windows uses tests/native-dialog-ui.mjs."
+    assert sys.platform in ("linux", "darwin", "win32"), "Unsupported native platform."
     repo = Path(__file__).resolve().parents[1]
     output = (args.output or repo / "tests/evidence").resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -238,15 +299,27 @@ def main():
             log = (root / f"native-{phase}.log").open("wb"); streams.append(log)
             app = subprocess.Popen([str(exe), "--native-gui-test", str(root / "config.json")], cwd=exe.parent, env=environment, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
             report.setdefault("nativePids", []).append(app.pid)
-            controls = LinuxControls(root, app.pid, [portal.pid for portal in portals]) if sys.platform == "linux" else None
+            controls = LinuxControls(root, app.pid, [portal.pid for portal in portals]) if sys.platform == "linux" else WindowsControls(root, app.pid) if sys.platform == "win32" else None
             deadline, latest, observed = time.monotonic() + 900, None, {}
+            action_id, action_since, progress = None, time.monotonic(), None
             while time.monotonic() < deadline:
                 if controls:
                     controls.advance()
                 result = load(root / "action-result.json")
                 if result:
                     observed[result["id"]] = result
+                    assert not result.get("error"), result.get("error")
+                plan = load(root / "action.json")
+                if plan and plan["id"] != action_id:
+                    action_id, action_since = plan["id"], time.monotonic()
+                if plan and (not result or result["id"] != action_id or not result.get("done")):
+                    assert time.monotonic() - action_since < 50, f"Native driver did not complete action {plan}; see {root}"
                 latest = load(root / "viewer-report.json") or latest
+                assert latest or time.monotonic() < deadline - 790, f"Viewer test initialization did not report within 110 seconds; see {root}"
+                marker = (len(latest["checks"]), latest["status"]) if latest else None
+                if marker != progress:
+                    print(json.dumps({"phase": phase, "progress": marker, "output": str(root)}), flush=True)
+                    progress = marker
                 if latest and latest.get("status") == "failed":
                     raise AssertionError(latest.get("error"))
                 if latest and latest.get("status") == goal:

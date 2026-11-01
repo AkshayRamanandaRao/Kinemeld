@@ -1,6 +1,6 @@
 /* Actual viewer/IPC GUI regression, injected only by --native-gui-test. */
 (() => {
-  if (window.top !== window || !/^http:\/\/127\.0\.0\.1:\d+\/$/.test(location.href)) return;
+  if (window.top !== window) return;
   const config = window.__kinemeldGuiTest;
   const report = { phase: config.phase, checks: [], pageErrors: [], status: 'running', url: location.origin };
   const io = (command, args = {}) => window.mbdynNative.call('gui-test', { command, ...args });
