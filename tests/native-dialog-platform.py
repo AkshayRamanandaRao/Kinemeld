@@ -340,10 +340,14 @@ def main():
     assert load(fixture).get("assets", {}).get("step", {}).get("bindings"), "Fixture needs actual CAD assets."
     report = {"ok": False, "platform": sys.platform, "executable": str(exe), "executableSha256": digest(exe), "resourceRoot": str(resources), "frontendSha256": digest(resources / "frontend/app.js"), "workspaceOverride": False, "fixtureSha256": digest(fixture), "output": str(root), "checks": [], "nativeControls": [], "skipped": []}
     app, portals, streams = None, [], []
+    mac_suite = None
     environment = os.environ.copy()
     environment.pop("MBDYN_STUDIO_WORKSPACE", None)
     environment["MBDYN_STUDIO_DATA_DIR"] = str(data)
     try:
+        if sys.platform == "darwin":
+            MacXCTest = runpy.run_path(str(Path(__file__).with_name("native-dialog-xctest.py")))["MacXCTest"]
+            mac_suite = MacXCTest(repo, root, exe, environment)
         if sys.platform == "linux":
             assert environment.get("DBUS_SESSION_BUS_ADDRESS") and environment.get("DISPLAY") and environment.get("KINEMELD_PRIVATE_GUI_SESSION") == "1", "Linux GUI qualification requires its own private D-Bus/Xvfb desktop."
             for name in ("xdg-desktop-portal-gtk", "xdg-desktop-portal"):
@@ -364,7 +368,7 @@ def main():
             else:
                 app = subprocess.Popen([str(exe), "--native-gui-test", str(root / "config.json")], cwd=exe.parent, env=environment, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
                 report.setdefault("nativePids", []).append(app.pid)
-            controls = LinuxControls(root, app.pid, [portal.pid for portal in portals]) if sys.platform == "linux" else WindowsControls(root, app.pid) if sys.platform == "win32" else None
+            controls = LinuxControls(root, app.pid, [portal.pid for portal in portals]) if sys.platform == "linux" else WindowsControls(root, app.pid) if sys.platform == "win32" else mac_suite.for_phase(app, phase)
             deadline, latest, observed = time.monotonic() + 900, None, {}
             action_id, action_since, progress, close_since = None, time.monotonic(), None, None
             while time.monotonic() < deadline:
@@ -395,11 +399,14 @@ def main():
                     if phase == "initial":
                         assert health(latest["url"]), "Owned backend not healthy before crash."
                         terminate(app)  # Real abrupt exit, with the actual autosave retained.
+                        if mac_suite:
+                            mac_suite.finish()
                         break
                     if app.poll() is not None:
                         assert app.returncode == 0, f"Normal native close exited {app.returncode}"
                         if sys.platform == "darwin":
                             report["nativeExitEvent"] = app.exit_event
+                            mac_suite.finish()
                         break
                     close_since = close_since or time.monotonic()
                     assert time.monotonic() - close_since < 20, "Confirmed native close did not exit within 20 seconds."
@@ -423,6 +430,8 @@ def main():
         assert any(event["action"]["kind"] == "open" for result in report["nativeControls"] for event in result["events"]), "No native Open control evidence."
         assert any(event["action"]["kind"] == "save" for result in report["nativeControls"] for event in result["events"]), "No native Save control evidence."
         report["checks"][-1]["evidence"].update({"normalExit": 0, "backendStopped": True, "recoveryCleared": True, "fixtureUnchanged": True})
+        if mac_suite:
+            report["xctest"] = mac_suite.exits
         report["ok"] = True
     except Exception as error:
         report["error"] = repr(error)
@@ -434,6 +443,8 @@ def main():
         raise
     finally:
         terminate(app)
+        if mac_suite:
+            mac_suite.stop()
         for portal in portals:
             terminate(portal)
         for stream in streams:

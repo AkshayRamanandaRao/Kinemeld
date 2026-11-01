@@ -16,6 +16,7 @@ on:
     paths:
       - "native/**"
       - "tests/native-dialog*"
+      - "tests/native-macos/**"
       - ".github/workflows/native-gui.yml"
       - "frontend/app.js"
 

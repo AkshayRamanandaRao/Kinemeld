@@ -64,27 +64,25 @@ verification. Both the native host and supervisor use the bundle's
 `Contents/Resources/app` directory; a missing bundled backend cannot silently
 fall back to a surrounding source checkout.
 
-The macOS driver runs an AppKit timer in the application's modal run loop. It
-operates only the app's own `NSOpenPanel`, `NSSavePanel` and alert controls.
-It sends the real Go to Folder
-shortcut to its key modal window, enters text through native key-down/key-up
-events, and presses Return for Go and the default Open/Save action. Save enters
-the basename in the initially focused filename field before navigating to the
-existing parent folder. Escape cancels the picker. Overwrite refusal first
-requires an actual enabled native Replace button, then presses that confirmation's
-Cancel button and verifies the Save panel remains for its final cancellation.
-Missing native confirmation controls fail the case.
-Other alerts use their actual enabled AppKit buttons. All key events target the
-app's own modal window or its attached sheet. Input events and window identities
-are retained; no global keyboard, clipboard or permission changes are made.
-The fresh macOS runner denied remote accessibility queries with
-`kAXErrorAPIDisabled` (-25211), so this route does not depend on those queries.
-No panel configuration properties are read or changed while it is running.
+The macOS driver is the standalone
+[NativeDialogs XCUITest target](../tests/native-macos/NativeDialogTests.swift).
+Full Xcode builds the test runner once, then runs it through Apple's test manager
+for each phase. It attaches to the single already-running bundle, checking the
+exact native PID and executable before using `XCUIApplication.activate()`; it
+does not relaunch the app or change its isolated configuration. The Rust host
+only emits its guarded identity marker; there is no injected AppKit input driver.
+The test uses actual native text fields, field-value readback and enabled,
+hittable buttons. Go to Folder navigates to the existing parent for Save, and
+the native filename field supplies its basename. Overwrite refusal requires the
+actual Replace confirmation before pressing its Cancel button and retaining
+the Save panel. Missing native controls fail the case. The harness changes no
+system permission database, clipboard or panel configuration properties.
 After the modal returns, the viewer checks the actual returned Open path, saved
-destination, complete project snapshots and target files. Overwrite
-refusal requires the actual confirmation controls. AppKit captures the app's own
-panels; macOS can exclude remote file-service subviews from those screenshots.
-The driver is compiled with the system clang and adds no Cargo dependencies.
+destination, complete project snapshots and target files. XCTest screenshots,
+element trees, logs and `.xcresult` bundles are retained alongside the shared
+report. Both XCTest phase exits must succeed; the actual application exit is
+still measured separately through kqueue. XCTest is a test dependency supplied
+by Xcode and adds no shipped runtime or Cargo dependencies.
 
 Linux retains RFD's release-default xdg-desktop-portal backend. A private D-Bus
 session and Xvfb display run Openbox, xdg-desktop-portal and its GTK portal. GTK is

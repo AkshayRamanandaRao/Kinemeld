@@ -87,7 +87,28 @@ the tested artifact identity and workflows; it does not resolve the macOS
 SDK-derived binding warning, historical Y12 rights, or the optional private
 Python/OCP runtime's redistribution status.
 
-## Windows native GUI verification (1 November 2026)
+## Fresh packaged native GUI matrix (1 November 2026)
+
+- [Windows fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41358774059/job/125004433956):
+  all **12 native-dialog cases and four packaged robotics cases pass**. No cases
+  are skipped; no source-workspace override is used. Native exit, backend cleanup,
+  recovery removal and unchanged fixture checks pass. The packaged numerical
+  harness reports `source_injection: false` and unchanged resources.
+- [Linux fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41357058141/job/124999373366):
+  all **12 native-dialog cases and four packaged robotics cases pass**.
+- macOS signed packages pass all four packaged numerical cases with their own
+  resources. The native-dialog matrix remains pending: the runner denied the
+  app's remote accessibility queries, and in-app synthetic keyboard input did not
+  complete Open. These results do not demonstrate a production picker failure.
+
+Earlier Windows runs retained two distinct failures: a recovery STEP conversion
+exceeded its existing 90-second limit, and a malformed-file Open helper stalled
+past its outer deadline. Both paths pass in the fresh run above. Their exact
+causes remain unclassified; helper failures now retain phase, elapsed-time and
+stack diagnostics. These earlier failures are not claimed to have a confirmed
+production fix.
+
+## Configured Windows native GUI verification (1 November 2026)
 
 `npm run test:native-dialogs` passes **12/12 cases with no skips** against an
 extracted local Windows package. It connects Playwright to the actual WebView2

@@ -98,11 +98,17 @@ impl GuiTest {
 
     #[cfg(target_os = "macos")]
     pub fn start_driver(&self) -> Result<(), String> {
-        use std::ffi::CString;
-        unsafe extern "C" { fn kinemeld_gui_test_start(root: *const std::ffi::c_char); }
-        let path = CString::new(self.root.to_string_lossy().as_bytes()).map_err(|e| e.to_string())?;
-        unsafe { kinemeld_gui_test_start(path.as_ptr()); }
-        Ok(())
+        self.announce_driver(&env::current_exe().map_err(|error| error.to_string())?)
+    }
+
+    #[cfg(any(target_os = "macos", test))]
+    fn announce_driver(&self, executable: &Path) -> Result<(), String> {
+        let bundle = executable.parent().filter(|path| path.file_name().is_some_and(|name| name == "MacOS"))
+            .and_then(Path::parent).filter(|path| path.file_name().is_some_and(|name| name == "Contents"))
+            .and_then(Path::parent).filter(|path| path.extension().is_some_and(|name| name == "app"))
+            .ok_or("Native GUI qualification requires the actual macOS app bundle.")?;
+        self.atomic("mac-driver.json", &json!({"started":true,"root":self.root,"phase":self.config["phase"],
+            "pid":std::process::id(),"bundle":bundle,"driver":"external XCUITest"}))
     }
 }
 
@@ -121,6 +127,15 @@ mod tests {
         fs::write(root.join(".kinemeld-native-gui-test"), "").unwrap();
         assert!(GuiTest::from_config(&config, &root).is_err());
         let test = GuiTest::from_config(&config, &root.join("user-data")).unwrap();
+        assert!(test.announce_driver(&root.join("not-a-bundle/kinemeld")).is_err());
+        assert!(!root.join("mac-driver.json").exists());
+        let bundle = root.join("Kinemeld.app");
+        test.announce_driver(&bundle.join("Contents/MacOS/kinemeld")).unwrap();
+        let marker: Value = serde_json::from_slice(&fs::read(root.join("mac-driver.json")).unwrap()).unwrap();
+        assert_eq!(marker["root"], json!(root.canonicalize().unwrap()));
+        assert_eq!(marker["phase"], "initial");
+        assert_eq!(marker["pid"], std::process::id());
+        assert_eq!(marker["bundle"], json!(bundle));
         for name in ["../outside.json", "/outside.json", "user-data/../outside.json"] {
             assert!(test.call(&json!({"command":"read","name":name})).is_err());
         }
