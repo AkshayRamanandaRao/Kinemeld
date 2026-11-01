@@ -1,0 +1,122 @@
+{
+  "format": "kinemeld-audit-candidates/1",
+  "date": "2026-11-01",
+  "status": "unpublished-candidates",
+  "version": "1.2.1-audit.3",
+  "buildCommit": "2b25703bc0fe548e623e1b6539e60d4da2e363e3",
+  "codeCheckCommit": "31e402bba71d16683cce34cefe04ee1385d9ea99",
+  "buildAndCleanRunnerChecks": "https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41336308183",
+  "codeChecks": "https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41336571338",
+  "noticeSupplement": "Kinemeld-P3-notices.zip (separate SHA-256 sidecar)",
+  "artifacts": [
+    {
+      "platformArtifact": "package-linux-x86_64",
+      "file": "Kinemeld-1.2.1-audit.3-linux-x86_64-solver-sources.tar.gz",
+      "bytes": 102909030,
+      "sha256": "01d0e8dfc1361e2bc45994ed6d614d988a1f0cef1669d1b72cb94380e0a31279",
+      "kind": "solver-sources"
+    },
+    {
+      "platformArtifact": "package-linux-x86_64",
+      "file": "Kinemeld-1.2.1-audit.3-linux-x86_64.tar.gz",
+      "bytes": 29297703,
+      "sha256": "47e07da4cf1a49955176202ef64896e3bd3cd9746f7caa3b31e4ea4731e30758",
+      "kind": "application"
+    },
+    {
+      "platformArtifact": "package-macos-arm64",
+      "file": "Kinemeld-1.2.1-audit.3-macos-arm64-solver-sources.tar.gz",
+      "bytes": 110441493,
+      "sha256": "7a9c9059fd279a3d99baf5ec1404a038b90abffe6f30e60a29d4ebb82ce36959",
+      "kind": "solver-sources"
+    },
+    {
+      "platformArtifact": "package-macos-arm64",
+      "file": "Kinemeld-1.2.1-audit.3-macos-arm64.zip",
+      "bytes": 26505088,
+      "sha256": "9d11c949915f8cb3c70e6493a32445ce6c0fd3a25000abce4a334f9db81d5f34",
+      "kind": "application"
+    },
+    {
+      "platformArtifact": "package-windows-x86_64",
+      "file": "Kinemeld-1.2.1-audit.3-windows-x86_64-solver-sources.tar.gz",
+      "bytes": 135949887,
+      "sha256": "45fa76d4b96fe27244fb2e693fb67a9d3df4f62b5a85bfd7197d04e78bdc252d",
+      "kind": "solver-sources"
+    },
+    {
+      "platformArtifact": "package-windows-x86_64",
+      "file": "Kinemeld-1.2.1-audit.3-windows-x86_64.zip",
+      "bytes": 28056180,
+      "sha256": "71a72b798bcad21974e01924634f9dfedbdba3bec4b66709777d5120f44c8657",
+      "kind": "application"
+    }
+  ],
+  "publishedRuntimeByteMatches": [
+    {
+      "platform": "linux",
+      "file": "solver/lib/libblas.so.3",
+      "sha256": "3c6c6a97e7aafe31de18cde8bd5066860d08591e71e6f2b6f750ef488df61c6d"
+    },
+    {
+      "platform": "linux",
+      "file": "solver/lib/libgfortran.so.5",
+      "sha256": "1f88b664f788e688d0999b6ef01a0e92afdf2bcfe9955ff0d34447ce86b54624"
+    },
+    {
+      "platform": "linux",
+      "file": "solver/lib/liblapack.so.3",
+      "sha256": "1b2038e05a44a737401786a0e1a6d911cb10e541a39dcd6d68867bf66dc1fc98"
+    },
+    {
+      "platform": "linux",
+      "file": "solver/lib/libquadmath.so.0",
+      "sha256": "aae16e635cf513d7cb1a809b26d7b544a05b44558da271ccc4def7240a295bd4"
+    },
+    {
+      "platform": "macos",
+      "file": "solver/lib/libgcc_s.1.1.dylib",
+      "sha256": "ec7cbf9a7422959f016cc7ee3b4e90212c82478be06cb74bd79f833d7a0aa3fa"
+    },
+    {
+      "platform": "macos",
+      "file": "solver/lib/libgfortran.5.dylib",
+      "sha256": "d0981e4205acbe53a8357fa13854c27849560c041da6d1497aa5e9a17396d740"
+    },
+    {
+      "platform": "macos",
+      "file": "solver/lib/libquadmath.0.dylib",
+      "sha256": "7c3bd279c7ab5b340d1cf951ca135718bc1a6fd0996d7bf6364a12c81df1a134"
+    },
+    {
+      "platform": "macos",
+      "file": "solver/lib/libstdc++.6.dylib",
+      "sha256": "04fc3bc9ebdaacc26695e75b3b7f371d99558d9ff08f184455a04d2d4fc41b55"
+    },
+    {
+      "platform": "windows",
+      "file": "solver/bin/cyggcc_s-seh-1.dll",
+      "sha256": "f7dbe304724782f87f0693612e6561bcbe110c20d9d0053e9b48c7b4917dbabb"
+    },
+    {
+      "platform": "windows",
+      "file": "solver/bin/cygiconv-2.dll",
+      "sha256": "320bb05447f1c0f967acccc36e5f56d53ba90eae046e5b15a95ec33993d9b663"
+    },
+    {
+      "platform": "windows",
+      "file": "solver/bin/cygintl-8.dll",
+      "sha256": "1156fa177fa100f1cf1e64176faecd2ebbc64c1f6b7e529c40c71ef16876e2a5"
+    },
+    {
+      "platform": "windows",
+      "file": "solver/bin/cygstdc++-6.dll",
+      "sha256": "57f14c7c55b9bf8eb1abcce8ce32985bcd59f3e2890cc08202b1ebd0d9991650"
+    },
+    {
+      "platform": "windows",
+      "file": "solver/bin/cygwin1.dll",
+      "sha256": "ed9d5379061e5de79c3375cc62246c2142ea1c97d94f4d16bfbea6fb1b7fc889"
+    }
+  ]
+}

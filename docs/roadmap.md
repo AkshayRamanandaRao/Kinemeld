@@ -91,7 +91,7 @@ implementing the next item. Released capabilities above are not pending work.
 | P0 | Refresh the aircraft nose-gear recordings | Complete (1 November 2026) | Clean titles and captions; engineering scope retained in the study guide. Both the featured clip and end-to-end workflow were recorded again; matching MP4/GIF pairs decoded and representative frames inspected. See [verification](verification.md#recording-refresh-1-november-2026). |
 | P1 | Preserve edits during asynchronous CAD and project operations | Complete (1 November 2026) | Delayed STEP replacement/append, generated solids, example/project loads, startup restore and autosave preserve newer edits, including typed input before blur. The integrated project-safety suite passes; negative controls reproduce the original failures. See [verification](verification.md#asynchronous-edit-preservation-1-november-2026). |
 | P2 | Qualify native project dialogs | Windows complete (1 November 2026); macOS/Linux pending | Twelve automated GUI cases pass against an extracted Windows app using real WebView2/native dialogs: Save/Open, cancellation, overwrite refusal, backups, conflicts, dirty documents, crash recovery and startup/shutdown. Reopened and recovered files retain model, 11 CAD bindings, 501 result samples and full CSV. See [verification](verification.md#windows-native-gui-verification-1-november-2026). |
-| P3 | Complete bundled dependency provenance and notices | In verification (1 November 2026) | Exact v1.2.1 platform inventories, complete retained notices, runtime sources/patches and filtered MBDyn source prepared. Fresh runner collection and package checks are in progress; unresolved upstream rights are recorded in the [audit](dependency-audit.md). |
+| P3 | Complete bundled dependency provenance and notices | Complete — audit and unpublished candidates (1 November 2026) | Exact platform inventories, full notices, runtime sources/patches and filtered MBDyn source; 47 audit checks pass. All three candidate packages pass fresh-runner source/hash/service/solver/native checks. Published v1.2.1 assets remain unchanged; historical Y12, macOS SDK and optional private-runtime rights limits are recorded in the [audit](dependency-audit.md). |
 | P4 | Strengthen engineering examples, starting with nose gear | Pending | Document traceable geometry, hardpoints, materials and loading; check independent kinematics and timestep convergence. Extend suspension and landing-gear studies individually. Hardware load validation requires measured data and engineering review. |
 | P5 | Pick cones and tori from CAD | Pending | Cover analytic feature extraction, transformed occurrences, viewport selection, joint/frame placement and project save/reopen with geometric and interface checks. |
 | P6 | Extend assistant actions over verified workflows | Pending | Support only capabilities verified above; check proposal review, model validation, Undo and rejection of stale proposals. |
@@ -113,7 +113,10 @@ and safety-critical qualification remain unverified. Every release package is un
 and checked on fresh Linux, macOS and Windows runners before publication (file hashes,
 the packaged service, real MBDyn runs and the desktop self-check). The Windows native
 dialog suite now passes on a configured development machine; macOS/Linux dialog
-tests, clean-machine GUI qualification and a complete review of redistributed
-dependencies and licenses remain open.
-Release archives bundle MBDyn 1.7.3 on Linux, macOS and Windows with the corresponding source
-attached; no package bundles Python or the CAD runtime.
+tests and clean-machine GUI qualification remain open. P3 inventories and notices
+are verified for the standard candidate packages; the audit records unresolved
+upstream rights and historical-release limits separately.
+Newly assembled solver packages require exact corresponding-source companions,
+including runtime sources and distribution patches. Standard public packages
+include neither Python nor the CAD runtime; the optional private runtime remains
+unqualified for redistribution. P3's candidates were verified without publishing.

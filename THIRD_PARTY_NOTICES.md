@@ -30,6 +30,12 @@ package metadata and build/packaging inputs recorded in `solver/DEPENDENCIES.jso
 Keep that companion available beside its binary package. LGPL shared libraries
 remain ordinary replaceable files in `solver/bin` or `solver/lib`.
 
+MBDyn's own `dgeequ.h` also credits LAPACK's scaling algorithm. Its original GPL
+headers remain intact; additional LAPACK BSD attribution is retained in
+[LAPACK-BSD.txt](notices/solver/LAPACK-BSD.txt), including on platforms without an
+external LAPACK library. The directory named `libann` contains MBDyn's own GPL
+neural-network code; it is not the external Approximate Nearest Neighbor library.
+
 The new MBDyn corresponding source is the deterministic
 `mbdyn-1.7.3-kinemeld-no-y12.tar`, SHA-256
 `1fd09e766c30485423d57e0379b5248e095aeec59bcec59a3f4b518e19f0fcc3`.

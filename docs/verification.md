@@ -5,6 +5,40 @@ not a claim of general-purpose CAE qualification or measured usability superiori
 Run records, generated reports and local logs are ignored and are not included in
 the public checkout; the commands below produce fresh evidence on the target system.
 
+## Dependency and license audit (1 November 2026)
+
+P3's [audit record](dependency-audit.md) identifies the three actual v1.2.1
+archives, exact runtime/source versions, retained notices and unresolved upstream
+rights. All 13 newly collected runtime files match the published originals byte
+for byte. The current locked Rust inventory covers 194 registry package versions;
+the asset inventory covers 49 assets and 8 notices.
+
+- `python -m unittest discover -s scripts -p 'test_*.py'`: **47 passed**. Missing
+  and changed notices/sources, unknown libraries, compiler/source drift, stale or
+  unlisted source files, wrong platform metadata and unsafe archives are rejected.
+- [Code CI](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41336571338):
+  backend **247 tests, two conditional skips**; featured-study/constraint checks;
+  native tests/builds on Linux, macOS and Windows. The two Linux-job skips are the
+  explicitly enabled WSL cancellation check and Windows launcher diagnostics.
+- The optional OCP 8.0.1.1.0 runtime passes **36/36** affected CAD tests in an
+  isolated Linux environment after fixing its indexed-shape compatibility alias.
+  Seven OCP 7.9 geometry tests also pass locally on Windows.
+- [Unpublished package run](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41336308183):
+  all nine source-build, package and clean-runner jobs pass. Checks include full
+  archive hashes, matching notice/source companions, a fresh packaged service,
+  real MBDyn solves and the native WebGL2/project round trip. This is separate
+  from the operating-system dialog matrix below.
+- The filtered source builds from a fresh tree and passes six actual simulations
+  with Naive solver. Eleven unused Y12 implementations are removed from both the
+  build source and distributed source archive; the transformation is hash-pinned.
+
+The candidates and their per-platform source archives have SHA-256 sidecars;
+[delivery identities](../notices/solver/audit-candidates.json) retain their hashes.
+No release was published or historical binary archive replaced. This establishes
+the tested artifact identity and workflows; it does not resolve the macOS
+SDK-derived binding warning, historical Y12 rights, or the optional private
+Python/OCP runtime's redistribution status.
+
 ## Windows native GUI verification (1 November 2026)
 
 `npm run test:native-dialogs` passes **12/12 cases with no skips** against an

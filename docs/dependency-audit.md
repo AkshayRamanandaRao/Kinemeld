@@ -22,6 +22,11 @@ The original build logs identify Rust 1.99.1 and the unchanged Cargo.lock. This
 review does not certify every older release, every optional user installation,
 or legal permission where the upstream package itself leaves it unclear.
 
+All **13 runtime-library files** in the collected Linux/macOS/Windows bundles
+also match the original v1.2.1 runtime files byte for byte. The retrieved runtime
+sources therefore identify the published libraries as well as the new candidate
+libraries. The new filtered-source MBDyn executable is a separate build.
+
 ## Repairs
 
 - **Rust:** 194 registry package versions in the normal/build dependency union:
@@ -102,6 +107,30 @@ is inferred for optional Python/OCP native libraries.
 
 ## Validation
 
-Local notice checks and focused integrity tests pass. Fresh three-platform source
-collection, package reconstruction and clean-runner verification are in progress.
+- [Code CI](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41336571338)
+  passes: **47** focused provenance/notice/archive tests; backend **247 tests**
+  with two existing conditional skips (explicit WSL cancellation and Windows-only
+  launcher diagnostics in the Linux job); independent featured-study/constraint
+  checks; and native desktop tests/builds on all three platforms.
+- OCP 8.0.1.1.0 passes all **36** affected STEP, mass, primitive, nose-gear and
+  read-only-resource HTTP tests in an isolated Linux runtime. OCP 7.9 geometry
+  tests still pass on Windows; the requirements range is unchanged.
+- The fresh filtered MBDyn source builds successfully and passes six real
+  introductory simulations with Naive solver. The source transformation is
+  deterministic and preserves every retained source byte.
+- The [final package run](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41336308183)
+  passes all **nine** build/package/clean-runner jobs for Linux x64, macOS arm64
+  and Windows x64. Every package is unpacked, hashes and full inventories are
+  checked, matching notices and source companions are verified, the packaged
+  service solves real cases and the native viewer completes its WebGL2/run/project
+  save/reopen self-check. These checks do not qualify macOS/Linux native dialogs.
+- Downloaded solver/source artifacts pass the final offline verifier on Windows.
+  The full source inventory rejects unlisted leftovers, including an old unfiltered
+  archive, as well as missing or changed artifacts. Both Windows packaging routes
+  also pass their notice checks.
+
+Candidate archives are named `1.2.1-audit.3`; hashes and artifact identities are in
+[audit-candidates.json](../notices/solver/audit-candidates.json). The separate full
+notice supplement also retains conservative LAPACK scaling-algorithm attribution.
+**Publishing was disabled.** Existing GitHub release assets were not overwritten.
 No P4 engineering-example implementation is included in this change.
