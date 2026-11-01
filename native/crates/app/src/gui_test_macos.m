@@ -186,7 +186,9 @@
 void kinemeld_gui_test_start(const char *root) {
     static KinemeldGuiTest *driver;
     driver = [KinemeldGuiTest new]; driver.root = [NSString stringWithUTF8String:root];
-    [driver write:@"mac-driver.json" value:@{@"started": @YES, @"pid": @(NSProcessInfo.processInfo.processIdentifier)}];
+    NSData *bytes = [NSData dataWithContentsOfFile:[driver.root stringByAppendingPathComponent:@"config.json"]];
+    NSDictionary *config = bytes ? [NSJSONSerialization JSONObjectWithData:bytes options:0 error:nil] : nil;
+    [driver write:@"mac-driver.json" value:@{@"started": @YES, @"root": driver.root, @"phase": config[@"phase"] ?: @"", @"pid": @(NSProcessInfo.processInfo.processIdentifier), @"bundle": NSBundle.mainBundle.bundlePath}];
     NSTimer *timer = [NSTimer timerWithTimeInterval:0.1 target:driver selector:@selector(tick:) userInfo:nil repeats:YES];
     [NSRunLoop.mainRunLoop addTimer:timer forMode:NSDefaultRunLoopMode];
     [NSRunLoop.mainRunLoop addTimer:timer forMode:NSModalPanelRunLoopMode];

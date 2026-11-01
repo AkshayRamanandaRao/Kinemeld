@@ -53,6 +53,14 @@ require a marked test root and an exact `root/user-data` data directory, reject
 path escapes, and cannot change the test configuration or write into recovery.
 Native file choices are still made through visible picker controls.
 
+The macOS supervisor launches the actual `.app` through LaunchServices, using
+`open -n -W --env` with explicit isolated data and CAD-Python paths. Its marker
+must match the current test root/phase and a fresh native PID. Darwin kqueue
+`NOTE_EXITSTATUS` measures that PID's actual exit status; the launch helper's
+exit code is not used as a substitute. Crash cleanup checks the owned process
+and its descendants. Bundle signing metadata and scoped system logs are retained
+for picker-service failures.
+
 The macOS driver runs an AppKit timer in the application's modal run loop. It
 operates the app's own `NSOpenPanel`, `NSSavePanel` and alert controls, avoiding
 cross-application Accessibility permissions. It fills the live directory/name

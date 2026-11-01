@@ -3,6 +3,11 @@ name: Native GUI
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: "Platform to verify (all remains the release gate)"
+        type: choice
+        default: all
+        options: [all, linux, macos, windows]
       solver_run:
         description: "Successful audited Release run containing solver-linux/macos/windows artifacts"
         default: "41336308183"
@@ -26,10 +31,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { os: ubuntu-24.04, platform: linux, solver: solver-linux }
-          - { os: macos-15, platform: macos, solver: solver-macos }
-          - { os: windows-latest, platform: windows, solver: solver-windows }
+        include: >-
+          ${{ fromJSON(
+            inputs.platform == 'linux' && '[{"os":"ubuntu-24.04","platform":"linux","solver":"solver-linux"}]' ||
+            inputs.platform == 'macos' && '[{"os":"macos-15","platform":"macos","solver":"solver-macos"}]' ||
+            inputs.platform == 'windows' && '[{"os":"windows-latest","platform":"windows","solver":"solver-windows"}]' ||
+            '[{"os":"ubuntu-24.04","platform":"linux","solver":"solver-linux"},{"os":"macos-15","platform":"macos","solver":"solver-macos"},{"os":"windows-latest","platform":"windows","solver":"solver-windows"}]'
+          ) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

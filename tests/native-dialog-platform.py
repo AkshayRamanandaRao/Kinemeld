@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import runpy
 import signal
 import subprocess
 import sys
@@ -289,6 +290,9 @@ def health(url):
 
 
 def terminate(process):
+    if process and sys.platform == "darwin":
+        process.terminate_owned()
+        return
     if process and process.poll() is None:
         if sys.platform == "win32":
             WindowsControls(Path.cwd(), process.pid).terminate(process)
@@ -335,16 +339,25 @@ def main():
                 portals.append(subprocess.Popen([str(binary), "--replace"], env=environment, stdout=log, stderr=subprocess.STDOUT, start_new_session=True))
             time.sleep(2)
         for phase, goal in (("initial", "crash-ready"), ("recovery", "close-ready")):
-            for name in ("viewer-report.json", "action.json", "action-result.json"):
+            for name in ("viewer-report.json", "action.json", "action-result.json", "mac-driver.json"):
                 (root / name).unlink(missing_ok=True)
             atomic(root / "config.json", {"root": str(root), "phase": phase})
             log = (root / f"native-{phase}.log").open("wb"); streams.append(log)
-            app = subprocess.Popen([str(exe), "--native-gui-test", str(root / "config.json")], cwd=exe.parent, env=environment, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-            report.setdefault("nativePids", []).append(app.pid)
+            if sys.platform == "darwin":
+                MacApplication = runpy.run_path(str(Path(__file__).with_name("native-dialog-macos.py")))["MacApplication"]
+                app = MacApplication(exe, root / "config.json", environment, log, report.get("nativePids", []))
+                report.setdefault("launchServicesPids", []).append(app.launcher.pid)
+            else:
+                app = subprocess.Popen([str(exe), "--native-gui-test", str(root / "config.json")], cwd=exe.parent, env=environment, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+                report.setdefault("nativePids", []).append(app.pid)
             controls = LinuxControls(root, app.pid, [portal.pid for portal in portals]) if sys.platform == "linux" else WindowsControls(root, app.pid) if sys.platform == "win32" else None
             deadline, latest, observed = time.monotonic() + 900, None, {}
             action_id, action_since, progress, close_since = None, time.monotonic(), None, None
             while time.monotonic() < deadline:
+                if sys.platform == "darwin":
+                    app.poll()
+                    if app.native_pid and app.native_pid not in report.setdefault("nativePids", []):
+                        report["nativePids"].append(app.native_pid)
                 if controls:
                     controls.advance()
                 result = load(root / "action-result.json")
@@ -371,6 +384,8 @@ def main():
                         break
                     if app.poll() is not None:
                         assert app.returncode == 0, f"Normal native close exited {app.returncode}"
+                        if sys.platform == "darwin":
+                            report["nativeExitEvent"] = app.exit_event
                         break
                     close_since = close_since or time.monotonic()
                     assert time.monotonic() - close_since < 20, "Confirmed native close did not exit within 20 seconds."
@@ -397,6 +412,8 @@ def main():
         report["ok"] = True
     except Exception as error:
         report["error"] = repr(error)
+        if app and sys.platform == "darwin":
+            app.diagnostics()
         latest = load(root / "viewer-report.json")
         if latest:
             report["failureViewer"] = latest
