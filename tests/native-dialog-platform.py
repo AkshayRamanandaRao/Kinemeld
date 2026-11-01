@@ -204,6 +204,7 @@ class WindowsControls:
     """Reuse the existing PID-scoped Win32 picker driver without requiring WebView2 CDP."""
     def __init__(self, root, app_pid):
         self.root, self.app_pid, self.current, self.index, self.events = root, app_pid, None, 0, []
+        self.pending = None
 
     def call(self, command, *args):
         helper = Path(__file__).with_name("native-dialog-controls.py")
@@ -220,7 +221,24 @@ class WindowsControls:
             return
         if plan["id"] != self.current:
             self.plan, self.current, self.index, self.events = plan, plan["id"], 0, []
+            self.pending = None
         if self.index >= len(self.plan["actions"]):
+            return
+        if self.pending:
+            pending = self.pending
+            windows = self.call("list")["windows"]
+            visible = any(window["hwnd"] == pending["evidence"]["window"]["hwnd"] for window in windows)
+            overwrite = pending["action"]["kind"] == "save" and any("Confirm Save As" in window["text"] for window in windows)
+            if not visible or overwrite:
+                self.finish(pending["action"], pending["evidence"])
+                self.pending = None
+                return
+            elapsed = time.monotonic() - pending["since"]
+            if elapsed > 15:
+                raise RuntimeError(f"Native action did not dismiss its dialog: {pending}; windows={windows}")
+            if pending["action"]["kind"] in ("open", "save") and elapsed > pending["retries"] + 1 and pending["retries"] < 2:
+                pending["evidence"] = self.call("file", "--title", pending["title"], "--path", str(Path(pending["action"]["path"])))
+                pending["retries"] += 1
             return
         action = self.plan["actions"][self.index]
         kind = action["kind"]
@@ -239,6 +257,12 @@ class WindowsControls:
             else:
                 button = "No" if action["text"] == "refuse-overwrite" else action["text"]
                 evidence = self.call("button", "--title", title, "--text", f"^{button}$")
+        if kind != "close":
+            self.pending = {"action": action, "evidence": evidence, "title": title, "since": time.monotonic(), "retries": 0}
+            return
+        self.finish(action, evidence)
+
+    def finish(self, action, evidence):
         self.events.append({"action": action, "pid": self.app_pid, "control": evidence})
         self.index += 1
         atomic(self.root / "action-result.json", {"id": self.current, "done": self.index >= len(self.plan["actions"]), "events": self.events})
@@ -249,7 +273,11 @@ class WindowsControls:
         remaining = self.call("children")["children"]
         for child in remaining:
             if any(before["pid"] == child["pid"] for before in children):
-                self.call("terminate-child", "--child-pid", str(child["pid"]))
+                try:
+                    self.call("terminate-child", "--child-pid", str(child["pid"]))
+                except RuntimeError:
+                    if any(item["pid"] == child["pid"] for item in self.call("children")["children"]):
+                        raise
 
 
 def health(url):

@@ -17,7 +17,7 @@ impl GuiTest {
     fn from_config(file: &Path, data: &Path) -> Result<Self, String> {
         let config: Value = serde_json::from_slice(&fs::read(file).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
         let root = PathBuf::from(config["root"].as_str().ok_or("Missing GUI-test root.")?).canonicalize().map_err(|e| e.to_string())?;
-        if !root.join(".kinemeld-native-gui-test").is_file() || data.canonicalize().map_err(|e| e.to_string())? != root.join("user-data").canonicalize().map_err(|e| e.to_string())? {
+        if !root.join(".kinemeld-native-gui-test").is_file() || data.canonicalize().map_err(|e| e.to_string())? != root.join("user-data") {
             return Err("GUI tests require their own marked root and isolated user-data folder.".into());
         }
         if !matches!(config["phase"].as_str(), Some("initial" | "recovery")) { return Err("Invalid GUI-test phase.".into()); }
@@ -134,6 +134,11 @@ mod tests {
         test.call(&json!({"command":"report","report":{"status":"running"}})).unwrap();
         test.call(&json!({"command":"report","report":{"status":"complete"}})).unwrap();
         assert_eq!(fs::read_to_string(root.join("viewer-report.json")).unwrap().contains("complete"), true);
+        #[cfg(unix)] {
+            fs::rename(root.join("user-data"), root.join("other-data")).unwrap();
+            std::os::unix::fs::symlink(root.join("other-data"), root.join("user-data")).unwrap();
+            assert!(GuiTest::from_config(&config, &root.join("user-data")).is_err());
+        }
         fs::remove_dir_all(root).unwrap();
     }
 }

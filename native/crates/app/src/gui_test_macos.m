@@ -45,7 +45,7 @@
 }
 - (void)key:(NSString *)characters code:(unsigned short)code flags:(NSEventModifierFlags)flags window:(NSWindow *)window {
     NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint modifierFlags:flags timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:window.windowNumber context:nil characters:characters charactersIgnoringModifiers:characters isARepeat:NO keyCode:code];
-    [NSApp sendEvent:event];
+    if (![window performKeyEquivalent:event]) [window sendEvent:event];
 }
 - (void)tick:(NSTimer *)timer {
     if (self.ticking) return;
@@ -117,7 +117,11 @@
     if (opening && self.stage == 1) {
         NSWindow *key = NSApp.keyWindow ?: panel;
         [NSApp sendAction:@selector(selectAll:) to:nil from:nil];
-        for (NSUInteger i = 0; i < path.length; i++) [self key:[path substringWithRange:NSMakeRange(i, 1)] code:0 flags:0 window:key];
+        id responder = key.firstResponder;
+        BOOL textClient = [responder respondsToSelector:@selector(insertText:replacementRange:)];
+        [self.events addObject:@{@"action": action, @"inputWindow": key.title ?: @"", @"firstResponder": NSStringFromClass([responder class]) ?: @"", @"textInputClient": @(textClient)}];
+        if (textClient) [(id<NSTextInputClient>)responder insertText:path replacementRange:NSMakeRange(NSNotFound, 0)];
+        else for (NSUInteger i = 0; i < path.length; i++) [self key:[path substringWithRange:NSMakeRange(i, 1)] code:0 flags:0 window:key];
         [self key:@"\r" code:36 flags:0 window:key];
         self.stage = 2; self.since = NSProcessInfo.processInfo.systemUptime; return;
     }
