@@ -173,6 +173,9 @@
     }
     if (NSProcessInfo.processInfo.systemUptime - self.since < 0.6) return;
     BOOL selected = opening && [self selectFile:path panel:(NSOpenPanel *)panel];
+    // Do not invoke OK while the remote panel is still loading or has no real selection.
+    if (opening && ![panel.URL.path isEqual:path]) return;
+    if (!opening && ![panel.nameFieldStringValue isEqual:path.lastPathComponent]) return;
     [self.events addObject:@{@"action": action, @"directory": panel.directoryURL.path ?: @"", @"nameField": panel.nameFieldStringValue, @"selectedAccessibleRow": @(selected)}];
     self.stage = 3; self.since = NSProcessInfo.processInfo.systemUptime;
     NSButton *button = [self button:panel.contentView titles:(opening ? @[@"Open"] : @[@"Save"])];
