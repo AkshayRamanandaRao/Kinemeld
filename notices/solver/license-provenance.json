@@ -1,0 +1,47 @@
+{
+  "format": 1,
+  "licenses": [
+    {
+      "file": "GPL-2.0.txt",
+      "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670",
+      "sourceArchive": "mbdyn-1.7.3.tar.gz",
+      "sourceMember": "mbdyn-1.7.3/COPYING"
+    },
+    {
+      "file": "GPL-3.0.txt",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "sourceArchive": "cygwin-3.6.12-1-src.tar.xz",
+      "sourceMember": "newlib-cygwin-3.6.12/COPYING"
+    },
+    {
+      "file": "LGPL-3.0.txt",
+      "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768",
+      "sourceArchive": "cygwin-3.6.12-1-src.tar.xz",
+      "sourceMember": "newlib-cygwin-3.6.12/COPYING.LIB"
+    },
+    {
+      "file": "Cygwin-exception.txt",
+      "sha256": "794433752103cf4bbb4a84a1bdb8fbc150abb1762704bb35fecc9f7f820be984",
+      "sourceArchive": "cygwin-3.6.12-1-src.tar.xz",
+      "sourceMember": "newlib-cygwin-3.6.12/winsup/CYGWIN_LICENSE"
+    },
+    {
+      "file": "Cygwin-NEWLIB.txt",
+      "sha256": "fcfb5ec69b6ab52676dcc4dab7cf4338c8000ef97812dadd35b8592a640a8419",
+      "sourceArchive": "cygwin-3.6.12-1-src.tar.xz",
+      "sourceMember": "newlib-cygwin-3.6.12/COPYING.NEWLIB"
+    },
+    {
+      "file": "GCC-exception-3.1.txt",
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "sourceArchive": "gcc-16.2.0.tar.xz",
+      "sourceMember": "gcc-16.2.0/COPYING.RUNTIME"
+    },
+    {
+      "file": "LGPL-2.1.txt",
+      "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b",
+      "sourceArchive": "gcc-16.2.0.tar.xz",
+      "sourceMember": "gcc-16.2.0/libquadmath/COPYING.LIB"
+    }
+  ]
+}

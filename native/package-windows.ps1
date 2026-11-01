@@ -13,6 +13,10 @@ $project = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 if (-not $ExecutablePath) { $ExecutablePath = Join-Path $PSScriptRoot 'MBDynStudio.exe' }
 $exe = (Resolve-Path -LiteralPath $ExecutablePath).Path
 if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Desktop executable not found: $ExecutablePath" }
+& python -I (Join-Path $project 'scripts/check_asset_notices.py') --root $project
+if ($LASTEXITCODE -ne 0) { throw 'Asset notice verification failed; no package was created.' }
+& python -I (Join-Path $project 'scripts/collect_rust_notices.py') --check --source-root $project --target x86_64-pc-windows-msvc
+if ($LASTEXITCODE -ne 0) { throw 'Rust notice verification failed; no package was created.' }
 $dist = Join-Path $PSScriptRoot 'dist'
 if (-not (Test-Path -LiteralPath $dist)) { New-Item -ItemType Directory -Path $dist | Out-Null }
 $dist = (Resolve-Path -LiteralPath $dist).Path
@@ -51,7 +55,7 @@ function Add-SourceFile([string]$source, [string]$relative) {
   if ($name.StartsWith('/') -or $name.Split('/') -contains '..' -or $entries.Contains($name)) { throw "Unsafe or duplicate package entry: $name" }
   $entries[$name] = $file.FullName
 }
-foreach ($directory in @('backend','frontend','examples','docs')) {
+foreach ($directory in @('backend','frontend','examples','docs','notices')) {
   $folder = Join-Path $project $directory
   Get-ChildItem -LiteralPath $folder -File -Recurse -Force | ForEach-Object {
     $relative = [IO.Path]::GetRelativePath($project, $_.FullName).Replace('\','/')

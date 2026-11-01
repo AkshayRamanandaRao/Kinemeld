@@ -36,11 +36,19 @@ The executable is `native/target/release/mbdyn-studio-desktop` (`.exe` on Window
 from inside a source checkout, or package it with the resources:
 
 ```bash
-python3 scripts/package_release.py --platform linux --binary native/target/release/mbdyn-studio-desktop --version 0.2.0 --solver build/solver
+bash scripts/bundle_solver.sh backend/vendor/mbdyn-1.7.3/mbdyn/mbdyn build/solver
+python3 scripts/collect_solver_sources.py --solver build/solver --sources build/solver-sources
+python3 scripts/package_release.py --platform linux --binary native/target/release/mbdyn-studio-desktop --version 1.2.1 --solver build/solver --solver-sources build/solver-sources
 ```
 
 `scripts/bundle_solver.sh path/to/mbdyn build/solver` prepares a relocatable solver folder
-(stripped binary, compiler runtime libraries, GPL notice and source pointer). A hidden
+(stripped binary and compiler runtime libraries). The source collector then binds every
+binary to exact package metadata, notices, source archives and build inputs; packaging
+refuses an unverified solver or a missing source companion. On Linux, enable matching
+`deb-src` indexes first; on Cygwin install `zstd` and `lzip` for the distribution sources.
+Packaging tools require Python 3.11+ and the Rust version pinned in `rust-toolchain.toml`.
+The [dependency audit](../docs/dependency-audit.md) describes scope and outstanding rights
+questions. A hidden
 self-check runs a real MBDyn job through the embedded viewer and saves and reopens a project:
 `kinemeld --smoke` (use `xvfb-run` on a headless Linux machine). It writes
 `runs/native-smoke-report-<pid>.json` in the user-data folder.
@@ -126,6 +134,11 @@ the desktop self-check (`xvfb-run` on Linux without a display).
 ```bash
 python3 scripts/check_package.py dist/Kinemeld-0.6.0-linux-x86_64.tar.gz --version 0.6.0 --expect-solver --native-smoke
 ```
+
+For an audited package, keep its `*-solver-sources.tar.gz` companion beside it.
+`--files-only` verifies full archive coverage, asset/Rust notices and the exact solver
+source companion without executing platform-specific binaries. The checker intentionally
+rejects historical packages that lack the audited inventory format.
 
 The release workflow runs these checks on fresh Ubuntu 24.04, macOS 14 and Windows runners
 that have only Python (and, on Linux, `libwebkit2gtk-4.1-0` and Xvfb) installed, and

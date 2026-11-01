@@ -167,9 +167,12 @@ python3 -m pip install -r requirements.txt
 ```
 
 Each archive has a `.sha256` checksum and a `package-manifest.json` listing every file's
-digest, and is unpacked and checked on fresh Linux, macOS and Windows machines before a
-release is published. Bundled MBDyn binaries are GPL-2.0-only; their corresponding source
-is attached to every release.
+digest. Audited packaging also requires complete notices and an exact solver-source
+companion archive, including runtime-library sources and distribution patches. Packages
+are unpacked and checked on fresh Linux, macOS and Windows runners before publication.
+The [dependency audit](docs/dependency-audit.md) records gaps in the historical v1.2.1
+packages and remaining redistribution questions; the application MIT license does not
+replace its dependencies' licenses.
 
 The desktop app autosaves unsaved work for crash recovery and offers it back after an
 unexpected exit; see [autosave and crash recovery](native/README.md#autosave-and-crash-recovery).

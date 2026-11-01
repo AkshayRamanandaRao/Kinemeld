@@ -1,0 +1,700 @@
+{
+  "format": "kinemeld-asset-notices/1",
+  "reviewed": "2026-11-01",
+  "hashPolicy": "SHA-256 identifies exact bytes. For Git text files both raw LF and raw CRLF digests are pinned; STEP and TTF bytes remain exact.",
+  "components": [
+    {
+      "id": "three",
+      "version": "0.186.1",
+      "license": "MIT",
+      "sources": [
+        {
+          "url": "https://registry.npmjs.org/three/-/three-0.186.1.tgz",
+          "sha256": "8cd068708ea44f2c73c944b1cead2ba2f0d5c15c8fc194e5700f4e4f4a033fe7"
+        }
+      ],
+      "files": [
+        {
+          "path": "frontend/vendor/three.core.js",
+          "sha256": {
+            "lf": "ff72274bf7460884a47c4075e8dfbe5eb1b7184a496ae9b9638f07e8471a8947",
+            "crlf": "1f7417551dedf227dbd7a037a20d2dead12968dda2a3f8f310d0feb9d51a3040"
+          },
+          "source": 0,
+          "sourcePath": "package/build/three.core.js",
+          "upstreamSha256": "9edde002b066a9a05676a6127f67735b62baf399bdea529f2f7e31657da769e6",
+          "modifications": "Documentation-only edit: removes third-party product examples from the PBR comment."
+        },
+        {
+          "path": "frontend/vendor/three.module.js",
+          "sha256": {
+            "lf": "9052042d676cb0fdc1ddfefe193053f34b7ac0513a616fdac4535d49987812ea",
+            "crlf": "211760950dc7bddeb46b09ca7fa4d3620ddde43168a4fba8560489f86a92548f"
+          },
+          "source": 0,
+          "sourcePath": "package/build/three.module.js",
+          "upstreamSha256": "9052042d676cb0fdc1ddfefe193053f34b7ac0513a616fdac4535d49987812ea"
+        },
+        {
+          "path": "frontend/vendor/OrbitControls.js",
+          "sha256": {
+            "lf": "3d79d07ecb686b4e5d93232eedab255331c1beef711e13164eaa1f68655a5f2b",
+            "crlf": "97c6ad5c5b19d958be1652c7b3f920062ad1be836850008327ae463b16d91ef5"
+          },
+          "source": 0,
+          "sourcePath": "package/examples/jsm/controls/OrbitControls.js",
+          "upstreamSha256": "3d79d07ecb686b4e5d93232eedab255331c1beef711e13164eaa1f68655a5f2b"
+        },
+        {
+          "path": "frontend/vendor/STLLoader.js",
+          "sha256": {
+            "lf": "9388aa6c8b7a4b350b23cb52e79f2cc693ff8f784396216fca941a845d686589",
+            "crlf": "1305e7676f9c62528af8d163cf5acd7597f226653733355a6bc24245745337b5"
+          },
+          "source": 0,
+          "sourcePath": "package/examples/jsm/loaders/STLLoader.js",
+          "upstreamSha256": "023ed97f848b633d8bcd53d4db3b996d29d0c644088700691297c552257d480b",
+          "modifications": "Documentation-only edit: removes a product name from the STL loader comment."
+        }
+      ],
+      "notices": [
+        {
+          "path": "frontend/vendor/THREE-LICENSE.txt",
+          "sha256": {
+            "lf": "8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc",
+            "crlf": "5d5dad8147523d59bc15cca838ae0bdaae7075230ec49132c551a1d18e7b3412"
+          },
+          "source": 0,
+          "sourcePath": "package/LICENSE",
+          "upstreamSha256": "8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc"
+        }
+      ]
+    },
+    {
+      "id": "ibmplexsans",
+      "version": "3.201",
+      "license": "OFL-1.1",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/ibmplexsans/IBMPlexSans%5Bwdth%2Cwght%5D.ttf",
+          "sha256": "3b031aa4216174205bd8471f88a49b91f093169e9e87bd5262242bc5967fe2e3"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/ibmplexsans/OFL.txt",
+          "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+        }
+      ],
+      "files": [
+        {
+          "path": "frontend/fonts/IBMPlexSans-Variable.ttf",
+          "sha256": "3b031aa4216174205bd8471f88a49b91f093169e9e87bd5262242bc5967fe2e3",
+          "source": 0,
+          "sourcePath": "IBMPlexSans[wdth,wght].ttf",
+          "upstreamSha256": "3b031aa4216174205bd8471f88a49b91f093169e9e87bd5262242bc5967fe2e3"
+        }
+      ],
+      "notices": [
+        {
+          "path": "frontend/fonts/OFL-Sans.txt",
+          "sha256": {
+            "lf": "37784b44044a4ffd9256702b7c0982c37e5c8887ba90c6dca0479aea93dc898d",
+            "crlf": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+          },
+          "source": 1,
+          "sourcePath": "OFL.txt",
+          "upstreamSha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+        }
+      ]
+    },
+    {
+      "id": "ibmplexmono",
+      "version": "2.3",
+      "license": "OFL-1.1",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/ibmplexmono/IBMPlexMono-Regular.ttf",
+          "sha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/ibmplexmono/OFL.txt",
+          "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+        }
+      ],
+      "files": [
+        {
+          "path": "frontend/fonts/IBMPlexMono-Regular.ttf",
+          "sha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46",
+          "source": 0,
+          "sourcePath": "IBMPlexMono-Regular.ttf",
+          "upstreamSha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46"
+        }
+      ],
+      "notices": [
+        {
+          "path": "frontend/fonts/OFL-Mono.txt",
+          "sha256": {
+            "lf": "37784b44044a4ffd9256702b7c0982c37e5c8887ba90c6dca0479aea93dc898d",
+            "crlf": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+          },
+          "source": 1,
+          "sourcePath": "OFL.txt",
+          "upstreamSha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+        }
+      ]
+    },
+    {
+      "id": "double-wishbone-cad",
+      "version": "d822c401ad51aae76cfd4fbbe80d13b42800f339",
+      "license": "MIT",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/Prammit-06/Double_Wishbone_Suspension_CAD/d822c401ad51aae76cfd4fbbe80d13b42800f339/Double_Wishbone_Suspension_Assembly.zip",
+          "sha256": "e92ffa5e63281653413cbadefa4e6634e664bb8e3ea9c4b71cae319ae441d142"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/Prammit-06/Double_Wishbone_Suspension_CAD/d822c401ad51aae76cfd4fbbe80d13b42800f339/LICENSE",
+          "sha256": "84f61bd19f7144bde289a48b60cd70aa0ddbc7105298bf382892719b4cc140d6"
+        }
+      ],
+      "files": [
+        {
+          "path": "examples/step-suspension/Assembly 1 - Ball_Default-As Machined- (1).step",
+          "sha256": "e2a24a8d26e3b35621d307aeab6d0aad9f2364d32ec5e2fd2f8095d052616a7a",
+          "source": 0,
+          "sourcePath": "Assembly 1 - Ball_Default-As Machined- (1).step",
+          "upstreamSha256": "e2a24a8d26e3b35621d307aeab6d0aad9f2364d32ec5e2fd2f8095d052616a7a"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - Ball_Default-As Machined-.step",
+          "sha256": "83e0c25d6df64fa661e6d2f3586c448267999b5c2598d2f4b533c8d262321e0f",
+          "source": 0,
+          "sourcePath": "Assembly 1 - Ball_Default-As Machined-.step",
+          "upstreamSha256": "83e0c25d6df64fa661e6d2f3586c448267999b5c2598d2f4b533c8d262321e0f"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - Front Rim.step",
+          "sha256": "d8d05362b485e0b48ea0baf3cb33d0d5df6faf817e2f49222ad066308e9f6553",
+          "source": 0,
+          "sourcePath": "Assembly 1 - Front Rim.step",
+          "upstreamSha256": "d8d05362b485e0b48ea0baf3cb33d0d5df6faf817e2f49222ad066308e9f6553"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - Front Tyre.step",
+          "sha256": "a0b7e75748354b03547decf398d0257d79442c051c330956d208136fac7255d0",
+          "source": 0,
+          "sourcePath": "Assembly 1 - Front Tyre.step",
+          "upstreamSha256": "a0b7e75748354b03547decf398d0257d79442c051c330956d208136fac7255d0"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - Hub.step",
+          "sha256": "5a035846fcd27121ac5337484b4f5e791b5deb3349030faff4768eed0c0ffbdb",
+          "source": 0,
+          "sourcePath": "Assembly 1 - Hub.step",
+          "upstreamSha256": "5a035846fcd27121ac5337484b4f5e791b5deb3349030faff4768eed0c0ffbdb"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - Knuckle_Left Knuckle.step",
+          "sha256": "670681b02f1923520f49d46eb6fe0166040eb43869283566f04fba7f2a4313b9",
+          "source": 0,
+          "sourcePath": "Assembly 1 - Knuckle_Left Knuckle.step",
+          "upstreamSha256": "670681b02f1923520f49d46eb6fe0166040eb43869283566f04fba7f2a4313b9"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - Lower Control Arm_Default-As Machined- (1).step",
+          "sha256": "a03c6855ecd36e54d72937b94540fa469689d4782a31c21ad61f5bcd43a98d63",
+          "source": 0,
+          "sourcePath": "Assembly 1 - Lower Control Arm_Default-As Machined- (1).step",
+          "upstreamSha256": "a03c6855ecd36e54d72937b94540fa469689d4782a31c21ad61f5bcd43a98d63"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - Lower Control Arm_Default-As Machined-.step",
+          "sha256": "b2e09857d05a62b8e657c333da30d7cf65881601f64b22ea5478b033dc826b9e",
+          "source": 0,
+          "sourcePath": "Assembly 1 - Lower Control Arm_Default-As Machined-.step",
+          "upstreamSha256": "b2e09857d05a62b8e657c333da30d7cf65881601f64b22ea5478b033dc826b9e"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - M18 Nut.step",
+          "sha256": "c5b09ef2f419797d5850deefa3bc1d045b70e7ea4f37e693d171bfe4a0e9bf56",
+          "source": 0,
+          "sourcePath": "Assembly 1 - M18 Nut.step",
+          "upstreamSha256": "c5b09ef2f419797d5850deefa3bc1d045b70e7ea4f37e693d171bfe4a0e9bf56"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - Upper Control Arm_Default-As Machined-.step",
+          "sha256": "0eb1a5b7fd865bfd6b74d8772abf8963841e9d916ad40964e716a65fdf8d7416",
+          "source": 0,
+          "sourcePath": "Assembly 1 - Upper Control Arm_Default-As Machined-.step",
+          "upstreamSha256": "0eb1a5b7fd865bfd6b74d8772abf8963841e9d916ad40964e716a65fdf8d7416"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - radial ball bearing_68_iso_ISO 15 RBB - 4930 - 18,DE,AC,18_68 (1).step",
+          "sha256": "1586a544a5e215dbe4eb5dee76cdc90f81102ef071750772d29d12f35adab3cd",
+          "source": 0,
+          "sourcePath": "Assembly 1 - radial ball bearing_68_iso_ISO 15 RBB - 4930 - 18,DE,AC,18_68 (1).step",
+          "upstreamSha256": "1586a544a5e215dbe4eb5dee76cdc90f81102ef071750772d29d12f35adab3cd"
+        },
+        {
+          "path": "examples/step-suspension/Assembly 1 - radial ball bearing_68_iso_ISO 15 RBB - 4930 - 18,DE,AC,18_68.step",
+          "sha256": "22a4a978b1862069cc6274d35b61884e77053b0e827a497a2924a1f47144ea17",
+          "source": 0,
+          "sourcePath": "Assembly 1 - radial ball bearing_68_iso_ISO 15 RBB - 4930 - 18,DE,AC,18_68.step",
+          "upstreamSha256": "22a4a978b1862069cc6274d35b61884e77053b0e827a497a2924a1f47144ea17"
+        }
+      ],
+      "notices": [
+        {
+          "path": "examples/step-suspension/LICENSE",
+          "sha256": {
+            "lf": "84f61bd19f7144bde289a48b60cd70aa0ddbc7105298bf382892719b4cc140d6",
+            "crlf": "ca6e95ce1bf96b8425024c1ae7d54c9d015079ceca44cda0589ca3758abad61c"
+          },
+          "source": 1,
+          "sourcePath": "LICENSE",
+          "upstreamSha256": "84f61bd19f7144bde289a48b60cd70aa0ddbc7105298bf382892719b4cc140d6"
+        }
+      ]
+    },
+    {
+      "id": "aircraft-nose-gear-cad",
+      "version": "12f44cb9e721a665b34b62239590404a3a504636",
+      "license": "MIT",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/aryan-pandharipande/aircraft-nose-landing-gear-design/12f44cb9e721a665b34b62239590404a3a504636/CAD/Assembly/Assembly.STEP",
+          "sha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/aryan-pandharipande/aircraft-nose-landing-gear-design/12f44cb9e721a665b34b62239590404a3a504636/LICENSE",
+          "sha256": "f46d96fdcd1cb89714c0485544022ec6967361326c3b7ef8b6cac3529ddf0d70"
+        }
+      ],
+      "files": [
+        {
+          "path": "examples/open-aircraft-nose-gear/source-assembly.step",
+          "sha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575"
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/01-piston.step",
+          "sha256": "a96fd1dd7620f13183de5d6ea687bdd08c058af6d99d534776ad235fe84d5296",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/02-shaft.step",
+          "sha256": "791fe055cfc448890ec35eba3162cb18c0ef3424331602c026484ece4abc31e2",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/03-strut.step",
+          "sha256": "a6ef0746b851b05b07711621cfd6556430028198586676cd8c23d704a4b3dfe3",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/04-upper-link.step",
+          "sha256": "8f9f8332cdf0387bae4e4e60177096df56182dd7eb584e77e3d99185adbc1ed3",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/05-wheel-hub.step",
+          "sha256": "18d94e312321e95518bbe741944f1a28f04dfec052f8ca739be1755f3f479290",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/06-lower-link.step",
+          "sha256": "242cc024d08cb1c08e9b4e24ec289854874ec9c289e6f838c55a143c4bf00c47",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/07-upper-pin-bolt.step",
+          "sha256": "bdd8735e5409adfb287bb9043a62ec4c4ee7aae06915d48a61715a5627b716bc",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/08-scissor-pin-bolt.step",
+          "sha256": "c839a44a530d32ce833ff3ebf4e3ae7b4d7d20958a2d068b1a57fc2e68a47667",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/09-lower-pin-bolt.step",
+          "sha256": "95dad3111c6cf773ab5b5ccd834c21e5c389c32c3ba99da424cfa4526361c95c",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/10-wheel-left.step",
+          "sha256": "6a090cd8e5e23a2b077c52b3847d059b6b3f8f6bc762541193f4967d7de462cb",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        },
+        {
+          "path": "examples/open-aircraft-nose-gear/parts/11-wheel-right.step",
+          "sha256": "660538b4f28fed957a56c130adec2d2bd4f648c2e7d5b6f78b95e2e9cae57b00",
+          "source": 0,
+          "sourcePath": "CAD/Assembly/Assembly.STEP",
+          "upstreamSha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+          "modifications": "Per-occurrence STEP export and common rigid translation by examples/open-aircraft-nose-gear/split_parts.py; derived bytes differ from the original assembly."
+        }
+      ],
+      "notices": [
+        {
+          "path": "examples/open-aircraft-nose-gear/UPSTREAM-LICENSE.txt",
+          "sha256": {
+            "lf": "f46d96fdcd1cb89714c0485544022ec6967361326c3b7ef8b6cac3529ddf0d70",
+            "crlf": "4bc045ce3305932af0d912ed794de4aa263fcb770303bd3a315058ea92192d39"
+          },
+          "source": 1,
+          "sourcePath": "LICENSE",
+          "upstreamSha256": "f46d96fdcd1cb89714c0485544022ec6967361326c3b7ef8b6cac3529ddf0d70"
+        }
+      ]
+    },
+    {
+      "id": "mbdyn-model-triangle",
+      "version": "a2ec5b9fb70d2431cb486ef20836bc3887034a37",
+      "license": "GPL-2.0-only",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/mmorandi/MBDyn-web/a2ec5b9fb70d2431cb486ef20836bc3887034a37/userfiles/documents/examples/triangle",
+          "sha256": "9398efeb299436da78b29146398d2f590f30dd6533c80b61623ceeb2db62c46d"
+        },
+        {
+          "url": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt",
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        }
+      ],
+      "files": [
+        {
+          "path": "examples/open-source/triangle/triangle.mbd",
+          "sha256": "9398efeb299436da78b29146398d2f590f30dd6533c80b61623ceeb2db62c46d",
+          "source": 0,
+          "sourcePath": "triangle",
+          "upstreamSha256": "9398efeb299436da78b29146398d2f590f30dd6533c80b61623ceeb2db62c46d"
+        }
+      ],
+      "notices": [
+        {
+          "path": "examples/open-source/GPL-2.0.txt",
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6",
+          "source": 1,
+          "sourcePath": "gpl-2.0.txt",
+          "upstreamSha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        }
+      ]
+    },
+    {
+      "id": "mbdyn-model-srscm",
+      "version": "a2ec5b9fb70d2431cb486ef20836bc3887034a37",
+      "license": "GPL-2.0-only",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/mmorandi/MBDyn-web/a2ec5b9fb70d2431cb486ef20836bc3887034a37/userfiles/documents/examples/srscm",
+          "sha256": "0d355c76861a5b9dfd0c56d7df869e1e8838f9fa937aff563246387874d24f44"
+        },
+        {
+          "url": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt",
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        }
+      ],
+      "files": [
+        {
+          "path": "examples/open-source/srscm/srscm.mbd",
+          "sha256": "0d355c76861a5b9dfd0c56d7df869e1e8838f9fa937aff563246387874d24f44",
+          "source": 0,
+          "sourcePath": "srscm",
+          "upstreamSha256": "0d355c76861a5b9dfd0c56d7df869e1e8838f9fa937aff563246387874d24f44"
+        }
+      ],
+      "notices": [
+        {
+          "path": "examples/open-source/GPL-2.0.txt",
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6",
+          "source": 1,
+          "sourcePath": "gpl-2.0.txt",
+          "upstreamSha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        }
+      ]
+    },
+    {
+      "id": "mbdyn-model-6barmech",
+      "version": "a2ec5b9fb70d2431cb486ef20836bc3887034a37",
+      "license": "GPL-2.0-only",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/mmorandi/MBDyn-web/a2ec5b9fb70d2431cb486ef20836bc3887034a37/userfiles/documents/examples/6barmech",
+          "sha256": "2ff5b956e2446d507c03ec4ad34c52f3e7738fff987928431ea960b0a7540325"
+        },
+        {
+          "url": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt",
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        }
+      ],
+      "files": [
+        {
+          "path": "examples/open-source/6barmech/6barmech.mbd",
+          "sha256": "2ff5b956e2446d507c03ec4ad34c52f3e7738fff987928431ea960b0a7540325",
+          "source": 0,
+          "sourcePath": "6barmech",
+          "upstreamSha256": "2ff5b956e2446d507c03ec4ad34c52f3e7738fff987928431ea960b0a7540325"
+        }
+      ],
+      "notices": [
+        {
+          "path": "examples/open-source/GPL-2.0.txt",
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6",
+          "source": 1,
+          "sourcePath": "gpl-2.0.txt",
+          "upstreamSha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        }
+      ]
+    },
+    {
+      "id": "mbdyn-model-rotor-ground-resonance",
+      "version": "3b8c753a497be98efe4f49b5d44f5b0608cdd78b",
+      "license": "GPL-2.0-only",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/GR_rotor.mbd",
+          "sha256": "b2bb2059815b7f970fdc37caca74dc2d318bcf26f84474e1830ef104a434ff1b"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.elm",
+          "sha256": "cffe9c56d90fafade6657440e01cf6b7a0c8851bdea6673622a7863fd1610ba6"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.nod",
+          "sha256": "195083ad5260480d36aa18118151017b94dffb682b08c650543de6f11d9c1bcf"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/alexal00/MBDynmodels/3b8c753a497be98efe4f49b5d44f5b0608cdd78b/GR_MBDyn/cassoni_model/rotor_blade.ref",
+          "sha256": "ae795a8bf86a170d1826778b1baf514ce2ba726f26635788f60856e00a32b191"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/mmorandi/MBDyn-web/main/userfiles/downloads/mbdyn-1.7.3.tar.gz",
+          "sha256": "3cf05cd1cb14c1af3d987aac119b6ecf0d835bc1aee06bc4cf7cc5a245c1f36d"
+        }
+      ],
+      "files": [
+        {
+          "path": "examples/open-source/rotor-ground-resonance/original/GR_rotor.mbd",
+          "sha256": "b2bb2059815b7f970fdc37caca74dc2d318bcf26f84474e1830ef104a434ff1b",
+          "source": 0,
+          "sourcePath": "GR_rotor.mbd",
+          "upstreamSha256": "b2bb2059815b7f970fdc37caca74dc2d318bcf26f84474e1830ef104a434ff1b"
+        },
+        {
+          "path": "examples/open-source/rotor-ground-resonance/runnable/GR_rotor.mbd",
+          "sha256": "47f101be4f6d06110febf7e67cf662f478797562010c5a3914396b96f67620e4",
+          "source": 0,
+          "sourcePath": "GR_rotor.mbd",
+          "upstreamSha256": "b2bb2059815b7f970fdc37caca74dc2d318bcf26f84474e1830ef104a434ff1b",
+          "modifications": "Text-output adaptation; original inputs and change notice retained in examples/open-source/rotor-ground-resonance/original and MODIFICATIONS.md."
+        },
+        {
+          "path": "examples/open-source/rotor-ground-resonance/original/rotor_blade.elm",
+          "sha256": "cffe9c56d90fafade6657440e01cf6b7a0c8851bdea6673622a7863fd1610ba6",
+          "source": 1,
+          "sourcePath": "rotor_blade.elm",
+          "upstreamSha256": "cffe9c56d90fafade6657440e01cf6b7a0c8851bdea6673622a7863fd1610ba6"
+        },
+        {
+          "path": "examples/open-source/rotor-ground-resonance/runnable/rotor_blade.elm",
+          "sha256": "cffe9c56d90fafade6657440e01cf6b7a0c8851bdea6673622a7863fd1610ba6",
+          "source": 1,
+          "sourcePath": "rotor_blade.elm",
+          "upstreamSha256": "cffe9c56d90fafade6657440e01cf6b7a0c8851bdea6673622a7863fd1610ba6"
+        },
+        {
+          "path": "examples/open-source/rotor-ground-resonance/original/rotor_blade.nod",
+          "sha256": "195083ad5260480d36aa18118151017b94dffb682b08c650543de6f11d9c1bcf",
+          "source": 2,
+          "sourcePath": "rotor_blade.nod",
+          "upstreamSha256": "195083ad5260480d36aa18118151017b94dffb682b08c650543de6f11d9c1bcf"
+        },
+        {
+          "path": "examples/open-source/rotor-ground-resonance/runnable/rotor_blade.nod",
+          "sha256": "195083ad5260480d36aa18118151017b94dffb682b08c650543de6f11d9c1bcf",
+          "source": 2,
+          "sourcePath": "rotor_blade.nod",
+          "upstreamSha256": "195083ad5260480d36aa18118151017b94dffb682b08c650543de6f11d9c1bcf"
+        },
+        {
+          "path": "examples/open-source/rotor-ground-resonance/original/rotor_blade.ref",
+          "sha256": "ae795a8bf86a170d1826778b1baf514ce2ba726f26635788f60856e00a32b191",
+          "source": 3,
+          "sourcePath": "rotor_blade.ref",
+          "upstreamSha256": "ae795a8bf86a170d1826778b1baf514ce2ba726f26635788f60856e00a32b191"
+        },
+        {
+          "path": "examples/open-source/rotor-ground-resonance/runnable/rotor_blade.ref",
+          "sha256": "ae795a8bf86a170d1826778b1baf514ce2ba726f26635788f60856e00a32b191",
+          "source": 3,
+          "sourcePath": "rotor_blade.ref",
+          "upstreamSha256": "ae795a8bf86a170d1826778b1baf514ce2ba726f26635788f60856e00a32b191"
+        }
+      ],
+      "notices": [
+        {
+          "path": "examples/open-source/rotor-ground-resonance/COPYING",
+          "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670",
+          "source": 4,
+          "sourcePath": "mbdyn-1.7.3/COPYING",
+          "upstreamSha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"
+        }
+      ]
+    },
+    {
+      "id": "kinemeld-authored-cad",
+      "version": "d686cd561c8fd12e02e125ec0c694432ea589158",
+      "license": "MIT",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/AkshayRamanandaRao/Kinemeld/d686cd561c8fd12e02e125ec0c694432ea589158/examples/landing-gear-3d/strut.step",
+          "sha256": "d054a865c766ddd3c0a593aefd081f7843b9d49b8c78e93a0c5b04c75bc99291"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/AkshayRamanandaRao/Kinemeld/d686cd561c8fd12e02e125ec0c694432ea589158/examples/landing-gear-3d/wheel.step",
+          "sha256": "887430749d40bb162d1cc1c85324800f32aef6c2ab588a8850c7cf2b9a125528"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/AkshayRamanandaRao/Kinemeld/d686cd561c8fd12e02e125ec0c694432ea589158/examples/step-composite/brick-left.step",
+          "sha256": "1c1ce5738617bbcb876fe905fd803bc5c75161a5650b12875b9c3b13ddb716cf"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/AkshayRamanandaRao/Kinemeld/d686cd561c8fd12e02e125ec0c694432ea589158/examples/step-composite/brick-right.step",
+          "sha256": "128001b0340a68f9dd8b9195f3845fcfa9edb1c06d061126df45c98a805adb56"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/AkshayRamanandaRao/Kinemeld/d686cd561c8fd12e02e125ec0c694432ea589158/examples/step-pendulum/pendulum.step",
+          "sha256": "21d27f30d5cc9459f70d7d3cc66f61a6e7c6b1a7e4f69b4fd72e2837090d96ac"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/AkshayRamanandaRao/Kinemeld/d686cd561c8fd12e02e125ec0c694432ea589158/examples/wishbone-3d/lower-arm.step",
+          "sha256": "04655e9a52f656794108e179b74d60dda99ee5d68a0858913e2f7242244df039"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/AkshayRamanandaRao/Kinemeld/d686cd561c8fd12e02e125ec0c694432ea589158/examples/wishbone-3d/upper-arm.step",
+          "sha256": "2c556efbbaf1600c7586504cd4d788d170460969830ea6994657ea762e5a0d63"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/AkshayRamanandaRao/Kinemeld/d686cd561c8fd12e02e125ec0c694432ea589158/examples/wishbone-3d/upright.step",
+          "sha256": "8976c8bc36eac1b0d1b1b48fce0c3fa1ce9fd86f2bf0099d02b726ae35330645"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/AkshayRamanandaRao/Kinemeld/d686cd561c8fd12e02e125ec0c694432ea589158/LICENSE",
+          "sha256": "a727280926401249c59567e17b9e61db213b8023a048433a1720dd25d3eb2462"
+        }
+      ],
+      "files": [
+        {
+          "path": "examples/landing-gear-3d/strut.step",
+          "sha256": "d054a865c766ddd3c0a593aefd081f7843b9d49b8c78e93a0c5b04c75bc99291",
+          "source": 0,
+          "sourcePath": "strut.step",
+          "upstreamSha256": "d054a865c766ddd3c0a593aefd081f7843b9d49b8c78e93a0c5b04c75bc99291"
+        },
+        {
+          "path": "examples/landing-gear-3d/wheel.step",
+          "sha256": "887430749d40bb162d1cc1c85324800f32aef6c2ab588a8850c7cf2b9a125528",
+          "source": 1,
+          "sourcePath": "wheel.step",
+          "upstreamSha256": "887430749d40bb162d1cc1c85324800f32aef6c2ab588a8850c7cf2b9a125528"
+        },
+        {
+          "path": "examples/step-composite/brick-left.step",
+          "sha256": "1c1ce5738617bbcb876fe905fd803bc5c75161a5650b12875b9c3b13ddb716cf",
+          "source": 2,
+          "sourcePath": "brick-left.step",
+          "upstreamSha256": "1c1ce5738617bbcb876fe905fd803bc5c75161a5650b12875b9c3b13ddb716cf"
+        },
+        {
+          "path": "examples/step-composite/brick-right.step",
+          "sha256": "128001b0340a68f9dd8b9195f3845fcfa9edb1c06d061126df45c98a805adb56",
+          "source": 3,
+          "sourcePath": "brick-right.step",
+          "upstreamSha256": "128001b0340a68f9dd8b9195f3845fcfa9edb1c06d061126df45c98a805adb56"
+        },
+        {
+          "path": "examples/step-pendulum/pendulum.step",
+          "sha256": "21d27f30d5cc9459f70d7d3cc66f61a6e7c6b1a7e4f69b4fd72e2837090d96ac",
+          "source": 4,
+          "sourcePath": "pendulum.step",
+          "upstreamSha256": "21d27f30d5cc9459f70d7d3cc66f61a6e7c6b1a7e4f69b4fd72e2837090d96ac"
+        },
+        {
+          "path": "examples/wishbone-3d/lower-arm.step",
+          "sha256": "04655e9a52f656794108e179b74d60dda99ee5d68a0858913e2f7242244df039",
+          "source": 5,
+          "sourcePath": "lower-arm.step",
+          "upstreamSha256": "04655e9a52f656794108e179b74d60dda99ee5d68a0858913e2f7242244df039"
+        },
+        {
+          "path": "examples/wishbone-3d/upper-arm.step",
+          "sha256": "2c556efbbaf1600c7586504cd4d788d170460969830ea6994657ea762e5a0d63",
+          "source": 6,
+          "sourcePath": "upper-arm.step",
+          "upstreamSha256": "2c556efbbaf1600c7586504cd4d788d170460969830ea6994657ea762e5a0d63"
+        },
+        {
+          "path": "examples/wishbone-3d/upright.step",
+          "sha256": "8976c8bc36eac1b0d1b1b48fce0c3fa1ce9fd86f2bf0099d02b726ae35330645",
+          "source": 7,
+          "sourcePath": "upright.step",
+          "upstreamSha256": "8976c8bc36eac1b0d1b1b48fce0c3fa1ce9fd86f2bf0099d02b726ae35330645"
+        }
+      ],
+      "notices": [
+        {
+          "path": "LICENSE",
+          "sha256": {
+            "lf": "a727280926401249c59567e17b9e61db213b8023a048433a1720dd25d3eb2462",
+            "crlf": "29126ef43ce5097ad994533a0f7118ce23d13df08140616e11c8bfa2f67728f8"
+          },
+          "source": 8,
+          "sourcePath": "LICENSE",
+          "upstreamSha256": "a727280926401249c59567e17b9e61db213b8023a048433a1720dd25d3eb2462"
+        }
+      ]
+    }
+  ],
+  "excluded": [
+    {
+      "id": "nasa-wheel-reference",
+      "reason": "Optional separately fetched STL; not tracked or included by either package path. NASA media guidance is not an MIT relicense.",
+      "source": {
+        "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Printing/Mars%202020%205%20inch%20wheel/Mars%202020%205%20inch%20wheel.stl",
+        "sha256": "6318740c1ce44b5d4deb85866dd2a2cef9195197019553c78f0c439ab737c4ad"
+      }
+    }
+  ]
+}

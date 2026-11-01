@@ -11,6 +11,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  dependency-notices:
+    name: Dependency provenance, notices and packaging gates
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python scripts/check_asset_notices.py
+          python scripts/collect_rust_notices.py --check --source-root .
+          python -m unittest discover -s scripts -p 'test_*.py'
+
   solver-and-backend:
     name: Backend, solver checks and interface syntax
     runs-on: ubuntu-22.04
@@ -58,12 +71,18 @@ jobs:
         os: [ubuntu-22.04, macos-15, windows-latest]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Linux webview dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libxdo-dev
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: native
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - name: Check compiler identity against shipped notices
+        run: python scripts/collect_rust_notices.py --check --check-compiler --source-root .
       - name: Test
         run: cargo test --manifest-path native/Cargo.toml --locked
       - name: Build

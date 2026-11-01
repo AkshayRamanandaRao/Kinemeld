@@ -1,0 +1,41 @@
+Kinemeld solver corresponding-source bundle
+
+The paired DEPENDENCIES.json/source-manifest.json records every binary, original
+package version, matching source archive, copyright notice and SHA-256 digest.
+Archives are retained unchanged, including distribution source packages and their
+patches. Metadata retains the package index/recipe used to resolve that version.
+build/ contains the exact Kinemeld build/bundle/CI scripts and configure arguments.
+
+MBDyn: verify and extract archives/mbdyn-1.7.3.tar.gz, then run the included
+build_solver.sh from a Kinemeld checkout at the release commit. It uses C++11,
+gfortran -fallow-argument-mismatch, --disable-runtime-loading and --without-y12.
+The release.yml build jobs record platform compiler/environment flags. MBDyn's
+own Makefiles/configure are in the unchanged upstream archive. mbconfig.h and
+configure-arguments.txt capture the configuration actually used for this binary.
+
+Ubuntu runtimes: place the matching .dsc, .orig.tar.* and .debian.tar.* archives
+in one directory. Install Debian's dpkg-dev/build-essential and the Build-Depends
+in the retained exact Source metadata. Run `dpkg-source -x PACKAGE.dsc`, enter the
+extracted directory and run `dpkg-buildpackage -b -uc -us`. debian/rules, patches,
+copyright and distribution build instructions remain in the source package.
+
+Cygwin runtimes: install Cygwin's cygport and the BUILD_REQUIRES specified by the
+retained .cygport recipe. Extract each *-src.tar.* archive, enter its .src directory
+and run `cygport PACKAGE.cygport all`. Each outer source archive includes the exact
+upstream archive, patches, packaging recipe and auxiliary build inputs. Preserve
+the package VERSION/RELEASE; do not replace it with today's upstream source.
+
+Homebrew GCC runtimes: the retained gcc-homebrew.rb and patch URLs identify the
+exact homebrew-core commit. Check out that commit in a separate Homebrew tap and
+preserve Formula/g/gcc.rb and Patches/gcc/ relative paths. Install Homebrew and the
+formula's dependencies, then run `brew install --build-from-source gcc` from that
+tap. The original GCC source archive and patches are included. The retained
+Homebrew receipt/API describe bottle version, architecture, recipe and source.
+
+Dynamic runtime libraries are ordinary replaceable files in solver/bin or
+solver/lib. Replacement libraries must retain their ABI and install names.
+The app launches MBDyn as a separate process. No signing key or technical lock
+prevents rebuilding/replacing this solver or its dynamic runtime libraries.
+
+These inputs identify corresponding sources and build recipes; they do not claim
+bit-for-bit reproducible binaries across different compilers or operating systems.

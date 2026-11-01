@@ -16,11 +16,16 @@ if [ ! -d "$base/vendor/mbdyn-1.7.3" ]; then
     tar -xzf "$archive" -C "$base/vendor"
 fi
 cd "$base/vendor/mbdyn-1.7.3"
-if [ ! -f Makefile ]; then
+# An older configured source tree may still include Y12. Its archived README
+# contains no redistribution grant, so reconfigure it before producing a bundle.
+if [ ! -f Makefile ] || ! grep -q '^/\* #undef USE_Y12 \*/' include/mbconfig.h 2>/dev/null; then
     # MBDYN_CONFIGURE_FLAGS adds platform options, e.g. --disable-shared on Windows (Cygwin),
     # where libtool would otherwise build DLLs and leave a wrapper in place of mbdyn.exe.
     # shellcheck disable=SC2086
-    CC="$CC" CXX="$CXX -std=c++11" F77="$FC" FC="$FC" FFLAGS='-O2 -fallow-argument-mismatch' ./configure --disable-runtime-loading ${MBDYN_CONFIGURE_FLAGS:-} > "$base/evidence/configure.log" 2>&1 || { tail -40 "$base/evidence/configure.log" >&2; exit 1; }
+    CC="$CC" CXX="$CXX -std=c++11" F77="$FC" FC="$FC" FFLAGS='-O2 -fallow-argument-mismatch' ./configure --disable-runtime-loading ${MBDYN_CONFIGURE_FLAGS:-} --without-y12 > "$base/evidence/configure.log" 2>&1 || { tail -40 "$base/evidence/configure.log" >&2; exit 1; }
 fi
+grep -q '^/\* #undef USE_Y12 \*/' include/mbconfig.h || { echo 'Y12 must remain disabled in distributed builds.' >&2; exit 1; }
+./config.status --config > "$base/evidence/configure-arguments.txt"
+cp include/mbconfig.h "$base/evidence/mbconfig.h"
 make -j"${MBDYN_JOBS:-4}" > "$base/evidence/build.log" 2>&1 || { tail -60 "$base/evidence/build.log" >&2; exit 1; }
 ./mbdyn/mbdyn -v
