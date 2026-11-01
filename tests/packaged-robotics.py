@@ -103,6 +103,7 @@ def main():
         info=solver.status();assert info.get('available'),f'Packaged native MBDyn unavailable: {info}'
         report['solverVersion']=info.get('version')
         for identifier in ('spatial-robot-servo','flexible-link','spatial-joint-brake','spatial-sphere-pair'):
+            print(f'Packaged native robotics: {identifier}',file=sys.stderr,flush=True)
             record={'example':identifier,'ok':False};report['cases'].append(record);directory=None
             try:
                 entry=next(item for item in models.EXAMPLES if item['id']==identifier);model=copy.deepcopy(entry['model'])

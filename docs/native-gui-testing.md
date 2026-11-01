@@ -55,9 +55,10 @@ Native file choices are still made through visible picker controls.
 
 The macOS driver runs an AppKit timer in the application's modal run loop. It
 operates the app's own `NSOpenPanel`, `NSSavePanel` and alert controls, avoiding
-cross-application Accessibility permissions. Open uses the native Go to Folder
-field; Save enters the native directory/name fields. Return/Escape and actual
-alert button actions accept or cancel the dialogs. AppKit captures the app's own
+cross-application Accessibility permissions. It fills the live directory/name
+controls, selects the file's accessible row where available, and invokes native
+Open/Save/Cancel controls or their documented panel action handlers. Overwrite
+refusal requires the actual confirmation controls. AppKit captures the app's own
 panels; macOS can exclude remote file-service subviews from those screenshots.
 The driver is compiled with the system clang and adds no Cargo dependencies.
 
