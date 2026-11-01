@@ -23,6 +23,10 @@ Any intervening project edit disables application of old rankings. Project files
 and native autosave retain the search configuration. Evaluated rankings are kept
 for the session; export the table to retain them. Candidate native artifacts stay
 in the normal run store. A restored baseline requires its embedded full CSV.
+Each design CSV request has a 30-second deadline covering response headers and
+body. Reaching it aborts that request before later candidates run; Stop also
+aborts owned design requests. Ordinary plot loading stays independent. Completed
+rankings keep scores and run IDs, rather than candidate result/CSV copies.
 
 For robotics, start with joint stiffness, damping, actuator gains or mass and a
 tracking-error, torque or reaction objective. Use physically justified candidate
@@ -38,8 +42,10 @@ their baseline are solved. Independently integrated full-CSV RMS values agree
 with all six displayed results; 8 N·s/m damping and 0.8 kg win this illustrative
 sample set (0.0471842 m RMS). The check verifies explicit Apply/Undo/Redo, exact
 baseline CSV preservation, configuration save/reopen, oversized-grid rejection
-before solver calls, and token cancellation with no later cases. No live model
-provider or Computer Use is involved.
+before solver calls, and token cancellation with no later cases. Actual stalled
+CSV requests verify the 30-second abort, subsequent candidates, immediate Stop,
+ordinary plot isolation and rejection of unsupported saved CSV paths. No live
+model provider or Computer Use is involved.
 
 The graphical checks write their report and reviewed screenshots to
 `tests/evidence/design-search.json` and `tests/evidence/design-search.png`.

@@ -17,6 +17,8 @@ rules in [docs/project-format.md](docs/project-format.md).
   loading is bounded; energy-producing native startup states fail explicitly.
 - Add bounded constrained design search with up to 25 actual MBDyn candidates,
   full-resolution response ranking, explicit Apply/Undo and saved configurations.
+- Abort design-search CSV downloads on timeout or cancellation, releasing pending
+  requests while preserving ordinary plot downloads and completed results.
 - Add torque-limited rotary PD actuators with real native hinge feedback and a
   separate trusted local controller, inspectable command/feedback traces and
   owned process cancellation. Controlled runs use the managed native solver;

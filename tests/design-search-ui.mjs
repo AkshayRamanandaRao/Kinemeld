@@ -24,10 +24,23 @@ try {
   page.on('pageerror', error => report.errors.push(error.message));
   page.on('dialog', dialog => dialog.accept());
   await page.route('**/api/tour-preference', route => route.fulfill({ json: { enabled: false } }));
-  const requests = [], completed = [];
-  page.on('request', request => { if (request.url().endsWith('/api/run') && request.method() === 'POST') requests.push(request.postDataJSON()); });
+  const requests = [], completed = [], runTimes = [], failedRequests = [];
+  page.on('request', request => { if (request.url().endsWith('/api/run') && request.method() === 'POST') { requests.push(request.postDataJSON()); runTimes.push(Date.now()); } });
+  page.on('requestfailed', request => failedRequests.push({ url: request.url(), error: request.failure()?.errorText }));
   page.on('response', response => { if (response.url().endsWith('/api/run') && response.request().method() === 'POST') completed.push(response); });
   await page.goto(base);
+  await page.evaluate(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.__csvFetches = [];
+    window.fetch = (input, options) => {
+      const url = new URL(typeof input === 'string' ? input : input.url, location.href).href;
+      if (!url.endsWith('/results.csv')) return originalFetch(input, options);
+      const entry = { url, owned: Boolean(options?.signal), startedAt: Date.now() };
+      window.__csvFetches.push(entry);
+      options?.signal?.addEventListener('abort', () => { entry.abortedAt = Date.now(); }, { once: true });
+      return originalFetch(input, options).then(response => { entry.fulfilledAt = Date.now(); return response; }, error => { entry.error = error.name; throw error; });
+    };
+  });
   await page.waitForFunction(() => document.querySelector('#solverStatus')?.textContent.includes('MBDyn ready'));
   await page.locator('#projectFile').setInputFiles({ name: 'design.mbdyn-studio', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ format: 'mbdyn-studio/1', model: ready.model })) });
   await page.waitForFunction(() => document.querySelector('#documentName').textContent === 'Damped oscillator');
@@ -101,20 +114,78 @@ try {
   await page.waitForFunction(() => document.querySelector('#designProgress')?.textContent.startsWith('Search stopped'), null, { timeout: 30000 });
   assert.equal(requests.length, 8); assert.equal(await page.locator('#designTable tbody tr').count(), 1); assert(await page.locator('#designApply').isDisabled());
   record('Stopping a pending real run cancels its token, stops later cases and prevents failed candidates being applied');
+
+  // A timed-out candidate must abort its actual CSV fetch before another candidate starts.
+  let releaseCandidateCsv, candidateEntered, candidateUrl;
+  const candidateGate = new Promise(resolve => { releaseCandidateCsv = resolve; }), candidateArrived = new Promise(resolve => { candidateEntered = resolve; });
+  releaseGates.push(releaseCandidateCsv);
+  await page.route('**/results.csv', async route => { candidateUrl = route.request().url(); candidateEntered(); await candidateGate; await route.continue(); }, { times: 1 });
+  const beforeDeadline = requests.length;
+  await page.locator('#designRun').click(); await candidateArrived;
+  await page.waitForFunction(url => window.__csvFetches.some(item => item.url === url && item.abortedAt && item.error === 'AbortError'), candidateUrl, { timeout: 35000 });
+  const expired = await page.evaluate(url => window.__csvFetches.find(item => item.url === url && item.owned), candidateUrl);
+  assert(expired.abortedAt - expired.startedAt >= 29000);
+  releaseCandidateCsv();
+  await page.waitForFunction(() => document.querySelector('#designProgress')?.textContent.startsWith('Design search complete'), null, { timeout: 30000 });
+  assert.equal(requests.length, beforeDeadline + 4);
+  assert.equal(await page.locator('#designTable tbody tr').count(), 4);
+  assert.match(await page.locator('#designTable tbody tr').first().textContent(), /requires the complete solver CSV/);
+  assert(expired.abortedAt <= runTimes[beforeDeadline + 1], 'Next candidate started before the expired CSV request was aborted.');
+  assert(failedRequests.some(item => item.url === candidateUrl && item.error.includes('ERR_ABORTED')));
+  const afterDeadline = await exportProject(); assert.deepEqual(afterDeadline.model, original.model); assert.equal(afterDeadline.result.csvText, original.result.csvText);
+  report.csvDeadline = { abortedAfterMs: expired.abortedAt - expired.startedAt, laterCandidates: 3, abortedBeforeNextRun: true };
+  record('A candidate CSV reaches the real 30-second deadline, aborts before later cases, and preserves the baseline CSV');
+
+  let releaseCancelledCsv, cancelledEntered, cancelledUrl;
+  const cancelledGate = new Promise(resolve => { releaseCancelledCsv = resolve; }), cancelledArrived = new Promise(resolve => { cancelledEntered = resolve; });
+  releaseGates.push(releaseCancelledCsv);
+  await page.route('**/results.csv', async route => { cancelledUrl = route.request().url(); cancelledEntered(); await cancelledGate; await route.continue(); }, { times: 1 });
+  const beforeCsvCancel = requests.length;
+  await page.locator('#designRun').click(); await cancelledArrived;
+  await page.locator('#designCancel').click();
+  await page.waitForFunction(url => window.__csvFetches.some(item => item.url === url && item.abortedAt && item.error === 'AbortError'), cancelledUrl, { timeout: 5000 });
+  releaseCancelledCsv();
+  await page.waitForFunction(() => document.querySelector('#designProgress')?.textContent.startsWith('Search stopped'), null, { timeout: 15000 });
+  assert.equal(requests.length, beforeCsvCancel + 1); assert(await page.locator('#designApply').isDisabled());
+  await page.locator('#designRun').click();
+  await page.waitForFunction(() => document.querySelector('#designProgress')?.textContent.startsWith('Design search complete'), null, { timeout: 30000 });
+  assert.equal(requests.length, beforeCsvCancel + 5); assert.equal(await page.locator('#designTable tbody tr').count(), 4);
+  record('Stop aborts an owned candidate CSV immediately, prevents later cases and permits a clean restart');
+
   // Keep a real CSV request unresolved through the production 30-second preparation deadline.
   let releaseCsv, csvEntered;
   const csvGate = new Promise(resolve => { releaseCsv = resolve; }), csvArrived = new Promise(resolve => { csvEntered = resolve; });
   releaseGates.push(releaseCsv);
-  await page.route('**/results.csv', async route => { csvEntered(); await csvGate; await route.continue(); }, { times: 1 });
+  const preparationUrls = [];
+  await page.route('**/results.csv', async route => { preparationUrls.push(route.request().url()); csvEntered(); await csvGate; await route.continue(); });
   await page.locator('#projectFile').setInputFiles({ name: 'csv-deadline.mbdyn-studio', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ format: 'mbdyn-studio/1', model: ready.model, view: { designSearch: original.view.designSearch } })) });
   await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('Project imported and validated'));
   await page.locator('#runButton').click(); await csvArrived;
   await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('MBDyn completed successfully'));
+  await page.locator('#designRefresh').click();
+  await page.waitForFunction(url => window.__csvFetches.some(item => item.url === url && item.owned), preparationUrls[0]);
   await page.locator('#designRun').click();
   await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('requires the complete solver CSV'), null, { timeout: 35000 });
   assert(await config('values0').isEnabled()); assert(await page.locator('#designRun').isEnabled());
+  const preparation = await page.evaluate(url => window.__csvFetches.filter(item => item.url === url), preparationUrls[0]);
+  assert.equal(preparation.filter(item => item.owned).length, 1);
+  assert(preparation.some(item => item.owned && item.abortedAt && item.error === 'AbortError'));
+  assert(preparation.some(item => !item.owned && !item.abortedAt && !item.fulfilledAt && !item.error), 'Ordinary plot request was aborted by the design deadline.');
   releaseCsv();
-  record('A stalled full-CSV request reaches the real preparation deadline and releases the design controls');
+  await page.waitForFunction(() => document.querySelector('#plotStats')?.textContent.includes('Full resolution'));
+  record('Preparation aborts only its owned CSV at the real deadline; ordinary plot loading and design controls recover');
+  await page.unroute('**/results.csv');
+
+  const unsafe = structuredClone(original); delete unsafe.result.csvText; unsafe.result.files.csv = '/api/health';
+  let unsupportedFetches = 0;
+  const observeUnsafe = request => { if (request.url() === base + '/api/health') unsupportedFetches++; };
+  page.on('request', observeUnsafe);
+  await page.locator('#projectFile').setInputFiles({ name: 'unsafe-csv.mbdyn-studio', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(unsafe)) });
+  await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('Project imported and validated'));
+  await page.locator('#designRun').click();
+  await page.waitForFunction(() => document.querySelector('#notice')?.textContent.includes('requires the complete solver CSV'));
+  assert.equal(unsupportedFetches, 0); page.off('request', observeUnsafe);
+  record('Saved result CSV paths outside the exact run-artifact route are rejected before fetch');
   assert.deepEqual(report.errors, []);
   await mkdir('tests/evidence', { recursive: true });
   await page.screenshot({ path: 'tests/evidence/design-search-cancel.png' });

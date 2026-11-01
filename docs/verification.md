@@ -43,8 +43,10 @@ establish the listed numerical and interface cases, not physical calibration.
   this initial cantilever contract.
 - P10: six unit checks and real GUI candidates ranked from complete CSVs against
   independent RMS integration. Explicit Apply/Undo/Redo, exact baseline CSV,
-  configuration save/reopen, bounds, cancellation and the real 30-second stalled-CSV
-  deadline are checked. Failed and overflowed responses cannot win. Rankings are
+  configuration save/reopen, bounds, cancellation and real 30-second stalled-CSV
+  deadlines are checked. Expired or stopped design downloads are actually aborted;
+  overlapping baseline requests coalesce and ordinary plot downloads remain active.
+  Failed and overflowed responses cannot win. Rankings are
   session data; the configuration and exported table retain the setup/results.
 - Existing spatial regression: all nine GUI scripts pass against the native solver.
   Existing and curved CAD GUI scripts pass without page errors. Reports and

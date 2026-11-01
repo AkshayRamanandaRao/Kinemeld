@@ -2496,6 +2496,7 @@ $("stepInput").onchange = (e) =>
   setNumber("simulation", "step", e.target.value);
 async function cancelActiveRun() {
   designSearch?.stop();
+  for (const request of designCsvRequests.values()) request.controller.abort();
   const token=activeRunToken;
   if(!token || !state.busy)return;
   if(studyRunning)studyCancelled=true;
@@ -3503,13 +3504,42 @@ setupAgent({getModel:()=>state.model, getSignature:()=>JSON.stringify([signature
 const kinematics=setupKinematics({getModel:()=>state.model,getBindings:()=>state.step?.metadata.bindings || {},isBusy:()=>state.busy || state.saving || state.opening,applyModel,notify:notice});
 setupPointProbe({getResult:()=>state.result,getModel:()=>state.model,getBindings:()=>state.step?.metadata.bindings || {},getFrame:()=>state.frame,isStale:()=>Boolean(stale()),notify:notice});
 setupWheelKinematics({getResult:()=>state.result,getModel:()=>state.model,getBindings:()=>state.step?.metadata.bindings || {},getFrame:()=>state.frame,isStale:()=>Boolean(stale()),notify:notice});
+const designCsvRequests = new Map();
 async function designData(result) {
-  const deadline=Date.now()+30000;
-  loadFullResolution(result);
-  while(fullResolutionLoading.has(result) && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,25));
-  const data=fullResolution.get(result);
-  if(!data || data.times.length<2)throw Error("Design search requires the complete solver CSV. Run MBDyn again if it is unavailable.");
-  return data;
+  const unavailable = "Design search requires the complete solver CSV. Run MBDyn again if it is unavailable.";
+  if (!result || result.source !== "MBDyn") throw Error(unavailable);
+  const cached = fullResolution.get(result);
+  if (cached?.times.length >= 2) return cached;
+  const pending = designCsvRequests.get(result);
+  if (pending && !pending.controller.signal.aborted) return pending.promise;
+  const request = { controller: new AbortController(), promise: null };
+  designCsvRequests.set(result, request);
+  request.promise = (async () => {
+    let expired = false;
+    const timer = setTimeout(() => { expired = true; request.controller.abort(); }, 30000);
+    try {
+      let text = result.csvText;
+      if (!text) {
+        if (typeof result.files?.csv !== "string" || !/^\/api\/runs\/[0-9a-f]{32}\/results\.csv$/.test(result.files.csv)) throw Error(unavailable);
+        const response = await fetch(result.files.csv, { signal: request.controller.signal });
+        if (!response.ok) throw Error(unavailable);
+        text = await response.text();
+      }
+      const data = parseSolverCsv(text);
+      if (data.times.length < 2) throw Error(unavailable);
+      fullResolution.set(result, data);
+      return data;
+    } catch (error) {
+      if (!request.controller.signal.aborted) throw error;
+      const failure = Error(expired ? `${unavailable} The CSV request exceeded its 30-second deadline.` : "Design search CSV request cancelled.");
+      if (!expired) failure.details = { cancelled: true };
+      throw failure;
+    } finally {
+      clearTimeout(timer);
+      if (designCsvRequests.get(result) === request) designCsvRequests.delete(result);
+    }
+  })();
+  return request.promise;
 }
 designSearch=setupDesignSearch({
   inputs:()=>listStudyParameters(state.model,fields), fields,
