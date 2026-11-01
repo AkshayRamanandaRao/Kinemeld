@@ -27,7 +27,6 @@ U.GetWindowThreadProcessId.argtypes = [W.HWND, C.POINTER(W.DWORD)]
 U.IsWindowVisible.argtypes = U.IsWindowEnabled.argtypes = [W.HWND]
 U.GetDlgCtrlID.argtypes = [W.HWND]
 U.GetClassNameW.argtypes = [W.HWND, W.LPWSTR, C.c_int]
-U.GetWindowTextW.argtypes = [W.HWND, W.LPWSTR, C.c_int]
 U.GetParent.argtypes, U.GetParent.restype = [W.HWND], W.HWND
 U.SendMessageTimeoutW.argtypes = [W.HWND, W.UINT, W.WPARAM, W.LPARAM, W.UINT, W.UINT, C.POINTER(C.c_size_t)]
 U.SendMessageTimeoutW.restype = C.c_ssize_t
@@ -115,29 +114,35 @@ def pid(hwnd):
 
 def send(hwnd, message, wparam=0, lparam=0, timeout=1000):
     result = C.c_size_t()
-    if not U.SendMessageTimeoutW(hwnd, message, wparam, lparam, 0x0002, timeout, C.byref(result)):
-        raise RuntimeError(f"Window {hwnd} did not acknowledge message {message} within {timeout} ms.")
+    C.set_last_error(0)
+    if not U.SendMessageTimeoutW(hwnd, message, wparam, lparam, 0x0002 | 0x0020, timeout, C.byref(result)):
+        raise RuntimeError(f"Window {hwnd} did not acknowledge message {message:#06x} within {timeout} ms (Win32 error {C.get_last_error()}).")
     return result.value
 
 
-def info(hwnd, control=False):
+def info(hwnd, deadline=None):
     name, text = C.create_unicode_buffer(256), C.create_unicode_buffer(4096)
     U.GetClassNameW(hwnd, name, len(name))
-    if control:
-        try:
-            send(hwnd, 0x000D, len(text), C.cast(text, C.c_void_p).value, 150)
-        except RuntimeError:
-            pass
+    error = None
+    remaining = 150 if deadline is None else min(150, int((deadline - time.monotonic()) * 1000))
+    if remaining <= 0:
+        error = "Inventory text-query deadline exhausted."
     else:
-        U.GetWindowTextW(hwnd, text, len(text))
-    return {"hwnd": hwnd, "pid": pid(hwnd), "class": name.value, "text": text.value,
+        try:
+            send(hwnd, 0x000D, len(text), C.cast(text, C.c_void_p).value, remaining)
+        except RuntimeError as failure:
+            error = str(failure)
+    return {"hwnd": hwnd, "pid": pid(hwnd), "class": name.value, "text": text.value if error is None else "",
             "id": U.GetDlgCtrlID(hwnd), "parent": int(U.GetParent(hwnd) or 0),
-            "visible": bool(U.IsWindowVisible(hwnd)), "enabled": bool(U.IsWindowEnabled(hwnd))}
+            "visible": bool(U.IsWindowVisible(hwnd)), "enabled": bool(U.IsWindowEnabled(hwnd)),
+            **({"textError": error} if error is not None else {})}
 
 
-def windows(process, title=None, dialogs=False):
-    return [item for item in (info(hwnd) for hwnd in handles() if pid(hwnd) == process and U.IsWindowVisible(hwnd))
-            if (title is None or re.search(title, item["text"])) and (not dialogs or item["class"] == "#32770")]
+def windows(process, title=None, dialogs=False, deadline=None):
+    deadline = time.monotonic() + 2 if deadline is None else deadline
+    return [item for item in (info(hwnd, deadline) for hwnd in handles() if pid(hwnd) == process and U.IsWindowVisible(hwnd))
+            if (title is None or (not item.get("textError") and re.search(title, item["text"])))
+            and (not dialogs or item["class"] == "#32770")]
 
 
 def wait_window(process, title, timeout, dialogs=True):
@@ -152,16 +157,18 @@ def wait_window(process, title, timeout, dialogs=True):
         time.sleep(0.1)
 
 
-def children(window, process):
-    return [info(hwnd, True) for hwnd in handles(window["hwnd"]) if pid(hwnd) == process]
+def children(window, process, deadline=None):
+    deadline = time.monotonic() + 2 if deadline is None else deadline
+    return [info(hwnd, deadline) for hwnd in handles(window["hwnd"]) if pid(hwnd) == process]
 
 
 def choose(items, class_name, control_id=None, text=None):
-    matched = [item for item in items if item["visible"] and item["enabled"] and item["class"].lower() == class_name.lower()
+    matched = [item for item in items if not item.get("textError") and item["visible"] and item["enabled"] and item["class"].lower() == class_name.lower()
                and (control_id is None or item["id"] == control_id)
                and (text is None or re.search(text, item["text"].replace("&", "")))]
     if len(matched) != 1:
-        raise RuntimeError(f"Expected one visible enabled {class_name} control (ID={control_id}, text={text!r}); found {matched}")
+        unread = [item for item in items if item.get("textError") and item["class"].lower() == class_name.lower()]
+        raise RuntimeError(f"Expected one visible enabled {class_name} control (ID={control_id}, text={text!r}); found {matched}; unread controls: {unread}")
     return matched[0]
 
 
@@ -187,6 +194,60 @@ def validate_capture_size(title, width, height, client_width, client_height):
         raise RuntimeError(f"Invalid window bounds: {width}x{height}")
     if title == "Kinemeld" and (client_width < 640 or client_height < 400):
         raise RuntimeError(f"Kinemeld capture has no meaningful client area: {client_width}x{client_height}")
+
+
+def check_inventory_deadline():
+    import queue
+    import threading
+
+    U.CreateWindowExW.argtypes = [W.DWORD, W.LPCWSTR, W.LPCWSTR, W.DWORD, C.c_int, C.c_int,
+        C.c_int, C.c_int, W.HWND, W.HMENU, W.HINSTANCE, C.c_void_p]
+    U.CreateWindowExW.restype = W.HWND
+    U.DestroyWindow.argtypes = [W.HWND]
+    ready, stop = queue.Queue(), threading.Event()
+
+    def stalled_owner():
+        parent = None
+        try:
+            parent = U.CreateWindowExW(0, "STATIC", "Owned stalled-query fixture", 0, 0, 0, 2, 2, None, None, None, None)
+            if not parent:
+                raise C.WinError(C.get_last_error())
+            for index in range(32):
+                if not U.CreateWindowExW(0, "EDIT", "stalled", 0x50000000, 0, 0, 1, 1, parent, index + 1001, None, None):
+                    raise C.WinError(C.get_last_error())
+            ready.put(int(parent))
+            stop.wait()  # Deliberately do not pump messages on this owned fixture thread.
+        except Exception as error:
+            ready.put(error)
+        finally:
+            if parent:
+                U.DestroyWindow(parent)
+
+    owner = threading.Thread(target=stalled_owner, daemon=True)
+    owner.start()
+    try:
+        hwnd = ready.get(timeout=3)
+        if isinstance(hwnd, Exception):
+            raise hwnd
+        started = time.monotonic()
+        window = info(hwnd, started + 0.1)
+        assert window.get("textError") and window["hwnd"] == hwnd and window["pid"] == os.getpid()
+        items = children(window, os.getpid(), time.monotonic() + 0.3)
+        elapsed = time.monotonic() - started
+        assert len(items) == 32 and all(item.get("textError") for item in items)
+        assert elapsed < 2, f"Stalled inventory exceeded its aggregate deadline: {elapsed:g} s"
+        unread = dict(items[0], visible=True, enabled=True)
+        try:
+            choose([unread], "Edit", unread["id"])
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("An unreadable control must not qualify for a native action.")
+        return {"ok": True, "controls": len(items), "elapsedSeconds": elapsed, "textErrors": len(items)}
+    finally:
+        stop.set()
+        owner.join(timeout=2)
+        assert not owner.is_alive(), "The owned stalled-query fixture did not exit."
 
 
 def repaint(window):
@@ -305,11 +366,15 @@ def main():
         else: raise AssertionError("A minimized caption strip must not qualify as an app screenshot.")
         assert C.sizeof(W.HWND) == C.sizeof(C.c_void_p)
         assert any(item["pid"] == os.getpid() for item in processes())
-        return {"ok": True, "pointerBits": C.sizeof(W.HWND) * 8, "windows": windows(args.pid or os.getpid())}
+        return {"ok": True, "pointerBits": C.sizeof(W.HWND) * 8, "inventoryDeadline": check_inventory_deadline(),
+                "windows": windows(args.pid or os.getpid())}
     if not args.pid or args.pid <= 0 or not args.command:
         parser.error("--pid and a command are required")
     if args.command == "list":
-        return {"ok": True, "windows": [dict(item, children=children(item, args.pid)) for item in windows(args.pid)]}
+        started = time.monotonic()
+        deadline = started + 2
+        return {"ok": True, "windows": [dict(item, children=children(item, args.pid, deadline))
+                for item in windows(args.pid, deadline=deadline)], "inventorySeconds": time.monotonic() - started}
     if args.command == "children":
         return {"ok": True, "children": [item for item in processes() if item["parentPid"] == args.pid]}
     if args.command == "terminate-child":
@@ -333,11 +398,11 @@ def main():
             send(field["hwnd"], 0x00B1, 0, -1)  # EM_SETSEL, select all.
             send(field["hwnd"], 0x00C2, 1, C.cast(value, C.c_void_p).value)  # EM_REPLACESEL.
             time.sleep(0.15)
-            if info(field["hwnd"], True)["text"] == args.path:
+            if info(field["hwnd"])["text"] == args.path:
                 break
         else:
             raise RuntimeError("The file-name field did not retain the requested path.")
-        result["field"] = info(field["hwnd"], True)
+        result["field"] = info(field["hwnd"])
         button = choose(children(window, args.pid), "Button", 1)
     elif args.command == "cancel":
         button = choose(controls, "Button", 2)

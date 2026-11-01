@@ -66,10 +66,14 @@ fall back to a surrounding source checkout.
 
 The macOS driver runs an AppKit timer in the application's modal run loop. It
 operates the app's own `NSOpenPanel`, `NSSavePanel` and alert controls, avoiding
-cross-application Accessibility permissions. It fills the live directory/name
-controls for Save, selects Open's actual accessible file row and verifies its
-read-only selected URL, and invokes native
-Open/Save/Cancel controls or their documented panel action handlers. Overwrite
+cross-application Accessibility permissions. It sends the real Go to Folder
+shortcut to its key modal window, fills the native sheet's text control, and
+invokes its Go button. Save uses the labelled native filename control. Accessible
+attributes/actions use the public modern API or advertised legacy compatibility
+API; no panel configuration properties are read or changed while it is running.
+The driver invokes actual enabled Open/Save controls and the native Cancel action.
+After the modal returns, the viewer checks the actual returned Open path, saved
+destination, complete project snapshots and target files. Overwrite
 refusal requires the actual confirmation controls. AppKit captures the app's own
 panels; macOS can exclude remote file-service subviews from those screenshots.
 The driver is compiled with the system clang and adds no Cargo dependencies.

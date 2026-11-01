@@ -45,6 +45,23 @@
     for (NSView *child in view.subviews) { NSButton *found = [self button:child titles:titles]; if (found) return found; }
     return nil;
 }
+- (id)attribute:(NSString *)name item:(id)item {
+    // Remote panel proxies can expose the public key-based API instead of modern accessors.
+    if ([item respondsToSelector:@selector(accessibilityAttributeNames)] && [item respondsToSelector:@selector(accessibilityAttributeValue:)]) {
+        @try { if ([[item accessibilityAttributeNames] containsObject:name]) return [item accessibilityAttributeValue:name]; }
+        @catch (NSException *error) { /* A closing remote control is no longer readable. */ }
+    }
+    return nil;
+}
+- (NSString *)role:(id)item {
+    NSString *role = [item respondsToSelector:@selector(accessibilityRole)] ? [(id<NSAccessibility>)item accessibilityRole] : nil;
+    return role.length ? role : [self attribute:NSAccessibilityRoleAttribute item:item];
+}
+- (id)value:(id)item {
+    id value = [item respondsToSelector:@selector(accessibilityValue)] ? [(id<NSAccessibility>)item accessibilityValue] : nil;
+    if (!value || ([value isKindOfClass:NSString.class] && ![(NSString *)value length])) return [self attribute:NSAccessibilityValueAttribute item:item] ?: value;
+    return value;
+}
 - (NSArray *)accessibles:(id)root {
     if (!root) return @[];
     NSMutableArray *queue = [NSMutableArray arrayWithObject:root], *found = [NSMutableArray array];
@@ -55,10 +72,9 @@
         if ([seen containsObject:identity]) continue;
         [seen addObject:identity]; [found addObject:item];
         @try {
-            if ([item respondsToSelector:@selector(accessibilityChildren)]) {
-                NSArray *children = [(id<NSAccessibility>)item accessibilityChildren];
-                if ([children isKindOfClass:NSArray.class]) [queue addObjectsFromArray:children];
-            }
+            NSArray *children = [item respondsToSelector:@selector(accessibilityChildren)] ? [(id<NSAccessibility>)item accessibilityChildren] : nil;
+            if (!children.count) children = [self attribute:NSAccessibilityChildrenAttribute item:item];
+            if ([children isKindOfClass:NSArray.class]) [queue addObjectsFromArray:children];
         } @catch (NSException *error) { /* A closing remote view can invalidate its children. */ }
     }
     return found;
@@ -68,14 +84,23 @@
     if (title.length) return title;
     NSString *label = [item respondsToSelector:@selector(accessibilityLabel)] ? [(id<NSAccessibility>)item accessibilityLabel] : nil;
     if (label.length) return label;
-    id value = [item respondsToSelector:@selector(accessibilityValue)] ? [(id<NSAccessibility>)item accessibilityValue] : nil;
+    for (NSString *name in @[NSAccessibilityTitleAttribute, NSAccessibilityDescriptionAttribute]) {
+        NSString *text = [self attribute:name item:item];
+        if ([text isKindOfClass:NSString.class] && text.length) return text;
+    }
+    id value = [self value:item];
     if ([value isKindOfClass:NSString.class]) return value;
     return @"";
 }
 - (id)accessibleButton:(id)root titles:(NSArray *)titles {
     for (id item in [self accessibles:root]) {
-        if (![item respondsToSelector:@selector(accessibilityRole)] || ![[(id<NSAccessibility>)item accessibilityRole] isEqual:NSAccessibilityButtonRole]) continue;
-        if ([titles containsObject:[self accessibleTitle:item]] && [item respondsToSelector:@selector(accessibilityPerformPress)] && (![item respondsToSelector:@selector(isAccessibilityEnabled)] || [(id<NSAccessibility>)item isAccessibilityEnabled])) return item;
+        if (![[self role:item] isEqual:NSAccessibilityButtonRole]) continue;
+        if (![titles containsObject:[self accessibleTitle:item]]) continue;
+        NSNumber *enabled = [self attribute:NSAccessibilityEnabledAttribute item:item];
+        BOOL isEnabled = enabled ? enabled.boolValue : ([item respondsToSelector:@selector(isAccessibilityEnabled)] && [(id<NSAccessibility>)item isAccessibilityEnabled]);
+        if (!isEnabled) continue;
+        BOOL legacyPress = [item respondsToSelector:@selector(accessibilityActionNames)] && [[item accessibilityActionNames] containsObject:NSAccessibilityPressAction];
+        if ([item respondsToSelector:@selector(accessibilityPerformPress)] || legacyPress) return item;
     }
     return nil;
 }
@@ -83,7 +108,7 @@
     NSMutableArray *result = [NSMutableArray array];
     for (id item in [self accessibles:root]) {
         @try {
-            NSString *role = [item respondsToSelector:@selector(accessibilityRole)] ? [(id<NSAccessibility>)item accessibilityRole] : @"";
+            NSString *role = [self role:item];
             [result addObject:@{@"class": NSStringFromClass([item class]), @"role": role ?: @"", @"title": [self accessibleTitle:item]}];
         } @catch (NSException *error) { /* Retain the surviving native controls. */ }
     }
@@ -91,15 +116,61 @@
 }
 - (BOOL)selectFile:(NSString *)path panel:(NSOpenPanel *)panel {
     for (id item in [self accessibles:panel]) {
-        if (![item respondsToSelector:@selector(accessibilityRole)] || ![[(id<NSAccessibility>)item accessibilityRole] isEqual:NSAccessibilityRowRole] || ![item respondsToSelector:@selector(setAccessibilitySelected:)]) continue;
+        if (![[self role:item] isEqual:NSAccessibilityRowRole]) continue;
         BOOL matching = NO;
         for (id child in [self accessibles:item]) if ([[self accessibleTitle:child] isEqual:path.lastPathComponent]) { matching = YES; break; }
-        if (matching) { [(id<NSAccessibility>)item setAccessibilitySelected:YES]; return YES; }
+        if (matching && [item respondsToSelector:@selector(accessibilityIsAttributeSettable:)] && [item accessibilityIsAttributeSettable:NSAccessibilitySelectedAttribute]) {
+            [item accessibilitySetValue:@YES forAttribute:NSAccessibilitySelectedAttribute]; return YES;
+        }
+        if (matching && [item respondsToSelector:@selector(setAccessibilitySelected:)]) { [(id<NSAccessibility>)item setAccessibilitySelected:YES]; return YES; }
     }
     return NO;
 }
+- (BOOL)fillText:(NSString *)text root:(id)root matching:(NSString *)current {
+    for (id item in [self accessibles:root]) {
+        if (![[self role:item] isEqual:NSAccessibilityTextFieldRole]) continue;
+        id value = [self value:item];
+        if (current && ![value isEqual:current]) continue;
+        if ([item respondsToSelector:@selector(accessibilityIsAttributeSettable:)] && [item accessibilityIsAttributeSettable:NSAccessibilityValueAttribute]) {
+            [item accessibilitySetValue:text forAttribute:NSAccessibilityValueAttribute];
+        } else if ([item respondsToSelector:@selector(setAccessibilityValue:)]) {
+            [(id<NSAccessibility>)item setAccessibilityValue:text];
+        } else continue;
+        if ([[self value:item] isEqual:text]) return YES;
+    }
+    return NO;
+}
+- (id)goSheet:(NSWindow *)panel {
+    if (panel.attachedSheet.visible) return panel.attachedSheet;
+    for (id item in [self accessibles:panel]) if ([[self role:item] isEqual:NSAccessibilitySheetRole]) return item;
+    return nil;
+}
+- (BOOL)fillSaveName:(NSString *)name panel:(NSWindow *)panel {
+    for (id item in [self accessibles:panel]) {
+        if (![[self role:item] isEqual:NSAccessibilityTextFieldRole]) continue;
+        NSString *label = [self accessibleTitle:item];
+        id titleElement = [self attribute:NSAccessibilityTitleUIElementAttribute item:item];
+        NSString *relatedLabel = titleElement ? [self accessibleTitle:titleElement] : @"";
+        NSArray *labels = @[@"Save As:", @"Save As", @"Name:", @"Name"];
+        if (![labels containsObject:label] && ![labels containsObject:relatedLabel]) continue;
+        return [self fillText:name root:item matching:nil];
+    }
+    return NO;
+}
+- (void)goToFolder:(NSWindow *)window {
+    // Deliver the real shortcut only to this application's native dialog window.
+    if (NSApp.keyWindow != window || NSApp.modalWindow != window) { [self result:@"The native file panel is not the app's key modal window"]; return; }
+    for (NSNumber *type in @[@(NSEventTypeKeyDown), @(NSEventTypeKeyUp)]) {
+        NSEvent *event = [NSEvent keyEventWithType:type.unsignedIntegerValue location:NSZeroPoint modifierFlags:NSEventModifierFlagCommand | NSEventModifierFlagShift timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:window.windowNumber context:nil characters:@"G" charactersIgnoringModifiers:@"G" isARepeat:NO keyCode:5];
+        [NSApp sendEvent:event];
+    }
+}
 - (void)pressAccessible:(id)button {
-    if (![(id<NSAccessibility>)button accessibilityPerformPress]) [self result:@"The native accessibility button rejected its press"];
+    if ([button respondsToSelector:@selector(accessibilityPerformPress)] && [(id<NSAccessibility>)button accessibilityPerformPress]) return;
+    if ([button respondsToSelector:@selector(accessibilityActionNames)] && [[button accessibilityActionNames] containsObject:NSAccessibilityPressAction]) {
+        [button accessibilityPerformAction:NSAccessibilityPressAction]; return;
+    }
+    [self result:@"The native accessibility button rejected its press"];
 }
 - (void)click:(id)target selector:(SEL)selector {
     // Defer UI actions so a nested native modal loop can continue the driver timer.
@@ -164,25 +235,40 @@
     if (![kind isEqual:(opening ? @"open" : @"save")]) return;
     NSString *path = action[@"path"];
     if (self.stage == 0) {
+        // A visible shell can precede the remote service. Wait for a real enabled control.
+        if (![self button:panel.contentView titles:@[@"Cancel"]] && ![self accessibleButton:panel titles:@[@"Cancel"]]) return;
         self.panelNumber = panel.windowNumber;
         [self record:action window:panel]; [panel makeKeyAndOrderFront:nil]; [NSApp activateIgnoringOtherApps:YES];
-        // Open has no editable name field; its real selected row supplies the URL below.
-        panel.directoryURL = [NSURL fileURLWithPath:path.stringByDeletingLastPathComponent isDirectory:YES];
-        if (!opening) panel.nameFieldStringValue = path.lastPathComponent;
+        // directoryURL/nameField setters are configuration-only. Operate the running UI instead.
+        [self performSelector:@selector(goToFolder:) withObject:panel afterDelay:0.01 inModes:@[NSDefaultRunLoopMode, NSModalPanelRunLoopMode]];
         self.stage = 1; self.since = NSProcessInfo.processInfo.systemUptime; return;
     }
     if (NSProcessInfo.processInfo.systemUptime - self.since < 0.6) return;
+    if (self.stage == 1) {
+        id sheet = [self goSheet:panel];
+        if (!sheet) return;
+        NSString *destination = opening ? path : path.stringByDeletingLastPathComponent;
+        if (![self fillText:destination root:sheet matching:nil]) return;
+        NSButton *go = [sheet isKindOfClass:NSWindow.class] ? [self button:((NSWindow *)sheet).contentView titles:@[@"Go"]] : nil;
+        id accessible = go ? nil : [self accessibleButton:sheet titles:@[@"Go"]];
+        if (!go && !accessible) return;
+        [self.events addObject:@{@"action": action, @"nativeText": destination, @"nativeControl": @"Go to Folder"}];
+        self.stage = 2; self.since = NSProcessInfo.processInfo.systemUptime;
+        if (go) [self click:go selector:@selector(performClick:)];
+        else [self performSelector:@selector(pressAccessible:) withObject:accessible afterDelay:0.01 inModes:@[NSDefaultRunLoopMode, NSModalPanelRunLoopMode]];
+        return;
+    }
+    if ([self goSheet:panel]) return;
     BOOL selected = opening && [self selectFile:path panel:(NSOpenPanel *)panel];
-    // Do not invoke OK while the remote panel is still loading or has no real selection.
-    if (opening && ![panel.URL.path isEqual:path]) return;
-    if (!opening && ![panel.nameFieldStringValue isEqual:path.lastPathComponent]) return;
-    [self.events addObject:@{@"action": action, @"directory": panel.directoryURL.path ?: @"", @"nameField": opening ? @"" : panel.nameFieldStringValue, @"selectedAccessibleRow": @(selected)}];
-    self.stage = 3; self.since = NSProcessInfo.processInfo.systemUptime;
+    if (!opening && ![self fillSaveName:path.lastPathComponent panel:panel]) return;
     NSButton *button = [self button:panel.contentView titles:(opening ? @[@"Open"] : @[@"Save"])];
     id accessible = button ? nil : [self accessibleButton:panel titles:(opening ? @[@"Open"] : @[@"Save"])];
+    if (!button && !accessible) return;
+    // The selected RFD path and resulting files are checked only after the real modal returns.
+    [self.events addObject:@{@"action": action, @"nativeControl": opening ? @"Open" : @"Save", @"selectedAccessibleRow": @(selected)}];
+    [self record:action window:panel]; self.stage = 3; self.since = NSProcessInfo.processInfo.systemUptime;
     if (button) [self click:button selector:@selector(performClick:)];
     else if (accessible) [self performSelector:@selector(pressAccessible:) withObject:accessible afterDelay:0.01 inModes:@[NSDefaultRunLoopMode, NSModalPanelRunLoopMode]];
-    else [self click:panel selector:@selector(ok:)];
 }
 @end
 

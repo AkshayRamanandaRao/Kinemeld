@@ -66,6 +66,12 @@
   async function open(name, dirty = false, invalid = false) {
     await click('#importButton', [...(dirty ? [{ kind: 'button', text: 'Yes' }] : []), { kind: 'open', path: path(name) }]);
     await until(() => notice().includes(invalid ? 'Project was not opened' : 'Project opened'), 'native Open', 120000);
+    if (!invalid) {
+      const expected = path(name).replaceAll('\\', '/');
+      await until(() => text('#statusText').replaceAll('\\', '/').includes(expected), 'actual path returned by native Open');
+      (report.nativeOpenPaths ||= []).push({ requested: path(name), status: text('#statusText') });
+      await saveReport();
+    }
   }
   async function saveAs(name) {
     await click('#saveAsButton', [{ kind: 'save', path: path(name) }]);

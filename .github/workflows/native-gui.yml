@@ -23,6 +23,10 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: native-gui-${{ github.event_name }}-${{ github.ref }}-${{ inputs.platform || 'all' }}
+  cancel-in-progress: true
+
 jobs:
   dialogs:
     name: Real dialogs (${{ matrix.platform }})
