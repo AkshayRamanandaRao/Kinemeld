@@ -9,6 +9,16 @@ from unittest.mock import patch
 
 
 class NativeControlTests(unittest.TestCase):
+    def test_xctest_write_scope_requires_marked_matching_data_root(self):
+        suite = runpy.run_path(str(Path(__file__).resolve().parents[1] / "tests" / "native-dialog-xctest.py"))["MacXCTest"]
+        with tempfile.TemporaryDirectory(prefix="native-platform-") as directory:
+            root = Path(directory)
+            with self.assertRaisesRegex(AssertionError, "marked temporary root"):
+                suite(root, root, root / "app", {"MBDYN_STUDIO_DATA_DIR": str(root / "user-data")})
+            (root / ".kinemeld-native-gui-test").touch()
+            with self.assertRaisesRegex(AssertionError, "same isolated data root"):
+                suite(root, root, root / "app", {"MBDYN_STUDIO_DATA_DIR": str(root / "other-data")})
+
     def test_closed_accessible_child_preserves_remaining_controls(self):
         controls_type = runpy.run_path(str(Path(__file__).resolve().parents[1] / "tests" / "native-dialog-platform.py"))["LinuxControls"]
         controls = controls_type.__new__(controls_type)

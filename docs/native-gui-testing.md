@@ -72,7 +72,9 @@ exact native PID and executable before using `XCUIApplication.activate()`; it
 does not relaunch the app or change its isolated configuration. The Rust host
 only emits its guarded identity marker; there is no injected AppKit input driver.
 The test uses actual native text fields, field-value readback and enabled,
-hittable buttons. Go to Folder navigates to the existing parent for Save, and
+hittable buttons. The macOS picker is identified by its native dialog structure
+and observed `OKButton`, `CancelButton` and folder-control identifiers; its title
+can be absent. Initial Open may be disabled until a file is selected. Go to Folder navigates to the existing parent for Save, and
 the native filename field supplies its basename. Overwrite refusal requires the
 actual Replace confirmation before pressing its Cancel button and retaining
 the Save panel. Missing native controls fail the case. The harness changes no
@@ -83,6 +85,10 @@ element trees, logs and `.xcresult` bundles are retained alongside the shared
 report. Both XCTest phase exits must succeed; the actual application exit is
 still measured separately through kqueue. XCTest is a test dependency supplied
 by Xcode and adds no shipped runtime or Cargo dependencies.
+Xcode's sandboxed test runner receives write access only to the supervisor's
+marked temporary root through its test-only signing entitlement. The supervisor
+checks the generated runner's actual entitlement before launching the app. The
+application's signature and entitlements are unchanged.
 
 Linux retains RFD's release-default xdg-desktop-portal backend. A private D-Bus
 session and Xvfb display run Openbox, xdg-desktop-portal and its GTK portal. GTK is

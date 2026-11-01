@@ -16,7 +16,7 @@ establish the listed numerical and interface cases, not physical calibration.
   checks**, native numerical verifiers and project/robotics GUI workflows pass.
   Asset and Rust notice inventories remain current; no new runtime dependencies
   were added.
-- Current packaging and test-helper regression suite: **60 script checks pass**,
+- Current packaging and test-helper regression suite: **61 script checks pass**,
   including macOS bundle sealing, external-manifest coverage, signature rejection,
   and a closing Linux accessibility node. The earlier P3 count below is historical.
 - P4: [four engineering records](engineering-example-verification.md), 16 actual

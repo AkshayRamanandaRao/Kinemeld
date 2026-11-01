@@ -27,31 +27,55 @@ final class NativeDialogTests: XCTestCase {
         throw NSError(domain: "NativeDialogs", code: 1, userInfo: [NSLocalizedDescriptionKey: "Timed out: \(label)"])
     }
     private func button(_ names: [String], in scope: XCUIElement) -> XCUIElement? {
+        let nativeIDs = ["Cancel": "CancelButton", "Open": "OKButton", "Save": "OKButton"]
         for name in names {
-            let control = scope.descendants(matching: .button).matching(NSPredicate(format: "identifier == %@ OR label == %@", name, name)).firstMatch
-            if control.exists && control.isEnabled && control.isHittable { return control }
+            for identifier in [name, nativeIDs[name]].compactMap({ $0 }) {
+                for control in scope.descendants(matching: .button).matching(identifier: identifier).allElementsBoundByIndex {
+                    if control.exists && control.isEnabled && control.isHittable { return control }
+                }
+            }
         }
         return nil
     }
+    private func attachDiagnostics(_ name: String) -> (String, Data) {
+        let tree = String(app.debugDescription.prefix(1_000_000))
+        print("NATIVE_UI_TREE \(name)\n\(tree)")
+        let description = XCTAttachment(string: tree); description.name = name + "-tree"; description.lifetime = .keepAlways; add(description)
+        let image = app.screenshot()
+        let screenshot = XCTAttachment(screenshot: image); screenshot.name = name + "-screenshot"; screenshot.lifetime = .keepAlways; add(screenshot)
+        return (tree, image.pngRepresentation)
+    }
     private func evidence(_ action: [String: Any], _ control: XCUIElement, index: Int) throws {
         let prefix = "xcui-\(String(describing: planID))-\(index)-\(events.count)"
-        try control.screenshot().pngRepresentation.write(to: root.appendingPathComponent(prefix + ".png"))
-        try String(app.debugDescription.prefix(1_000_000)).write(to: root.appendingPathComponent(prefix + ".txt"), atomically: true, encoding: .utf8)
+        let (tree, image) = attachDiagnostics(prefix)
+        try image.write(to: root.appendingPathComponent(prefix + ".png"))
+        try tree.write(to: root.appendingPathComponent(prefix + ".txt"), atomically: true, encoding: .utf8)
         events.append(["action": action, "pid": pid, "driver": "XCUITest", "label": control.label,
                        "identifier": control.identifier, "enabled": control.isEnabled, "hittable": control.isHittable,
                        "screenshot": prefix + ".png"])
     }
     private func picker(_ opening: Bool) throws -> XCUIElement {
         let title = opening ? "Open" : "Save"
-        let window = app.windows.matching(NSPredicate(format: "identifier == %@ OR label == %@", title, title)).firstMatch
-        try wait("native \(title) window") { window.exists }
-        return window
+        var picker: XCUIElement?
+        try wait("native \(title) picker") {
+            let candidates = self.app.descendants(matching: .dialog).allElementsBoundByIndex
+                + self.app.descendants(matching: .sheet).allElementsBoundByIndex
+                + self.app.windows.allElementsBoundByIndex
+            picker = candidates.first {
+                $0.descendants(matching: .button).matching(identifier: "OKButton").firstMatch.exists
+                    && self.button(["Cancel"], in: $0) != nil
+                    && $0.popUpButtons.matching(identifier: "where popup").firstMatch.exists
+            }
+            return picker != nil
+        }
+        return picker!
     }
     private func overwriteSheet() -> XCUIElement? {
         let candidates = app.descendants(matching: .sheet).allElementsBoundByIndex
             + app.descendants(matching: .dialog).allElementsBoundByIndex
             + app.descendants(matching: .alert).allElementsBoundByIndex
-        return candidates.first { self.button(["Replace", "Replace File"], in: $0) != nil }
+        return candidates.filter { self.button(["Replace", "Replace File"], in: $0) != nil }
+            .min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }
     }
     private func fill(_ field: XCUIElement, text: String) throws {
         try wait("native editable text field") { field.exists && field.isEnabled && field.isHittable }
@@ -174,10 +198,18 @@ final class NativeDialogTests: XCTestCase {
             }
             throw NSError(domain: "NativeDialogs", code: 3, userInfo: [NSLocalizedDescriptionKey: "Native XCTest session exceeded 15 minutes"])
         } catch {
-            try? String(app.debugDescription.prefix(1_000_000)).write(to: root.appendingPathComponent("xcui-failure-\(phase).txt"), atomically: true, encoding: .utf8)
-            try? app.screenshot().pngRepresentation.write(to: root.appendingPathComponent("xcui-failure-\(phase).png"))
-            try? write("action-result.json", ["id": planID, "done": false, "events": events, "error": String(describing: error)])
-            throw error
+            let original = error
+            print("NATIVE_UI_FAILURE \(original)")
+            let (tree, image) = attachDiagnostics("failure-" + phase)
+            do {
+                try tree.write(to: root.appendingPathComponent("xcui-failure-\(phase).txt"), atomically: true, encoding: .utf8)
+                try image.write(to: root.appendingPathComponent("xcui-failure-\(phase).png"))
+                try write("action-result.json", ["id": planID, "done": false, "events": events, "error": String(describing: original)])
+            } catch {
+                print("NATIVE_UI_DIAGNOSTIC_WRITE_FAILED \(error)")
+                XCTFail("Native XCTest diagnostics could not be saved: \(error)")
+            }
+            throw original
         }
     }
 }

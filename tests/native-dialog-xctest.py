@@ -9,13 +9,15 @@ import subprocess
 
 class MacXCTest:
     def __init__(self, repo, root, executable, environment):
-        self.repo, self.root, self.executable = Path(repo), Path(root), Path(executable)
+        self.repo, self.root, self.executable = Path(repo), Path(root).resolve(), Path(executable)
+        assert self.root.name.startswith("native-platform-") and (self.root / ".kinemeld-native-gui-test").is_file(), "XCTest write access requires the supervisor's marked temporary root."
+        assert Path(environment["MBDYN_STUDIO_DATA_DIR"]).resolve() == self.root / "user-data", "XCTest must use the same isolated data root as its actual application."
         self.environment = environment.copy()
         self.derived = self.repo / "build/native-macos-ui-tests"
         self.project = self.repo / "tests/native-macos/NativeDialogs.xcodeproj"
         self.command = ["/usr/bin/xcodebuild", "-project", str(self.project), "-scheme", "NativeDialogs",
                         "-destination", "platform=macOS", "-derivedDataPath", str(self.derived),
-                        "-parallel-testing-enabled", "NO", "CODE_SIGN_IDENTITY=-", "CODE_SIGN_STYLE=Manual", "DEVELOPMENT_TEAM="]
+                        "-parallel-testing-enabled", "NO", "CODE_SIGN_IDENTITY=-", "CODE_SIGN_STYLE=Manual", "DEVELOPMENT_TEAM=", "KINEMELD_GUI_ROOT=" + str(self.root)]
         self.process, self.log, self.app, self.phase = None, None, None, None
         self.exits = []
         with (self.executable.parents[2] / "Contents/Info.plist").open("rb") as stream:
@@ -24,6 +26,11 @@ class MacXCTest:
             subprocess.run(["/usr/bin/xcodebuild", "-version"], stdout=output, stderr=subprocess.STDOUT, check=True, timeout=10)
             subprocess.run([*self.command, "build-for-testing"], cwd=self.repo, env=self.environment,
                            stdout=output, stderr=subprocess.STDOUT, check=True, timeout=180)
+        runner = self.derived / "Build/Products/Debug/NativeDialogs-Runner.app"
+        signed = subprocess.run(["/usr/bin/codesign", "-d", "--entitlements", ":-", str(runner)], capture_output=True, check=True, timeout=10)
+        entitlements = plistlib.loads(signed.stdout)
+        assert entitlements.get("com.apple.security.temporary-exception.files.absolute-path.read-write") == [str(self.root) + "/"], "The XCTest helper write entitlement must cover only this marked root."
+        (self.root / "xctest-entitlements.json").write_text(json.dumps(entitlements, indent=2))
 
     def for_phase(self, app, phase):
         assert self.process is None, "The previous XCTest phase has not finished."
