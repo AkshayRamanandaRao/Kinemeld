@@ -103,3 +103,8 @@ as `native-gui-PLATFORM` workflow artifacts. The fixture in the package is check
 unchanged. A missing runner pass, timeout, failed case or missing native-control
 evidence is a qualification failure; adding the harness alone does not establish
 macOS/Linux native-dialog support.
+
+Candidate archive and manifest versions retain their complete suffix, while the
+macOS bundle version keys use the numeric semantic core required by
+[Apple's bundle-version format](https://developer.apple.com/documentation/BundleResources/Information-Property-List/CFBundleVersion)
+and [short-version format](https://developer.apple.com/help/glossary/version-number/).

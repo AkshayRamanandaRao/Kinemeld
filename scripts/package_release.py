@@ -66,6 +66,8 @@ def write(path, text, mode_exec=False):
 def layout(platform, binary, version, solver, stage):
     name = f"Kinemeld-{version}"
     if platform == "macos":
+        # Apple bundle keys are numeric; archive and manifest retain the candidate suffix.
+        bundle_version = version.partition("-")[0].partition("+")[0]
         bundle = stage / "Kinemeld.app" / "Contents"
         app = bundle / "Resources" / "app"
         copy_resources(app)
@@ -78,8 +80,8 @@ def layout(platform, binary, version, solver, stage):
 <key>CFBundleName</key><string>Kinemeld</string>
 <key>CFBundleDisplayName</key><string>Kinemeld</string>
 <key>CFBundleIdentifier</key><string>io.github.akshayramanandarao.kinemeld</string>
-<key>CFBundleVersion</key><string>{version}</string>
-<key>CFBundleShortVersionString</key><string>{version}</string>
+<key>CFBundleVersion</key><string>{bundle_version}</string>
+<key>CFBundleShortVersionString</key><string>{bundle_version}</string>
 <key>CFBundleExecutable</key><string>kinemeld</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>LSMinimumSystemVersion</key><string>11.0</string>

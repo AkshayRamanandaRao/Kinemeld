@@ -1,5 +1,6 @@
 """Archive boundaries and corresponding-source gates, without launching a GUI."""
 from pathlib import Path
+import plistlib
 import tarfile
 import tempfile
 import unittest
@@ -11,6 +12,19 @@ import package_release
 
 
 class PackageComplianceTests(unittest.TestCase):
+    def test_macos_bundle_versions_use_numeric_semantic_core(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(package_release, "copy_resources"):
+            root = Path(temporary)
+            binary = root / "host"
+            binary.write_bytes(b"owned host fixture")
+            for version in ("1.2.3", "1.2.3-rc.1", "1.2.3+audit.1"):
+                stage = root / version
+                package_release.layout("macos", binary, version, None, stage)
+                with (stage / "Kinemeld.app/Contents/Info.plist").open("rb") as stream:
+                    info = plistlib.load(stream)
+                self.assertEqual(info["CFBundleVersion"], "1.2.3")
+                self.assertEqual(info["CFBundleShortVersionString"], "1.2.3")
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

@@ -42,10 +42,19 @@
       return result.done ? result : false;
     }, 'native control action', 45000);
   }
+  const ready = selector => {
+    const control = element(selector);
+    if (!control || control.disabled || control.hidden || !control.getClientRects().length) return false;
+    const style = getComputedStyle(control);
+    return style.visibility !== 'hidden' && style.pointerEvents !== 'none';
+  };
   async function click(selector, actions = []) {
-    await until(() => element(selector) && !element(selector).disabled, `enabled ${selector}`);
+    await until(() => ready(selector), `visible enabled ${selector}`);
     const id = actions.length ? await arm(actions) : null;
+    await until(() => ready(selector), `visible enabled ${selector} after native arm`);
+    (report.actions ||= []).push({ id, selector, time: new Date().toISOString(), notice: notice(), model: text('#viewportName'), buttons: Object.fromEntries(['saveButton', 'saveAsButton', 'importButton'].map(name => [name, {disabled: element(`#${name}`)?.disabled, visible: Boolean(element(`#${name}`)?.getClientRects().length)}])) });
     element(selector).click();
+    await saveReport();
     if (id !== null) await completed(id);
   }
   async function setName(name) {
