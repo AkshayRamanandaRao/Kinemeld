@@ -14,6 +14,13 @@ the last addition. A set holds up to 24 files, 12 MiB and 200,000 display triang
 [`examples/open-aircraft-nose-gear/parts`](../examples/open-aircraft-nose-gear/parts) has
 the eleven parts of an aircraft nose gear as separate files to try this with.
 
+You can keep editing while CAD converts. If the model, geometry or attachments
+change before an import or generated solid is ready, Kinemeld keeps the newer
+work and asks you to retry the operation. Starting another import or project open
+also supersedes the older request. Undoing an intervening edit does not make an
+older conversion safe to apply. Failed conversion and cancelled file selection
+leave the current document intact.
+
 For a complete moving-solid example, choose **Load moving STEP pendulum**. This
 loads an original rectangular STEP solid and a matching rigid-body model with
 the binding already set. Its dimensions, density, inertia and initial frame are
@@ -47,17 +54,55 @@ on the display. Unattached parts stay fixed. Binding or importing a solid does
 not create masses, inertia, joints, contact or forces; supply those separately.
 
 The converter also records each face's analytic surface with the range of display
-triangles it produced: cylinders with axis, centre, radius and length, and planes with
-a point and outward normal, in metres and assembly coordinates. Full circular edges (hole
+triangles it produced: cylinders with axis, centre, radius and length; cones with an apex,
+axis and half angle; tori with centre, axis and major/minor radii; and planes with
+a point and outward normal, in metres and assembly coordinates (angles in radians).
+A cone's axis points from its apex into the cone; the apex can be outside a trimmed
+conical face. A torus is picked at its centre, not at the clicked tube point. Full circular edges (hole
 rims, shaft ends; up to 512 per part) are listed with centre, axis and radius. A rim
 written as several arcs, as many CAD systems do, counts when its arcs complete
 the circle; partial arcs such as fillet boundaries are left out. Joint anchors, joint
 axes and named frames can then be placed by picking or dragging onto those faces and rims,
 and features can be measured in the view, also at a solved frame; see
 [placing joints and frames from CAD](workspaces.md#placing-joints-and-frames-from-cad).
-Other surface types are tessellated for display but cannot be picked.
+Other surface types are tessellated for display but cannot be picked. These analytic
+features are regenerated from the saved original STEP source, so existing 1.x projects
+need no format migration. Placed joint/frame coordinates and attachments remain ordinary
+project fields. Importing a surface does not create a joint or a contact law.
 Undo and redo include attachments. Other model families show the solids as static
 CAD only: their results do not animate the STEP geometry.
+
+### Reproduce cone and torus placement
+
+In a source checkout with the optional OCP dependency installed, generate the original
+demonstration geometry with:
+
+```sh
+python -B backend/test_step_curved_features.py --fixture verification/cones-tori.step
+```
+
+Open a 3D assembly, then import that file through **STEP parts**. It has a cone and a
+torus, each with an original and a rotated/translated occurrence. The **Cone placed**
+apex is at `(0.100, 0.110, 0.000)` m with its axis along +X. The **Torus placed** centre
+is at `(0.160, 0.160, 0.000)` m with its axis along +Y; its major and tube radii are
+30 mm and 5 mm. Place a joint on a conical face, place a ground reference frame on the
+toroidal face, then save and reopen the project. Reopening regenerates the features
+from the same source bytes while retaining the entered model coordinates and attachments.
+This is a placement example; the shapes do not supply physical mass or contact properties.
+
+The real-kernel tests and automated browser workflow are reproducible with:
+
+```sh
+python -m unittest discover -s backend -p 'test_step_curved_features.py'
+node --test tests/cad-features.test.mjs
+# With the local service running on port 8768:
+node tests/cad-curved-picking-ui.mjs
+```
+
+The GUI test uses actual STEP conversion and raycasting, including a rotated attached body,
+joint/frame placement, Undo/Redo, save/reopen and measurement. It writes its report and
+screenshots under `tests/evidence/cad-curved`; `KINEMELD_CAD_EVIDENCE` selects another
+evidence directory when comparing CAD runtimes.
 
 ## Reviewing older assembly attachments
 

@@ -33,6 +33,7 @@ await page.addInitScript(() => {
     },
     async call(op, payload = {}) {if(op==='recovery')return {};if(op==='autosave')return {skipped:true};
       const state = window.__nativeTest;
+      if (op === "new-project") return { project: structuredClone(payload.project) };
       if (op === "save") {
         if (state.failSave)
           throw new Error(

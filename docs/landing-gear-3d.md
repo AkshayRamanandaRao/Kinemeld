@@ -29,3 +29,12 @@ The original strut STEP is a solid cylinder, radius `0.09 m` and length `1.1 m`;
 `python -B -m unittest discover -s backend -p test_landing_gear_3d.py -v` checks the original STEP hashes, bindings, mass, centre of mass and rotated inertia. `python -B backend/verify_landing_gear_3d.py` compares every MBDyn sample with an independent RK4 integration of the equations above, then repeats at half the timestep. At `0.0005 s`, the maximum position error was `4.01e−5 m` and velocity error `0.00895 m/s`; at `0.00025 s` they fell to `1.00e−5 m` and `0.00231 m/s`. At the default step, reconstructed joint residual stayed below `1e−7 m`. The verifier generates `verification/landing-gear-3d.json` for both runs and force errors; this local report is not included in the public checkout. These are numerical comparisons for this idealized example, not validation against flight-test or hardware data.
 
 With an isolated local MBDyn server, `node tests/landing-gear-3d-ui.mjs` verifies STEP attachment, actual solver execution, contact plot and project save/reopen. Regenerate the two STEP sources and project with `python -B examples/landing-gear-3d/generate.py` using the configured OpenCascade OCP runtime; STEP export timestamps and hashes may change.
+
+The [engineering input record](../examples/landing-gear-3d/engineering.json)
+also records the authored guide hardpoints, force laws and the mass-normalizing
+densities explicitly. The [engineering verifier](engineering-example-verification.md)
+checks all body mass properties, three timesteps and a 20% lower initial-speed
+case. Position errors against its separate RK4 integration are approximately
+40.08, 10.04 and 2.55 µm; tire-force errors are 10.02, 2.51 and 0.638 N at
+0.5, 0.25 and 0.125 ms. It also compares first contact with the analytic free-fall
+time. These remain numerical checks of the specified teaching equations.

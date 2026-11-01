@@ -110,20 +110,19 @@ def _worker(source):
     try:
         from OCP.BRep import BRep_Tool
         from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
-        from OCP.GeomAbs import GeomAbs_Circle, GeomAbs_Cylinder, GeomAbs_Plane
+        from OCP.GeomAbs import GeomAbs_Circle, GeomAbs_Cone, GeomAbs_Cylinder, GeomAbs_Plane, GeomAbs_Torus
         from OCP.gp import gp_Vec
         from OCP.BRepMesh import BRepMesh_IncrementalMesh
         from OCP.IFSelect import IFSelect_RetDone
         from OCP.Interface import Interface_Static
         from OCP.STEPCAFControl import STEPCAFControl_Reader
         from OCP.TCollection import TCollection_ExtendedString
-        from ocp_compat import TColStd_SequenceOfAsciiString, TDF_LabelSequence
+        from ocp_compat import TColStd_SequenceOfAsciiString, TDF_LabelSequence, TopTools_IndexedMapOfShape
         from OCP.TDataStd import TDataStd_Name
         from OCP.TDF import TDF_Label
         from OCP.TDocStd import TDocStd_Document
         from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_REVERSED
         from OCP.TopExp import TopExp, TopExp_Explorer
-        from OCP.TopTools import TopTools_IndexedMapOfShape
         from OCP.TopLoc import TopLoc_Location
         from OCP.TopoDS import TopoDS
         from OCP.XCAFDoc import XCAFDoc_DocumentTool, XCAFDoc_ShapeTool
@@ -214,6 +213,22 @@ def _worker(source):
                 centre = axis.Location().Translated(gp_Vec(axis.Direction()).Multiplied((start + end) / 2))
                 return {"type": "cylinder", "centre": metres(centre), "axis": direction(axis.Direction()),
                         "radius": round(cylinder.Radius()*.001, 9), "length": round(abs(end - start)*.001, 9)}
+            if kind == GeomAbs_Cone:
+                cone = surface.Cone()
+                apex = metres(cone.Apex())
+                angle = cone.SemiAngle()
+                if all(math.isfinite(value) and abs(value) <= 1e6 for value in apex) and math.isfinite(angle) and 0 < abs(angle) < math.pi / 2:
+                    axis = cone.Axis().Direction()
+                    if angle < 0:
+                        axis = axis.Reversed()
+                    return {"type": "cone", "apex": apex, "axis": direction(axis), "semiAngle": abs(angle)}
+            if kind == GeomAbs_Torus:
+                torus = surface.Torus()
+                centre = metres(torus.Location())
+                major, minor = torus.MajorRadius()*.001, torus.MinorRadius()*.001
+                if all(math.isfinite(value) and abs(value) <= 1e6 for value in centre) and all(math.isfinite(value) and 0 < value <= 1e6 for value in (major, minor)):
+                    return {"type": "torus", "centre": centre, "axis": direction(torus.Axis().Direction()),
+                            "majorRadius": round(major, 9), "minorRadius": round(minor, 9)}
             if kind == GeomAbs_Plane:
                 plane = surface.Plane()
                 normal = plane.Axis().Direction()

@@ -59,3 +59,7 @@ projected on the axis.
 
 An ideal drive delivers whatever torque the motion needs; it does not model motor torque
 limits, compliance or control dynamics.
+
+The [robot-arm engineering guide](robot-arm-engineering.md) adds traceable input
+records, CAD mass reintegration, three-timestep Cartesian checks and an independent
+Jacobian mass-matrix inverse-dynamics comparison, including a changed motion case.

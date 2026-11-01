@@ -1,0 +1,187 @@
+{
+  "format": 1,
+  "release": "v1.2.1",
+  "scope": "Exact matching source archives/recipes for the audited published v1.2.1 Linux/macOS/Windows runtime libraries. New build companions retain their actual installed versions. Historical MBDyn/Y12 uncertainty is documented separately. Large source archives are release artifacts, not Git blobs.",
+  "artifacts": [
+    {
+      "url": "https://mirrors.kernel.org/sourceware/cygwin/src/release/cygwin/cygwin-3.6.12-1-src.tar.xz",
+      "filename": "cygwin-3.6.12-1-src.tar.xz",
+      "bytes": 9318356,
+      "sha512": "9d70312a931f06d1158e7e913a23fb4aec4bb5fce6c5b55caf274a6d63905248625beaf1391f2d4518fbf5099523fdab2aa26834651856f4693fbf8862027889",
+      "packages": [
+        {
+          "name": "cygwin",
+          "version": "3.6.12-1"
+        }
+      ],
+      "sha256": "a7568019f048f95a61243b0ab389357947851a33ec50d7f6e8d8542aaee00150"
+    },
+    {
+      "url": "https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/gcc/gcc-14.4.0-1-src.tar.zst",
+      "filename": "gcc-14.4.0-1-src.tar.zst",
+      "bytes": 91626118,
+      "sha512": "a4fa4be6b610a7d868271027c17c46c5f64e1b125e0bec1d51d34cc47f53a670c95841ad4fdcb5aa236244e8b09e5dc194c64e788fc5011459ba2eb29a815299",
+      "packages": [
+        {
+          "name": "libgcc1",
+          "version": "14.4.0-1"
+        },
+        {
+          "name": "libstdc++6",
+          "version": "14.4.0-1"
+        }
+      ],
+      "sha256": "c8b25799a0b8b33620661db6292ce72ef7264155466642f60a92e2c85b9cff1c"
+    },
+    {
+      "url": "https://mirrors.kernel.org/sourceware/cygwin/src/release/libiconv/libiconv-1.19-2-src.tar.xz",
+      "filename": "libiconv-1.19-2-src.tar.xz",
+      "bytes": 5086384,
+      "sha512": "62288f9458b6c5a9eec369900971e9c552747b03df0198fbe1749ca93f76bf3d3079109f115ec0f53b2dc2f72c0c8624e21fa439fc41b9a0be339465fce1c534",
+      "packages": [
+        {
+          "name": "libiconv2",
+          "version": "1.19-2"
+        }
+      ],
+      "sha256": "c8cfab83524251921a10a29293b583c034a8e5d7f165588adf1923e416dc1647"
+    },
+    {
+      "url": "https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/gettext/gettext-0.22.5-1-src.tar.xz",
+      "filename": "gettext-0.22.5-1-src.tar.xz",
+      "bytes": 8483620,
+      "sha512": "101bf0971ec63c5a99fc1f78be0047417ce4bbbe6bee88596a27973cad07cbb7a89e466e3e996332ef9d99b3d38b3bede42e53ca544c5e3540f723ccb8621e04",
+      "packages": [
+        {
+          "name": "libintl8",
+          "version": "0.22.5-1"
+        }
+      ],
+      "sha256": "0c0687ef096be81d0bee93b278f5e8ebe2858bc8c1ceb52fa70dccc903c67ef4"
+    },
+    {
+      "url": "https://ftpmirror.gnu.org/gcc/gcc-16.2.0/gcc-16.2.0.tar.xz",
+      "filename": "gcc-16.2.0.tar.xz",
+      "sha256": "e6738e29597f733270731aa90600f37ffdc045079dfc27ec7e8192cc81085c3e",
+      "packages": [
+        {
+          "name": "Homebrew gcc",
+          "version": "16.2.0"
+        }
+      ],
+      "bytes": 107200820
+    },
+    {
+      "filename": "gcc-16.2.0-homebrew.rb",
+      "url": "https://raw.githubusercontent.com/Homebrew/homebrew-core/b988cdd0d004bad62accee28db5dbf1df9ee6dac/Formula/g/gcc.rb",
+      "sha256": "f09c8035d0874fb1d8a2d7ca3464f8108273c4c532cec582d7b9f340aa544aa3",
+      "bytes": 7608
+    },
+    {
+      "filename": "gcc-16.2.0-homebrew.diff",
+      "url": "https://raw.githubusercontent.com/Homebrew/homebrew-core/b988cdd0d004bad62accee28db5dbf1df9ee6dac/Patches/gcc/gcc-16.2.0.diff",
+      "sha256": "578a78ae0bc62a02f260b6a20c7f23e71deee16ed644e9cb5619247be4df5a71",
+      "bytes": 205825
+    },
+    {
+      "filename": "lapack_3.10.0-2ubuntu1.dsc",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/lapack/lapack_3.10.0-2ubuntu1.dsc",
+      "sha256": "ff10f44a2ae6bd827c9005c110a9c1b6312efe4a7e26a3e18bd979d928f676c2",
+      "bytes": 3474,
+      "sourceVersion": "3.10.0-2ubuntu1"
+    },
+    {
+      "filename": "lapack_3.10.0.orig.tar.gz",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/lapack/lapack_3.10.0.orig.tar.gz",
+      "sha256": "328c1bea493a32cac5257d84157dc686cc3ab0b004e2bea22044e0a59f6f8a19",
+      "bytes": 7630775,
+      "sourceVersion": "3.10.0-2ubuntu1"
+    },
+    {
+      "filename": "lapack_3.10.0-2ubuntu1.debian.tar.xz",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/lapack/lapack_3.10.0-2ubuntu1.debian.tar.xz",
+      "sha256": "5e88ecd8420a071497c68d21a2ec90fb7ed003b9e3417c9ed7000751435b1a9f",
+      "bytes": 29040,
+      "sourceVersion": "3.10.0-2ubuntu1"
+    },
+    {
+      "filename": "gcc-12_12.3.0-1ubuntu1~22.04.3.dsc",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-12/gcc-12_12.3.0-1ubuntu1~22.04.3.dsc",
+      "sha256": "ec040a1fa94186bd53535f7156e086e67863bb55836ae7fd7fef64f1ab66b04d",
+      "bytes": 27845,
+      "sourceVersion": "12.3.0-1ubuntu1~22.04.3"
+    },
+    {
+      "filename": "gcc-12_12.3.0.orig.tar.gz",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-12/gcc-12_12.3.0.orig.tar.gz",
+      "sha256": "62b0fc89b6d41f9df2470d0fb4995f6ff5885f910518a2c6a44a6888ea5a9ea1",
+      "bytes": 91555468,
+      "sourceVersion": "12.3.0-1ubuntu1~22.04.3"
+    },
+    {
+      "filename": "gcc-12_12.3.0-1ubuntu1~22.04.3.debian.tar.xz",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-12/gcc-12_12.3.0-1ubuntu1~22.04.3.debian.tar.xz",
+      "sha256": "44074c3d5e7d97365f1f7b45291ade2ee40ed6300176530d912e7cc0ceba77ab",
+      "bytes": 587456,
+      "sourceVersion": "12.3.0-1ubuntu1~22.04.3"
+    }
+  ],
+  "linuxBinaryIdentification": [
+    {
+      "package": "libblas3",
+      "version": "3.10.0-2ubuntu1",
+      "filename": "libblas3_3.10.0-2ubuntu1_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/lapack/libblas3_3.10.0-2ubuntu1_amd64.deb",
+      "sha256": "70783f07775e4f5297a364f5c1187c6f8103a8c42dff2c593448c6945610da19",
+      "library": "libblas.so.3",
+      "copyrightPath": "sources/linux/libblas3-copyright",
+      "identity": {
+        "buildId": "1109279411513955440cb5bcde4aba492e925636",
+        "textSha256": "944be245978514c9e889cc3e73c28c256dbc8607ae1bf7eccfe214a53bdd67a2"
+      },
+      "matches": true
+    },
+    {
+      "package": "liblapack3",
+      "version": "3.10.0-2ubuntu1",
+      "filename": "liblapack3_3.10.0-2ubuntu1_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/lapack/liblapack3_3.10.0-2ubuntu1_amd64.deb",
+      "sha256": "86f7179d7f8550acae14efa2f5b82c8f2b83dc9c658580115c91d37d20a43a72",
+      "library": "liblapack.so.3",
+      "copyrightPath": "sources/linux/liblapack3-copyright",
+      "identity": {
+        "buildId": "ce2d7026539054156dcba9458c1c4c1a613a6765",
+        "textSha256": "22858f98f5219fdb2162d52977610a10fe9b8e06722f70a3ccb437efaea18c58"
+      },
+      "matches": true
+    },
+    {
+      "package": "libgfortran5",
+      "version": "12.3.0-1ubuntu1~22.04.3",
+      "filename": "libgfortran5_12.3.0-1ubuntu1~22.04.3_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-12/libgfortran5_12.3.0-1ubuntu1~22.04.3_amd64.deb",
+      "sha256": "14dbb269458f60ca64af646c9300b8b85dd962ddbb434ba362062a54c07c4db6",
+      "library": "libgfortran.so.5",
+      "copyrightPath": "sources/linux/libgfortran5-copyright",
+      "identity": {
+        "buildId": "e95a6365ae4eb5d1949993b13935c4cad266d405",
+        "textSha256": "9560c88e5b2b8540db8970912f81c14233989284b7c56b6aec554e1895a2793f"
+      },
+      "matches": true
+    },
+    {
+      "package": "libquadmath0",
+      "version": "12.3.0-1ubuntu1~22.04.3",
+      "filename": "libquadmath0_12.3.0-1ubuntu1~22.04.3_amd64.deb",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-12/libquadmath0_12.3.0-1ubuntu1~22.04.3_amd64.deb",
+      "sha256": "c4c59e67e76674c8c494ce5e0415b71d770a759b48893c0d3cbabddceeb690b2",
+      "library": "libquadmath.so.0",
+      "copyrightPath": "sources/linux/libquadmath0-copyright",
+      "identity": {
+        "buildId": "a1197458ac76071f32410c758ae4af8f67b8b8b9",
+        "textSha256": "d1d0599f28bdbe6c39dc608f2efcad6194c3f3e285886daee234e2a205ffd17f"
+      },
+      "matches": true
+    }
+  ]
+}

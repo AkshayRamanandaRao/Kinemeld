@@ -32,6 +32,22 @@ test('rows are grouped by time and body', () => {
   assert.deepEqual(bw, [1, 1, 1]);
 });
 
+test('scalar model CSV keeps position, velocity and angle at every solver step', () => {
+  const data = parseSolverCsv('time,x,v,angle\n0,0,1,0\n0.1,9,0,3\n0.2,0,-1,0\n');
+  assert.deepEqual(fullSeries(data, 'x'), [0, 9, 0]);
+  assert.deepEqual(fullSeries(data, 'v'), [1, 0, -1]);
+  assert.deepEqual(fullSeries(data, 'angle'), [0, 3, 0]);
+  assert.equal(fullSeries(data, 'unavailable'), null);
+  assert.equal(fullSeries(data, '__proto__'), null);
+});
+
+test('CSV identifiers remain data rather than object prototype properties', () => {
+  const data = parseSolverCsv('time,id,label,x\n0,__proto__,Prototype,1\n1,__proto__,Prototype,2\n');
+  assert.deepEqual(fullSeries(data, 'node:__proto__:x'), [1, 2]);
+  assert.equal(Object.prototype.x, undefined);
+  assert.equal(Object.getPrototypeOf(data.nodes), null);
+});
+
 test('statistics find the extreme and its time and use time-weighted RMS', () => {
   const stats = seriesStatistics([0, 1, 2, 4], [0, 2, -2, 0]);
   assert.equal(stats.max, 2);

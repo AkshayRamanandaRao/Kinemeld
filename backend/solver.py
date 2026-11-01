@@ -20,6 +20,8 @@ import industry_models
 import gear_deployment
 import planar_assembly
 import spatial_assembly
+import rotary_control
+import flexible_link
 import app_paths
 
 ROOT = app_paths.RESOURCE_ROOT
@@ -269,6 +271,8 @@ def execute(argv, directory, timeout=PROCESS_TIMEOUT_SECONDS, control=None, wsl=
 
 
 def parse_output(directory, model):
+    if model['kind']==flexible_link.KIND:
+        return flexible_link.parse_output(directory,model)
     if model["kind"] == spatial_assembly.KIND:
         return spatial_assembly.parse_output(directory, model)
     if model["kind"] == planar_assembly.KIND:
@@ -344,20 +348,28 @@ def run(model, control=None):
     if not info["available"]:
         return {"ok": False, "error": "MBDyn is unavailable. No solver result was generated.", "solver": info}, 503
     config = configuration()
+    controlled = model['kind'] == spatial_assembly.KIND and bool(rotary_control.servos(model))
+    if controlled and config['mode'] != 'native':
+        return {"ok":False,"error":"Controlled actuators require a native local MBDyn executable. WSL controller transport is not qualified; configure a native solver or use an ordinary joint torque."}, 422
     run_id = uuid.uuid4().hex
     directory = RUNS / run_id
     directory.mkdir(parents=True)
-    model_text = deck(model)
+    model_text = '# Managed local actuator run: the supervisor writes its ephemeral-port deck before solver launch.\n' if controlled else deck(model)
     (directory / "model.mbd").write_text(model_text, encoding="utf-8")
     (directory / "project.json").write_text(json.dumps(model, indent=2), encoding="utf-8")
     argv = command(config, ["-f", "model.mbd", "-o", "result"], directory, bounded=True, cancellable=bool(control) and config["mode"] == "wsl")
+    if controlled:
+        argv = [sys.executable, '-B', str(Path(rotary_control.__file__).resolve()), '--run', str(directory.resolve()), '--', *argv]
     start = time.monotonic()
     result = {"ok": False, "source": "MBDyn", "runId": run_id, "model": model,
-              "solver": info, "deckSha256": hashlib.sha256(model_text.encode()).hexdigest(),
+              "solver": info, "deckSha256": hashlib.sha256((directory / "model.mbd").read_bytes()).hexdigest(),
               "files": {"deck": f"/api/runs/{run_id}/model.mbd", "log": f"/api/runs/{run_id}/solver.log", "csv": f"/api/runs/{run_id}/results.csv", "project": f"/api/runs/{run_id}/project.json"}}
     try:
         outcome = execute(argv, directory, control=control, wsl=bool(control) and config["mode"] == "wsl")
         result.update(outcome)
+        if controlled:
+            result['deckSha256'] = hashlib.sha256((directory/'model.mbd').read_bytes()).hexdigest()
+            result['files'].update(controllerTrace=f'/api/runs/{run_id}/controller-trace.jsonl',controllerLog=f'/api/runs/{run_id}/controller.log',nativeCouples=f'/api/runs/{run_id}/result.frc')
         if "error" in outcome:
             raise ValueError(outcome["error"])
         if model["kind"] in (planar_assembly.KIND, spatial_assembly.KIND):
@@ -371,15 +383,22 @@ def run(model, control=None):
             spatial_assembly.write_csv(directory / "results.csv", samples)
         elif model["kind"] == planar_assembly.KIND:
             planar_assembly.write_csv(directory / "results.csv", samples)
+        elif model['kind']==flexible_link.KIND:
+            flexible_link.write_csv(directory/'results.csv',samples)
         else:
             with (directory / "results.csv").open("w", encoding="utf-8", newline="") as out:
                 writer = csv.DictWriter(out, fieldnames=list(samples[0]))
                 writer.writeheader()
                 writer.writerows(samples)
         calculated = metrics(model,samples)
+        if controlled:
+            result['coSimulation'] = {'source':'MBDyn native TCP streams','algorithm':'Sampled PD with one-step command hold','exchangeCount':len(samples),'actuatorCount':len(rotary_control.servos(model)),'transport':'127.0.0.1 TCP, ephemeral ports','status':'completed','controllerSha256':hashlib.sha256(Path(rotary_control.__file__).read_bytes()).hexdigest()}
         if any(isinstance(value,(int,float)) and not math.isfinite(value) for value in calculated.values()):
             raise ValueError("Non-finite derived metric in solver output.")
         result.update(ok=True, metrics=calculated)
+        if model['kind']==flexible_link.KIND:
+            result['nodeLabels']=check['summary']['nodeLabels'];result['units']={'time':'s','position':'m','velocity':'m/s','nativeEuler123':'deg','angularVelocity':'rad/s','tipSlope':'rad','force':'N','moment':'N*m'}
+            result['files'].update(motion=f'/api/runs/{run_id}/result.mov',beamOutput=f'/api/runs/{run_id}/result.act',jointOutput=f'/api/runs/{run_id}/result.jnt')
         if model["kind"] in (planar_assembly.KIND, spatial_assembly.KIND):
             result["nodeLabels"] = check["summary"]["nodeLabels"]
             result["units"] = {"time": "s", "position": "m", "velocity": "m/s", "nativeEuler123": "deg", "angularVelocity": "rad/s"}

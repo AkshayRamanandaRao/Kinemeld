@@ -11,14 +11,22 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import stat
+import subprocess
 import tarfile
 import zipfile
 
+from check_asset_notices import verify as verify_assets
+from collect_rust_notices import check_bundle as verify_rust
+from prepare_solver_sources import verify as verify_solver, verify_license_texts, digest
+
 ROOT = Path(__file__).resolve().parents[1]
-RESOURCES = ["backend", "frontend", "examples", "docs", "LICENSE", "THIRD_PARTY_NOTICES.md", "README.md", "start.py", "requirements.txt"]
+RESOURCES = ["backend", "frontend", "examples", "docs", "notices", "LICENSE", "THIRD_PARTY_NOTICES.md", "README.md", "start.py", "requirements.txt"]
+RUST_TARGETS = {"windows": "x86_64-pc-windows-msvc", "linux": "x86_64-unknown-linux-gnu", "macos": "aarch64-apple-darwin"}
+MACOS_APP_ROOT = "Kinemeld.app/Contents/Resources/app"
 SKIP_PARTS = {"__pycache__", "evidence", "demos", "node_modules"}
 SKIP_FILES = {"solver.json", "agent.json"}
 
@@ -29,7 +37,7 @@ def wanted(path):
         return False
     if relative.parts[0] == "backend" and ("vendor" in relative.parts or path.name.startswith("test_") or path.suffix == ".sh"):
         return False
-    return path.suffix not in {".pyc", ".log", ".zip", ".stl"}
+    return relative.parts[0] == "notices" or path.suffix not in {".pyc", ".log", ".zip", ".stl"}
 
 
 def copy_resources(target):
@@ -40,7 +48,7 @@ def copy_resources(target):
             shutil.copy2(source, target / name)
             continue
         for path in sorted(source.rglob("*")):
-            if path.is_file() and wanted(path):
+            if wanted(path) and path.is_file():
                 destination = target / path.relative_to(ROOT)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, destination)
@@ -60,6 +68,8 @@ def write(path, text, mode_exec=False):
 def layout(platform, binary, version, solver, stage):
     name = f"Kinemeld-{version}"
     if platform == "macos":
+        # Apple bundle keys are numeric; archive and manifest retain the candidate suffix.
+        bundle_version = version.partition("-")[0].partition("+")[0]
         bundle = stage / "Kinemeld.app" / "Contents"
         app = bundle / "Resources" / "app"
         copy_resources(app)
@@ -72,8 +82,8 @@ def layout(platform, binary, version, solver, stage):
 <key>CFBundleName</key><string>Kinemeld</string>
 <key>CFBundleDisplayName</key><string>Kinemeld</string>
 <key>CFBundleIdentifier</key><string>io.github.akshayramanandarao.kinemeld</string>
-<key>CFBundleVersion</key><string>{version}</string>
-<key>CFBundleShortVersionString</key><string>{version}</string>
+<key>CFBundleVersion</key><string>{bundle_version}</string>
+<key>CFBundleShortVersionString</key><string>{bundle_version}</string>
 <key>CFBundleExecutable</key><string>kinemeld</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>LSMinimumSystemVersion</key><string>11.0</string>
@@ -108,13 +118,43 @@ def bundle_solver(solver, app):
     return True
 
 
-def manifest(app, version, platform, solver):
+def sign_macos_bundle(stage):
+    bundle = stage / "Kinemeld.app"
+    # Nested solver code was already signed and audited; do not re-sign it with --deep.
+    subprocess.run(["/usr/bin/codesign", "--force", "--sign", "-", str(bundle)], check=True)
+    subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(bundle)], check=True)
+
+
+def manifest(app, stage, version, platform, solver, sources):
+    destination = app / "package-manifest.json"
+    metadata = {}
+    if platform == "macos":
+        if app != stage / MACOS_APP_ROOT:
+            raise ValueError("macOS application resources must use the fixed bundle layout")
+        # Writing inside the bundle after signing would invalidate its resource seal.
+        destination = stage / "package-manifest.json"
+        metadata["appRoot"] = MACOS_APP_ROOT
     files = {}
     for path in sorted(app.rglob("*")):
-        if path.is_file():
+        if path.is_file() and path != destination:
             files[path.relative_to(app).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
-    (app / "package-manifest.json").write_text(json.dumps({"application": "Kinemeld", "version": version, "platform": platform,
-                                                           "bundledSolver": solver, "files": files}, indent=1) + "\n", encoding="utf-8")
+    archive_files = {p.relative_to(stage).as_posix(): digest(p) for p in sorted(stage.rglob("*")) if p.is_file() and p != destination}
+    destination.write_text(json.dumps({"format": "kinemeld-desktop-package/2", "application": "Kinemeld",
+        "version": version, "platform": platform, "rustTarget": RUST_TARGETS[platform], "bundledSolver": solver,
+        "solverSources": sources, "files": files, "archiveFiles": archive_files, **metadata}, indent=1) + "\n", encoding="utf-8")
+
+
+def checksum(path):
+    (path.parent / (path.name + ".sha256")).write_text(f"{digest(path)}  {path.name}\n", encoding="utf-8")
+
+
+def source_archive(sources, out, stem):
+    path = out / f"{stem}-solver-sources.tar.gz"
+    out.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(path, "w:gz") as tar:
+        tar.add(sources, arcname="solver-sources")
+    checksum(path)
+    return {"file": path.name, "sha256": digest(path)}
 
 
 def archive(stage, out, stem, platform):
@@ -144,19 +184,44 @@ def main():
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--solver", type=Path)
+    parser.add_argument("--solver-sources", type=Path, help="verified corresponding-source directory; required with --solver")
     parser.add_argument("--out", type=Path, default=ROOT / "dist")
     args = parser.parse_args()
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?", args.version):
+        parser.error("version must be a semantic version without path separators")
+    if args.arch != ("arm64" if args.platform == "macos" else "x86_64"):
+        parser.error("only the audited x86_64 Windows/Linux and arm64 macOS targets are supported")
+    if bool(args.solver) != bool(args.solver_sources):
+        parser.error("--solver and --solver-sources must be supplied together")
+    verify_assets(ROOT)
+    verify_license_texts(ROOT / "notices/solver")
+    verify_rust(ROOT / "notices/rust", target=RUST_TARGETS[args.platform], source_root=ROOT)
+    if args.solver:
+        solver_metadata = verify_solver(args.solver, args.solver_sources)
+        if solver_metadata["platform"] != args.platform:
+            parser.error("solver provenance belongs to a different platform")
+    stem = f"Kinemeld-{args.version}-{args.platform}-{args.arch}"
+    source_record = source_archive(args.solver_sources, args.out, stem) if args.solver else None
     stage = args.out / f"stage-{args.platform}-{args.arch}"
+    if stage.resolve().parent != args.out.resolve() or stage.is_symlink():
+        parser.error("staging directory must be a direct child of the output directory")
     if stage.exists():
         shutil.rmtree(stage)
     stage.mkdir(parents=True)
     app, top = layout(args.platform, args.binary, args.version, args.solver, stage)
     bundled = bundle_solver(args.solver, app)
-    manifest(app, args.version, args.platform, bundled)
-    path = archive(top, args.out, f"Kinemeld-{args.version}-{args.platform}-{args.arch}", args.platform)
+    verify_assets(app)
+    verify_rust(app / "notices/rust", target=RUST_TARGETS[args.platform])
+    if bundled:
+        verify_solver(app / "solver", args.solver_sources)
+    if args.platform == "macos":
+        sign_macos_bundle(top)
+        if bundled:
+            verify_solver(app / "solver", args.solver_sources)
+    manifest(app, top, args.version, args.platform, bundled, source_record)
+    path = archive(top, args.out, stem, args.platform)
     shutil.rmtree(stage)
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    (path.parent / (path.name + ".sha256")).write_text(f"{digest}  {path.name}\n", encoding="utf-8")
+    checksum(path)
     print(f"{path} ({path.stat().st_size / 1e6:.1f} MB, solver {'bundled' if bundled else 'not bundled'})")
 
 

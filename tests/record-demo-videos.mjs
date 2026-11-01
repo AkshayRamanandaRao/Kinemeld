@@ -44,6 +44,7 @@ try {
       await page.locator('#examplesButton').click();
       await page.locator('.example-card').filter({ has: page.getByRole('heading', { name: item.title, exact: true }) }).getByRole('button').click();
       await page.waitForFunction(() => !document.querySelector('#examplesDialog').open, null, { timeout: 240000 });
+      if (item.name === 'aircraft-nose-gear') assert.doesNotMatch(await page.locator('body').innerText(), /KINEMATIC ONLY|loads invalid|source overlaps/);
       const response = page.waitForResponse((r) => r.url().endsWith('/api/run') && r.request().method() === 'POST', { timeout: 300000 });
       await page.locator('#runButton').click();
       const result = await (await response).json();

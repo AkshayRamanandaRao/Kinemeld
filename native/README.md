@@ -36,11 +36,19 @@ The executable is `native/target/release/mbdyn-studio-desktop` (`.exe` on Window
 from inside a source checkout, or package it with the resources:
 
 ```bash
-python3 scripts/package_release.py --platform linux --binary native/target/release/mbdyn-studio-desktop --version 0.2.0 --solver build/solver
+bash scripts/bundle_solver.sh backend/vendor/mbdyn-1.7.3/mbdyn/mbdyn build/solver
+python3 scripts/collect_solver_sources.py --solver build/solver --sources build/solver-sources
+python3 scripts/package_release.py --platform linux --binary native/target/release/mbdyn-studio-desktop --version 1.2.1 --solver build/solver --solver-sources build/solver-sources
 ```
 
 `scripts/bundle_solver.sh path/to/mbdyn build/solver` prepares a relocatable solver folder
-(stripped binary, compiler runtime libraries, GPL notice and source pointer). A hidden
+(stripped binary and compiler runtime libraries). The source collector then binds every
+binary to exact package metadata, notices, source archives and build inputs; packaging
+refuses an unverified solver or a missing source companion. On Linux, enable matching
+`deb-src` indexes first; on Cygwin install `zstd` and `lzip` for the distribution sources.
+Packaging tools require Python 3.11+ and the Rust version pinned in `rust-toolchain.toml`.
+The [dependency audit](../docs/dependency-audit.md) describes scope and outstanding rights
+questions. A hidden
 self-check runs a real MBDyn job through the embedded viewer and saves and reopens a project:
 `kinemeld --smoke` (use `xvfb-run` on a headless Linux machine). It writes
 `runs/native-smoke-report-<pid>.json` in the user-data folder.
@@ -57,6 +65,40 @@ Then double-click `Start MBDyn Studio Desktop.cmd` in the project root.
 Files retain the validated model, saved results, STEP sources and body attachments; older
 projects with STL references can still be reopened. Native save makes a backup on
 replacement and detects external file changes.
+
+**New 3D assembly** and **Open example** create an unsaved native document. Its first
+Save asks for a destination, including after a cancelled Save dialog; it does not
+reuse the previously opened project's path. An example opens as an unsaved copy,
+so saving cannot silently replace its source file. A failed or superseded project
+open retains the previous document and its file identity.
+
+Saving captures a snapshot before fetching the run's full CSV. Edits made while
+that snapshot is being prepared or saved remain unsaved. Autosave drops an older
+snapshot when the active document changes and retries the current unsaved work.
+
+### Automated Windows GUI checks
+
+The project-safety suite (`npm run test:project-safety`, with a running backend)
+uses Playwright and controlled bridge fixtures for delayed responses and rollback.
+The separate Windows GUI suite launches the actual native executable and its
+WebView2 viewer, uses its real native bridge, and operates the Windows file and
+confirmation dialogs through process-scoped Win32 controls:
+
+```powershell
+$env:KINEMELD_NATIVE_EXE = (Resolve-Path native/target/release/mbdyn-studio-desktop.exe).Path
+$env:KINEMELD_NATIVE_SOLVER_CONFIG = (Resolve-Path backend/solver.json).Path
+$env:MBDYN_STUDIO_PYTHON = (Get-Command python).Source
+npm run test:native-dialogs
+```
+
+Point `KINEMELD_NATIVE_EXE` at an extracted package's `Kinemeld.exe` to test that
+package. `KINEMELD_NATIVE_PROJECT` optionally selects a saved project; the default
+is the shipped nose-gear project, solved with the configured MBDyn when needed.
+The test uses isolated project files and user data, enables a loopback debugging
+port only in the test process, and writes its assertions and screenshots under
+`tests/evidence/`. It requires Windows, WebView2, Python, the optional CAD runtime,
+a working solver and the repository's Playwright dependency. It does not establish
+macOS/Linux dialog behaviour or a clean-machine installation.
 
 The snapshot check also identifies an existing project through case and hard-link aliases. If the original is missing, it conservatively treats a different-cased name as the same destination even in a case-sensitive Windows directory; choose a more distinct name to save a copy. It detects changes observed before the check; it cannot make noncooperating external writes atomic with the subsequent replacement. Save locks are per path, so concurrent saves through distinct hard-link names are not serialized. Retain replacement backups when coordinating with other writers.
 
@@ -92,6 +134,20 @@ the desktop self-check (`xvfb-run` on Linux without a display).
 ```bash
 python3 scripts/check_package.py dist/Kinemeld-0.6.0-linux-x86_64.tar.gz --version 0.6.0 --expect-solver --native-smoke
 ```
+
+For an audited package, keep its `*-solver-sources.tar.gz` companion beside it.
+`--files-only` verifies full archive coverage, asset/Rust notices and the exact solver
+source companion without executing platform-specific binaries. The checker intentionally
+rejects historical packages that lack the audited inventory format.
+
+New macOS archives ad-hoc sign the completed `Kinemeld.app` and verify it with
+`codesign --verify --deep --strict` before creating the archive. The manifest lives beside
+the signed bundle, with `appRoot` fixed to `Kinemeld.app/Contents/Resources/app`; it hashes
+the final signed executable, `CodeResources`, every application resource and every other
+archive file. Keeping this inventory outside the bundle avoids changing its resource seal.
+The checker also verifies the bundle signature when run on macOS. Older macOS packages
+with an internal audited manifest retain file/source verification, without a signature
+validation claim. Ad-hoc signing does not provide Developer ID identity or notarization.
 
 The release workflow runs these checks on fresh Ubuntu 24.04, macOS 14 and Windows runners
 that have only Python (and, on Linux, `libwebkit2gtk-4.1-0` and Xvfb) installed, and

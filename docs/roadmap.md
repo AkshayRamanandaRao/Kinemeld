@@ -2,7 +2,7 @@
 
 Kinemeld is a preview multibody workbench built around a separately configured
 MBDyn solver. Items below describe intended work, not commitments or delivery
- dates. Every feature should include an example, user documentation, failure
+dates. Every feature should include an example, user documentation, failure
 checks, and validation against the solver and an independent reference where
 appropriate.
 
@@ -80,23 +80,37 @@ Each step ships as its own release with an example, documentation and solver evi
     from CAD that writes them as arcs, model names, and an end-to-end showcase on an
     aircraft nose gear built from its eleven STEP parts.
 
-## Further priorities
+## Execution priorities
 
-- **Reliability and publication:** protect edits during asynchronous CAD and
-  project operations, qualify native dialogs,
-  and finish dependency and license audits for every bundled component.
-- **Engineering examples:** extend suspension and landing-gear studies only
-  with traceable geometry, hardpoints, material data and loading. Add independent
-  checks, convergence evidence and comparison with measurements where available.
-- **Interaction and assistance:** pick cones and tori; extend AI actions only where the
-  underlying physical and solver behavior is verified.
+Work proceeds through the remaining items with a separate implementation and
+verification record for each. On 1 November 2026 the project owner authorized
+continuing across the roadmap without approval between items. Report changes,
+evidence and remaining limits as work progresses. Released capabilities above
+are not pending work. Robotics is the primary use case; the automotive and
+nose-gear studies remain useful independent validation cases.
+
+| Priority | Item | Status | Completion checks |
+| --- | --- | --- | --- |
+| P0 | Refresh the aircraft nose-gear recordings | Complete (1 November 2026) | Clean titles and captions; engineering scope retained in the study guide. Both the featured clip and end-to-end workflow were recorded again; matching MP4/GIF pairs decoded and representative frames inspected. See [verification](verification.md#recording-refresh-1-november-2026). |
+| P1 | Preserve edits during asynchronous CAD and project operations | Complete (1 November 2026) | Delayed STEP replacement/append, generated solids, example/project loads, startup restore and autosave preserve newer edits, including typed input before blur. The integrated project-safety suite passes; negative controls reproduce the original failures. See [verification](verification.md#asynchronous-edit-preservation-1-november-2026). |
+| P2 | Qualify native project dialogs | Windows/Linux fresh-runner checks complete; macOS dialog gate pending | Twelve actual native GUI cases pass on Windows and Linux, including extracted-package fresh runners: Save/Open, cancellation, overwrite refusal, backups, conflicts, dirty documents, recovery and clean shutdown. Model, 11 CAD bindings, 501 samples and full CSV survive round trips. macOS packaged physics checks pass; its native file-panel launch is being qualified separately. See [native GUI testing](native-gui-testing.md). |
+| P3 | Complete bundled dependency provenance and notices | Complete — audit and unpublished candidates (1 November 2026) | Exact platform inventories, full notices, runtime sources/patches and filtered MBDyn source; 47 audit checks pass. All three candidate packages pass fresh-runner source/hash/service/solver/native checks. Published v1.2.1 assets remain unchanged; historical Y12, macOS SDK and optional private-runtime rights limits are recorded in the [audit](dependency-audit.md). |
+| P4 | Strengthen engineering examples, starting with nose gear | Numerical/provenance checks complete (1 November 2026) | Four hash-bound engineering records; 16 real solver runs with three timestep levels and parameter variants; independent robot kinematics/torques and drop/suspension references. Fifteen body mass/COM/tensors match the stated assumptions for 25 CAD occurrences. See [engineering verification](engineering-example-verification.md). Material calibration and hardware correlation remain outside these numerical checks. |
+| P5 | Pick cones and tori from CAD | Implemented and verified on the review branch | Analytic extraction, transformed occurrences, viewport picking, joint/frame placement, measurement, Undo/Redo and original-STEP project round trips pass with OCP 7.9 and 8. Cones use the virtual apex; tori use their rotational center. See [CAD geometry](step-geometry.md). |
+| P6 | Extend assistant actions over verified workflows | Implemented and verified on the review branch | Reviewed parameter studies, joint links to existing CAD-picked named frames, model naming and summaries from stored solver results. Forty backend checks and eight GUI workflows pass, including stale-proposal rejection, atomic failure rollback and four real solver runs. Live language-model accuracy is not claimed. See [assistant guide](ai-agent.md). |
+| P7 | True joint stiction and moving-body contact | Implemented and verified on the review branch | Native discrete Coulomb brakes and normal sphere–sphere contact; 17 numerical benchmarks, native plane-contact regressions and editor/result/project GUI checks. Brakes require initial rest with held/ramped effort; energy-producing startup results fail explicitly. See [robot contact](robot-contact.md). |
+| P8 | Actuator controls and local co-simulation | Implemented and verified on the review branch | Torque-limited PD with ramped references, native hinge feedback and a trusted local TCP peer. Nine completed numerical cases plus cancellation/failure cleanup, ten unit checks and five GUI workflows pass with native MBDyn. Linux integration CI and extracted Windows/macOS/Linux packages also exercise the real controller and solver. WSL transport is explicitly rejected. See [rotary control](rotary-control.md). |
+| P9 | Flexible robot links | Implemented and verified on the review branch | Native beam3 cantilever nodes, explicit section/inertia assumptions, ten native runs, mesh/timestep refinement and independent static/frequency references. Editor, native playback, full CSV/artifacts, project round trips and actual process cancellation pass the GUI checks. See [flexible link](robot-flexible-link.md). |
+| P10 | Constrained design search | Implemented and verified on the review branch | One/two inputs, at most 25 candidates, full-CSV objectives/constraints, failed-case exclusion, explicit Apply/Undo and configuration persistence. Six candidate runs agree with independent full-CSV RMS integration. See [design search](design-search.md). |
 
 ## Longer-term work
 
-Broader surface contact, true stiction, flexible bodies, controls and co-simulation,
-aerodynamics, design studies and optimization each need their own model contract,
-editor, solver integration and numerical benchmarks. A solver capability is not
-an application feature until the complete workflow has been implemented and tested.
+P7–P10 turn the previously longer-term items into bounded robotics workflows.
+Aerodynamics is outside the active product scope. Each feature
+needs its own model contract, editor, solver integration and independent numerical
+benchmarks. A solver capability is not an application feature until the complete
+workflow has been implemented and tested. Hardware validation still requires
+measured data; it cannot be replaced by simulation checks.
 
 ## Verification and distribution
 
@@ -104,7 +118,12 @@ The current integration has been exercised with MBDyn 1.7.3 and selected
 examples. Other versions, general models, engineering accuracy, production use
 and safety-critical qualification remain unverified. Every release package is unpacked
 and checked on fresh Linux, macOS and Windows runners before publication (file hashes,
-the packaged service, real MBDyn runs and the desktop self-check); native dialog
-tests and a complete review of redistributed dependencies and licenses remain open.
-Release archives bundle MBDyn 1.7.3 on Linux, macOS and Windows with the corresponding source
-attached; no package bundles Python or the CAD runtime.
+the packaged service, real MBDyn runs and the desktop self-check). Windows and Linux
+native-dialog suites pass on configured and fresh runners; macOS native-dialog
+qualification remains open. P3 inventories and notices
+are verified for the standard candidate packages; the audit records unresolved
+upstream rights and historical-release limits separately.
+Newly assembled solver packages require exact corresponding-source companions,
+including runtime sources and distribution patches. Standard public packages
+include neither Python nor the CAD runtime; the optional private runtime remains
+unqualified for redistribution. P3's candidates were verified without publishing.

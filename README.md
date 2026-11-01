@@ -34,9 +34,9 @@ bolts and two wheels — are imported one by one. Six bodies are built with a st
 shock-strut slide, the torque-link scissor and two wheel bearings; the CAD is attached, every
 joint is placed by pointing at its pin bolt or bore in the CAD, and mass and inertia come
 from the solids. An 80 mm shock-strut stroke is prescribed and solved with MBDyn; the
-post-processing shows the stroke, the 10.5° torque-link fold and the 144–163 N force the
-strut must deliver. A kinematic illustration: the source CAD overlaps in places and the
-scissor uses spherical and universal joints to avoid redundant constraints.
+post-processing shows the stroke, the 10.5° torque-link fold and the idealised slide reaction.
+This is a kinematic illustration; see the [study's engineering scope](docs/aircraft-nose-kinematics.md)
+for modelling assumptions and interpretation limits.
 [Watch the MP4](docs/demos/workflow-nose-gear.mp4) · [the part files](examples/open-aircraft-nose-gear)
 · the **guided tour** (compass icon) builds a wheel-end drop test step by step.
 
@@ -167,9 +167,12 @@ python3 -m pip install -r requirements.txt
 ```
 
 Each archive has a `.sha256` checksum and a `package-manifest.json` listing every file's
-digest, and is unpacked and checked on fresh Linux, macOS and Windows machines before a
-release is published. Bundled MBDyn binaries are GPL-2.0-only; their corresponding source
-is attached to every release.
+digest. Audited packaging also requires complete notices and an exact solver-source
+companion archive, including runtime-library sources and distribution patches. Packages
+are unpacked and checked on fresh Linux, macOS and Windows runners before publication.
+The [dependency audit](docs/dependency-audit.md) records gaps in the historical v1.2.1
+packages and remaining redistribution questions; the application MIT license does not
+replace its dependencies' licenses.
 
 The desktop app autosaves unsaved work for crash recovery and offers it back after an
 unexpected exit; see [autosave and crash recovery](native/README.md#autosave-and-crash-recovery).
@@ -194,7 +197,7 @@ build the native desktop host see [desktop builds](native/README.md).
 
 ## Verification
 
-- `python -m unittest discover -p 'test_*.py'` in `backend/` — 220+ unit, deck and real-MBDyn tests.
+- `python -m unittest discover -p 'test_*.py'` in `backend/` — 290+ unit, deck and real-MBDyn tests.
 - `python -B backend/verify_featured_studies.py` — every featured study against independent
   physics (gyroscopic theory, momentum conservation, closed-form kinematics, power and static
   balance).
@@ -210,10 +213,19 @@ for scope and limitations.
 
 ## Roadmap
 
-Next: Coulomb friction for sphere–plane contact, verified against an independent solution.
-Longer term:
-flexible bodies, controls and co-simulation. See the [roadmap](docs/roadmap.md)
-and the [changelog](CHANGELOG.md).
+Current development focuses on robotics multibody dynamics. It adds
+[native joint brakes and moving sphere contact](docs/robot-contact.md),
+[closed-loop rotary actuators with local co-simulation](docs/rotary-control.md),
+[native flexible links](docs/robot-flexible-link.md), and
+[constrained design search](docs/design-search.md). Cone/torus CAD picking,
+reviewed assistant workflows, engineering provenance and dependency notices are
+also implemented with numerical and GUI checks. The work remains unpublished;
+cross-platform native-dialog runner qualification is being completed.
+
+See the [prioritized roadmap](docs/roadmap.md) for evidence and exact model limits,
+the [robotics follow-on candidates](docs/robotics-backlog.md) for proposed next
+improvements, and the [changelog](CHANGELOG.md) for released changes. Aerodynamics
+is outside the active roadmap.
 
 ## License and attribution
 

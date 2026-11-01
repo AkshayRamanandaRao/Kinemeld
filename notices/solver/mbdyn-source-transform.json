@@ -1,0 +1,55 @@
+{
+  "format": "kinemeld-mbdyn-source-transform/1",
+  "sourceVersion": "1.7.3-kinemeld-no-y12",
+  "upstreamUrl": "https://raw.githubusercontent.com/mmorandi/MBDyn-web/main/userfiles/downloads/mbdyn-1.7.3.tar.gz",
+  "upstreamSha256": "3cf05cd1cb14c1af3d987aac119b6ecf0d835bc1aee06bc4cf7cc5a245c1f36d",
+  "outputSha256": "1fd09e766c30485423d57e0379b5248e095aeec59bcec59a3f4b518e19f0fcc3",
+  "transformation": "Remove only the eleven unused libraries/liby12/*.f implementations; preserve all retained tar headers and payloads unchanged; append two zero tar blocks.",
+  "reason": "The archived liby12 README supplies no copyright/license grant. Distributed builds use --without-y12.",
+  "removed": [
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12mae.f",
+      "sha256": "151fa17b538ce3aa2621dc25c9a5834e34d4440148a3d45bad4e2de9042826c7"
+    },
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12maf.f",
+      "sha256": "290478d476066189a5d40d875ea24a26ef01de3d534dec4cb907405af21eca79"
+    },
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12mbe.f",
+      "sha256": "60af685f0d87a59eeb56a023b9c8597333517ed39dd76997e7fd0299ead33516"
+    },
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12mbf.f",
+      "sha256": "700347368cf39acb981a2bccb3513bd10ec03bca7c62e78a2b235cd85f309f03"
+    },
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12mce.f",
+      "sha256": "68474cc2a1954968f2cfa2545a87abc69ea18537463e790954163da66c025506"
+    },
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12mcf.f",
+      "sha256": "3f11e13542f037f93ec9a55338c7fd7d12228031c4f1a42f492915b96d4ded55"
+    },
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12mde.f",
+      "sha256": "ef1cae89b11d168a959c28723d034b2cc5386377aa899d85f8797f4fab32482b"
+    },
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12mdf.f",
+      "sha256": "8f788774bf3af50a1a6f569b944de79c997a08261c4a5f9612243cf0fcd4313a"
+    },
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12mfe.f",
+      "sha256": "be73667ca9ea0195c53633d3e58fb53aa35a1c3c078dd002dbed8ac7a32b4d62"
+    },
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12mge.f",
+      "sha256": "8489096200ce959f953006a89d6b9882cc01797d5ba336899cc435d11d9806cc"
+    },
+    {
+      "path": "mbdyn-1.7.3/libraries/liby12/y12mhe.f",
+      "sha256": "9a3babf18b090dad8736120da149b025d604e598199aca3d9f3001887bb3e44d"
+    }
+  ]
+}

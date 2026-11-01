@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 /**
- * Analytic STEP faces (cylinders and planes reported by the converter) turned into joint anchors
+ * Analytic STEP faces reported by the converter turned into joint anchors
  * and axes. Geometry is evaluated at the model's initial configuration: an attached part follows
  * its body's initial pose, an unattached part stays at its CAD position.
  */
@@ -35,7 +35,7 @@ export function cadPlacement(binding, body) {
   };
 }
 
-/** A face in model world coordinates: an anchor point, an axis (cylinder axis or plane normal) and a label. */
+/** A face in model world coordinates: an anchor point, its analytic axis or normal, and a label. */
 export function worldFeature(face, placement, hitPoint = null) {
   if (face.type === "circle") {
     const axis = placement.direction(face.axis);
@@ -46,6 +46,16 @@ export function worldFeature(face, placement, hitPoint = null) {
     const axis = placement.direction(face.axis);
     return { type: "cylinder", point: placement.point(face.centre), axis, radius: face.radius, length: face.length,
       label: `Cylinder Ø${(face.radius * 2000).toFixed(1)} mm · axis ${describe(axis)}` };
+  }
+  if (face.type === "cone") {
+    const axis = placement.direction(face.axis);
+    return { type: "cone", point: placement.point(face.apex), axis, semiAngle: face.semiAngle,
+      label: `Cone apex · half angle ${(Math.abs(face.semiAngle) / DEG).toFixed(2)}° · axis ${describe(axis)}` };
+  }
+  if (face.type === "torus") {
+    const axis = placement.direction(face.axis);
+    return { type: "torus", point: placement.point(face.centre), axis, majorRadius: face.majorRadius, minorRadius: face.minorRadius,
+      label: `Torus centre · major Ø${(face.majorRadius * 2000).toFixed(1)} mm · tube Ø${(face.minorRadius * 2000).toFixed(1)} mm · axis ${describe(axis)}` };
   }
   const normal = placement.direction(face.normal);
   // On a plane the clicked point is the natural anchor; project it onto the plane exactly.
@@ -87,7 +97,7 @@ export function jointFromFeature(model, joint, feature) {
 
 /**
  * A named frame placed on a picked feature, in its parent's axes: the origin at the feature point
- * and local +Z along the cylinder axis or plane normal. Rotation is Euler123 in degrees.
+ * and local +Z along its analytic axis or plane normal. Rotation is Euler123 in degrees.
  */
 export function frameFromFeature(model, frame, feature) {
   const body = model.bodies.find((item) => item.id === frame.body);

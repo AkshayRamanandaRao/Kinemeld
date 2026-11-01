@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "./vendor/OrbitControls.js";
 import { buildIndustry, sampleIndustry } from "./industry-view.js";
+import { buildFlexibleLink, sampleFlexibleLink } from "./flexible-link.js";
 import { buildSourceView, sampleSourceView } from "./source-view.js";
 import { createStepView } from "./step-view.js";
 import { buildGlyphs, disposeGlyphs, updateGlyphs } from "./glyphs.js";
@@ -192,7 +193,7 @@ export class MechanismView {
     this.endDrag();
     if (moved) this.dragMode?.cancel();
   }
-  /** Preview a CAD feature (model coordinates): its axis and, for cylinders, the bore circle. */
+  /** Preview an analytic CAD anchor and axis, with its circular, conical or toroidal construction. */
   showFeature(feature, color = 0xf08c1a) {
     if (this.featureGroup) {
       this.scene.remove(this.featureGroup);
@@ -203,7 +204,7 @@ export class MechanismView {
     const offset = this.sourceParts?.offset || new THREE.Vector3();
     const group = new THREE.Group();
     const material = () => new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity: 0.95 });
-    const size = Math.max(feature.radius ? feature.radius * 3 : 0, feature.length || 0, (this.scale || 1) * 0.15);
+    const size = Math.max((feature.radius || feature.majorRadius || 0) * 3, feature.length || 0, (this.scale || 1) * 0.15);
     const up = new THREE.Vector3(0, 1, 0);
     const line = new THREE.Mesh(new THREE.CylinderGeometry(size * 0.012, size * 0.012, size * 1.6, 8), material());
     const cone = new THREE.Mesh(new THREE.ConeGeometry(size * 0.04, size * 0.12, 16), material());
@@ -213,6 +214,22 @@ export class MechanismView {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(feature.radius, size * 0.01, 8, 48), material());
       ring.rotation.x = Math.PI / 2;
       group.add(ring);
+    }
+    if (feature.type === "cone") {
+      const slope = Math.tan(Math.abs(feature.semiAngle)), height = Math.min(size, size * 0.3 / slope);
+      const outline = new THREE.Mesh(new THREE.ConeGeometry(height * slope, height, 24, 1, true), material());
+      outline.material.wireframe = true;
+      outline.material.opacity = 0.45;
+      outline.rotation.z = Math.PI;
+      outline.position.y = height / 2;
+      group.add(outline);
+    }
+    if (feature.type === "torus") {
+      const outline = new THREE.Mesh(new THREE.TorusGeometry(feature.majorRadius, feature.minorRadius, 12, 48), material());
+      outline.material.wireframe = true;
+      outline.material.opacity = 0.45;
+      outline.rotation.x = Math.PI / 2;
+      group.add(outline);
     }
     const dot = new THREE.Mesh(new THREE.SphereGeometry(size * 0.035, 16, 12), material());
     group.add(dot);
@@ -320,6 +337,7 @@ export class MechanismView {
     this.hover = null;
     if (["source-example", "planar-assembly", "spatial-assembly"].includes(model.kind)) buildSourceView(this, sourceExample);
 
+    else if (model.kind === "flexible-link") buildFlexibleLink(this);
     else if (model.kind === "double-pendulum") this.buildDoublePendulum();
     else if (model.kind === "pendulum") this.buildPendulum();
     else if (model.kind === "mass-spring") this.buildSpring();
@@ -511,6 +529,7 @@ export class MechanismView {
     if (this.followEntity) this.applyFollow();
   }
   applySample(sample) {
+    if (this.model?.kind === "flexible-link") { sampleFlexibleLink(this,sample); return; }
     if (!this.model || !this.bob) return;
     if (["source-example", "planar-assembly", "spatial-assembly"].includes(this.model.kind)) {
       sampleSourceView(
@@ -631,7 +650,7 @@ export class MechanismView {
       const box = new THREE.Box3().setFromObject(this.stepView.group);
       if (!box.isEmpty()) size = Math.max(size, ...box.getSize(new THREE.Vector3()).toArray());
     }
-    for (const contact of this.model.contacts || []) size = Math.max(size, 2 * contact.radius);
+    for (const contact of this.model.contacts || []) size = Math.max(size, 2 * contact.radius, 2 * (contact.otherRadius || 0));
     this.glyphs = buildGlyphs(this.model, size, this.sourceParts.offset);
     this.glyphs.group.visible = this.glyphsVisible;
     this.group.add(this.glyphs.group);
@@ -725,6 +744,7 @@ export class MechanismView {
       0,
       pendulum ? 0.52 * s : 0.17 * s,
     );
+    if(this.model?.kind === "flexible-link"){this.controls.target.set(.5*s,0,0);this.camera.position.set(.9*s,-1.25*s,.7*s);}
     if (["source-example", "planar-assembly", "spatial-assembly"].includes(this.model?.kind))
       this.controls.target.copy(this.sourceParts.focus);
     if (this.referenceMesh || this.stepView) {
@@ -776,8 +796,9 @@ export class MechanismView {
   placeGround(envelopeMinZ = null) {
     const s = this.scale || 1;
     let z = -0.075;
+    if(this.model?.kind === "flexible-link")z=Math.min(-.18*s,Number.isFinite(envelopeMinZ)?envelopeMinZ-.03*s:Infinity);
     if (["source-example", "planar-assembly", "spatial-assembly"].includes(this.model?.kind)) {
-      const planes = (this.model.contacts || []).filter((c) => Math.abs(c.planeNormal.z) > 0.99).map((c) => c.planePoint.z + this.sourceParts.offset.z);
+      const planes = (this.model.contacts || []).filter((c) => c.type !== "sphere-sphere" && Math.abs(c.planeNormal.z) > 0.99).map((c) => c.planePoint.z + this.sourceParts.offset.z);
       if (planes.length) z = Math.min(...planes) - s * 0.012;
       else {
         const bounds = new THREE.Box3().setFromObject(this.stepView ? this.stepView.group : this.group);
@@ -790,6 +811,7 @@ export class MechanismView {
   }
   /** Lowest display height reached by any body point during a result (origins and farthest geometry). */
   resultEnvelopeMinZ(result) {
+    if(this.model?.kind === "flexible-link")return Math.min(...result.samples.flatMap(sample=>sample.nodes.map(node=>node.z)));
     let lowest = Infinity;
     for (const track of this.bodyTracks(result)) {
       const reach = this.stepView?.farthestPoint?.(track.id)?.length() ?? 0;
@@ -806,6 +828,7 @@ export class MechanismView {
     const samples = result?.samples;
     if (!samples?.length || !this.model) return [];
     const kind = this.model.kind;
+    if(kind === "flexible-link")return (samples[0].nodes || []).map((node,index)=>({id:String(node.id),entity:index?`node-${node.id}`:"joint",points:samples.map(sample=>{const current=sample.nodes.find(item=>item.id===node.id);return current?new THREE.Vector3(current.x,current.y,current.z):null;})}));
     if (["source-example", "planar-assembly", "spatial-assembly"].includes(kind)) {
       const offset = this.sourceParts.offset;
       const bodies = this.model.bodies || [];

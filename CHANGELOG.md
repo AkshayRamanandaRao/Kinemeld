@@ -4,6 +4,57 @@ All notable changes to Kinemeld are recorded here. Versions follow
 [semantic versioning](https://semver.org/); from 1.0, project files follow the compatibility
 rules in [docs/project-format.md](docs/project-format.md).
 
+## Unreleased
+
+- Add traceable engineering records for four studies, with 16 fresh solver runs,
+  mass/COM/tensor provenance and independent kinematics, torque and drop references.
+- Pick analytic cones and tori for joint/frame placement and measurement, including
+  transformed STEP occurrences, Undo/Redo and original-CAD project round trips.
+- Review assistant proposals for parameter studies, named-frame links and model
+  names; summarize actual stored results and reject stale proposals atomically.
+- Add native static/sliding revolute brakes and moving sphere-pair normal contact,
+  with editor, glyphs, plots, full CSV and numerical/GUI benchmarks. Initial brake
+  loading is bounded; energy-producing native startup states fail explicitly.
+- Add bounded constrained design search with up to 25 actual MBDyn candidates,
+  full-resolution response ranking, explicit Apply/Undo and saved configurations.
+- Abort design-search CSV downloads on timeout or cancellation, releasing pending
+  requests while preserving ordinary plot downloads and completed results.
+- Add torque-limited rotary PD actuators with real native hinge feedback and a
+  separate trusted local controller, inspectable command/feedback traces and
+  owned process cancellation. Controlled runs use the managed native solver;
+  standalone deck export and WSL transport fail with an actionable explanation.
+- Add a clamped flexible robot-link template using native beam3 elements and
+  actual node playback, section/inertia inputs, root reactions, full CSV and
+  mesh/timestep/static/frequency benchmarks.
+- Hash the retained native deck bytes consistently on Windows, including CRLF
+  newlines, so provenance matches the downloadable input file.
+- Prefer the macOS bundle's own resources over surrounding source checkouts,
+  seal the complete bundle before hashing it, and verify its signature and
+  external package manifest without changing audited solver binaries.
+- Audit all three desktop dependency sets, retain missing Rust/Microsoft/solver
+  notices, and require exact runtime source packages with distribution patches
+  beside solver binaries. Check full archive coverage and reject stale or incomplete
+  notices and sources. Build from filtered MBDyn source with unused Y12 implementations
+  removed; preserve its provenance and COLAMD/OpenLDAP notices. See the
+  [dependency audit](docs/dependency-audit.md) for scope and unresolved rights.
+- Keep STEP import working with `cadquery-ocp` 8.0.1 by mapping its renamed
+  indexed-shape collection through the existing OCP compatibility module.
+- Preserve newer model edits, CAD attachments and solver results when delayed
+  imports, generated solids, example loads or project opens finish. Stale autosave
+  payloads and acknowledgements cannot replace the active document's recovery state.
+- New assemblies and opened examples start as unsaved native documents, with their
+  own file identity. Save asks for a destination; cancellation and failed opens keep
+  the current document and its recovery origin.
+- Added automated desktop GUI suites for real native dialogs, full project
+  round trips, conflicts and crash recovery. Accepted close ignores queued events
+  and shuts down the owned service; Windows and Linux fresh-runner checks pass,
+  while macOS dialog qualification remains open.
+- Refreshed both aircraft nose-gear MP4/GIF pairs with concise model titles and
+  captions. Engineering assumptions and interpretation limits remain in the study
+  guide. The workflow recorder now generates and checks its GIF alongside its MP4.
+- Prioritize the remaining roadmap around robotics multibody dynamics; proceed
+  across the authorized items and keep aerodynamics outside the active scope.
+
 ## 1.2.1 — Documentation, help text and first launch
 
 - **First launch.** The desktop app waits up to 90 s for its local service and 30 s for the

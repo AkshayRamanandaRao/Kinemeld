@@ -1,0 +1,145 @@
+{
+  "kind": "spatial-assembly",
+  "name": "Two-link robot arm with local closed-loop actuators",
+  "parameters": {
+    "gravity": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
+  },
+  "simulation": {
+    "duration": 3.0,
+    "step": 0.0005
+  },
+  "bodies": [
+    {
+      "id": "upper",
+      "name": "Upper arm",
+      "mass": 1.0,
+      "inertia": {
+        "xx": 0.01,
+        "yy": 0.03,
+        "zz": 0.03
+      },
+      "pose": {
+        "x": 0.3,
+        "y": 0.0,
+        "z": 0.0,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "vz": 0.0,
+        "wx": 0.0,
+        "wy": 0.0,
+        "wz": 0.0
+      }
+    },
+    {
+      "id": "forearm",
+      "name": "Forearm",
+      "mass": 0.5,
+      "inertia": {
+        "xx": 0.005,
+        "yy": 0.01,
+        "zz": 0.01
+      },
+      "pose": {
+        "x": 0.8,
+        "y": 0.0,
+        "z": 0.0,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      },
+      "velocity": {
+        "vx": 0.0,
+        "vy": 0.0,
+        "vz": 0.0,
+        "wx": 0.0,
+        "wy": 0.0,
+        "wz": 0.0
+      }
+    }
+  ],
+  "joints": [
+    {
+      "id": "shoulder",
+      "type": "revolute",
+      "a": "ground",
+      "b": "upper",
+      "anchorA": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "anchorB": {
+        "x": -0.3,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "axisA": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      "axisB": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "elbow",
+      "type": "revolute",
+      "a": "upper",
+      "b": "forearm",
+      "anchorA": {
+        "x": 0.3,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "anchorB": {
+        "x": -0.2,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "axisA": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      "axisB": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.0
+      }
+    }
+  ],
+  "jointTorques": [
+    {
+      "id": "shoulderMotor",
+      "joint": "shoulder",
+      "type": "servo",
+      "kp": 5.0,
+      "kd": 1.2,
+      "targetAngleDeg": 30.0,
+      "rampTime": 0.8,
+      "torqueLimit": 2.0
+    },
+    {
+      "id": "elbowMotor",
+      "joint": "elbow",
+      "type": "servo",
+      "kp": 2.0,
+      "kd": 0.4,
+      "targetAngleDeg": -45.0,
+      "rampTime": 0.8,
+      "torqueLimit": 1.0
+    }
+  ]
+}

@@ -1,0 +1,317 @@
+{
+  "scope": "Actual native MBDyn, separate trusted Python peer, every-step socket feedback and native applied-couple verification; independent held-torque dynamics; illustrative robot inputs, no hardware calibration.",
+  "solverSha256": "fd3ed2af69ac6d5a4996cfb937c979cc7da1484dc820f657a17c2fe526aefca7",
+  "controllerSha256": "97b9de4b25333d0f4dc1afe348ae45815dc02cb5881af14e67e4117055f6191b",
+  "cases": [
+    {
+      "name": "positive",
+      "runId": "0c4e36dd64954629b2c8a0f25eb53450",
+      "deckSha256": "921657379eb0f360d4244efb504167a7b069f823d59696c12450a4d5f7c4e142",
+      "metrics": {
+        "duration": 1.501,
+        "sampleCount": 1502,
+        "bodyCount": 1,
+        "jointCount": 1,
+        "maxConstraintError": 0.0,
+        "maxJointVelocityError": 0.0,
+        "maxJointAngularError": 0.0,
+        "maxJointAngularVelocityError": 0.0,
+        "constraintErrorUnit": "m",
+        "angularConstraintErrorUnit": "rad",
+        "validationScope": "3D rigid body motion and joint residuals; optional discrete Coulomb revolute brakes, sphere-plane contact with regularised friction, and normal sphere-sphere penalty contact. No arbitrary surface contact, flexible bodies or certification.",
+        "actuationWork": 2.6344537489328605e-06,
+        "energyUnit": "J",
+        "peakServoTrackingError": 0.10836320843410097,
+        "finalServoTrackingError": 0.0007054760794922288,
+        "servoSaturatedStepCount": 0
+      },
+      "coSimulation": {
+        "source": "MBDyn native TCP streams",
+        "algorithm": "Sampled PD with one-step command hold",
+        "exchangeCount": 1502,
+        "actuatorCount": 1,
+        "transport": "127.0.0.1 TCP, ephemeral ports",
+        "status": "completed",
+        "controllerSha256": "97b9de4b25333d0f4dc1afe348ae45815dc02cb5881af14e67e4117055f6191b"
+      },
+      "maxIndependentAngleError": 0.0006796667462443118
+    },
+    {
+      "name": "positive-half-step",
+      "runId": "2ed80e256b054c67a8c90df646429cf5",
+      "deckSha256": "9d327969c931221e57b06023761683bae0935a4c67f6c5e75505d18ab1882289",
+      "metrics": {
+        "duration": 1.5005,
+        "sampleCount": 3002,
+        "bodyCount": 1,
+        "jointCount": 1,
+        "maxConstraintError": 0.0,
+        "maxJointVelocityError": 0.0,
+        "maxJointAngularError": 0.0,
+        "maxJointAngularVelocityError": 0.0,
+        "constraintErrorUnit": "m",
+        "angularConstraintErrorUnit": "rad",
+        "validationScope": "3D rigid body motion and joint residuals; optional discrete Coulomb revolute brakes, sphere-plane contact with regularised friction, and normal sphere-sphere penalty contact. No arbitrary surface contact, flexible bodies or certification.",
+        "actuationWork": 2.4348432138718124e-06,
+        "energyUnit": "J",
+        "peakServoTrackingError": 0.10805793141082529,
+        "finalServoTrackingError": 0.0007242430604583738,
+        "servoSaturatedStepCount": 0
+      },
+      "coSimulation": {
+        "source": "MBDyn native TCP streams",
+        "algorithm": "Sampled PD with one-step command hold",
+        "exchangeCount": 3002,
+        "actuatorCount": 1,
+        "transport": "127.0.0.1 TCP, ephemeral ports",
+        "status": "completed",
+        "controllerSha256": "97b9de4b25333d0f4dc1afe348ae45815dc02cb5881af14e67e4117055f6191b"
+      },
+      "maxIndependentAngleError": 0.00033852593707972556
+    },
+    {
+      "name": "negative",
+      "runId": "ab8a8b65c4b54e1186fd74781b478edc",
+      "deckSha256": "1ad05fee82968d862ee294c11a6dcb07eef64b7d988c80bfa073d042a3fa3ec0",
+      "metrics": {
+        "duration": 1.501,
+        "sampleCount": 1502,
+        "bodyCount": 1,
+        "jointCount": 1,
+        "maxConstraintError": 0.0,
+        "maxJointVelocityError": 0.0,
+        "maxJointAngularError": 0.0,
+        "maxJointAngularVelocityError": 0.0,
+        "constraintErrorUnit": "m",
+        "angularConstraintErrorUnit": "rad",
+        "validationScope": "3D rigid body motion and joint residuals; optional discrete Coulomb revolute brakes, sphere-plane contact with regularised friction, and normal sphere-sphere penalty contact. No arbitrary surface contact, flexible bodies or certification.",
+        "actuationWork": 2.6344537489328605e-06,
+        "energyUnit": "J",
+        "peakServoTrackingError": 0.10836320843410097,
+        "finalServoTrackingError": 0.0007054760794922288,
+        "servoSaturatedStepCount": 0
+      },
+      "coSimulation": {
+        "source": "MBDyn native TCP streams",
+        "algorithm": "Sampled PD with one-step command hold",
+        "exchangeCount": 1502,
+        "actuatorCount": 1,
+        "transport": "127.0.0.1 TCP, ephemeral ports",
+        "status": "completed",
+        "controllerSha256": "97b9de4b25333d0f4dc1afe348ae45815dc02cb5881af14e67e4117055f6191b"
+      },
+      "maxIndependentAngleError": 0.0006796667462443118
+    },
+    {
+      "name": "saturated",
+      "runId": "69ea79d1c7954a9b907fc0e6d47fb6f2",
+      "deckSha256": "271a2f384be033dccd905e590ac9a68518e99c1b79c3ac0a1f5e4f4ee2652807",
+      "metrics": {
+        "duration": 1.501,
+        "sampleCount": 1502,
+        "bodyCount": 1,
+        "jointCount": 1,
+        "maxConstraintError": 0.0,
+        "maxJointVelocityError": 0.0,
+        "maxJointAngularError": 0.0,
+        "maxJointAngularVelocityError": 0.0,
+        "constraintErrorUnit": "m",
+        "angularConstraintErrorUnit": "rad",
+        "validationScope": "3D rigid body motion and joint residuals; optional discrete Coulomb revolute brakes, sphere-plane contact with regularised friction, and normal sphere-sphere penalty contact. No arbitrary surface contact, flexible bodies or certification.",
+        "actuationWork": 0.005088445964330073,
+        "energyUnit": "J",
+        "peakServoTrackingError": 0.44980863946892613,
+        "finalServoTrackingError": 0.24984006125610392,
+        "servoSaturatedStepCount": 1466
+      },
+      "coSimulation": {
+        "source": "MBDyn native TCP streams",
+        "algorithm": "Sampled PD with one-step command hold",
+        "exchangeCount": 1502,
+        "actuatorCount": 1,
+        "transport": "127.0.0.1 TCP, ephemeral ports",
+        "status": "completed",
+        "controllerSha256": "97b9de4b25333d0f4dc1afe348ae45815dc02cb5881af14e67e4117055f6191b"
+      }
+    },
+    {
+      "name": "zero",
+      "runId": "fe57f54992b841f290918fa7e006e5fc",
+      "deckSha256": "7233270ef0c1aab68047242f45401feb53e891f4292e11445704675067565af4",
+      "metrics": {
+        "duration": 1.501,
+        "sampleCount": 1502,
+        "bodyCount": 1,
+        "jointCount": 1,
+        "maxConstraintError": 0.0,
+        "maxJointVelocityError": 0.0,
+        "maxJointAngularError": 0.0,
+        "maxJointAngularVelocityError": 0.0,
+        "constraintErrorUnit": "m",
+        "angularConstraintErrorUnit": "rad",
+        "validationScope": "3D rigid body motion and joint residuals; optional discrete Coulomb revolute brakes, sphere-plane contact with regularised friction, and normal sphere-sphere penalty contact. No arbitrary surface contact, flexible bodies or certification.",
+        "actuationWork": 0.0,
+        "energyUnit": "J",
+        "peakServoTrackingError": 0.0,
+        "finalServoTrackingError": 0.0,
+        "servoSaturatedStepCount": 0
+      },
+      "coSimulation": {
+        "source": "MBDyn native TCP streams",
+        "algorithm": "Sampled PD with one-step command hold",
+        "exchangeCount": 1502,
+        "actuatorCount": 1,
+        "transport": "127.0.0.1 TCP, ephemeral ports",
+        "status": "completed",
+        "controllerSha256": "97b9de4b25333d0f4dc1afe348ae45815dc02cb5881af14e67e4117055f6191b"
+      },
+      "maxIndependentAngleError": 0.0
+    },
+    {
+      "name": "robot-arm",
+      "runId": "d51d045a35054962b0b6874aa568c24a",
+      "deckSha256": "60e9c7a2fd440bcc158f6b7a131bd837a8a8de6f36ad522f1aa11f9b7cfa8756",
+      "metrics": {
+        "duration": 3.0,
+        "sampleCount": 6001,
+        "bodyCount": 2,
+        "jointCount": 2,
+        "maxConstraintError": 1.411540627270255e-13,
+        "maxJointVelocityError": 1.9532176878372082e-07,
+        "maxJointAngularError": 0.0,
+        "maxJointAngularVelocityError": 0.0,
+        "constraintErrorUnit": "m",
+        "angularConstraintErrorUnit": "rad",
+        "validationScope": "3D rigid body motion and joint residuals; optional discrete Coulomb revolute brakes, sphere-plane contact with regularised friction, and normal sphere-sphere penalty contact. No arbitrary surface contact, flexible bodies or certification.",
+        "actuationWork": 0.00016343193949834087,
+        "energyUnit": "J",
+        "peakServoTrackingError": 0.11510514064173594,
+        "finalServoTrackingError": 0.003998478311220799,
+        "servoSaturatedStepCount": 0
+      },
+      "coSimulation": {
+        "source": "MBDyn native TCP streams",
+        "algorithm": "Sampled PD with one-step command hold",
+        "exchangeCount": 6001,
+        "actuatorCount": 2,
+        "transport": "127.0.0.1 TCP, ephemeral ports",
+        "status": "completed",
+        "controllerSha256": "97b9de4b25333d0f4dc1afe348ae45815dc02cb5881af14e67e4117055f6191b"
+      }
+    },
+    {
+      "name": "tilted-axis",
+      "runId": "67710234d2cc4633bc47e0d61ca97f98",
+      "deckSha256": "f0e3518e6b4af43b5fe218a4bc222b5dd29d937630f4dcc17ac19939af78c672",
+      "metrics": {
+        "duration": 1.501,
+        "sampleCount": 1502,
+        "bodyCount": 1,
+        "jointCount": 1,
+        "maxConstraintError": 0.0,
+        "maxJointVelocityError": 0.0,
+        "maxJointAngularError": 1.4092923532680009e-13,
+        "maxJointAngularVelocityError": 1.3637708091248626e-12,
+        "constraintErrorUnit": "m",
+        "angularConstraintErrorUnit": "rad",
+        "validationScope": "3D rigid body motion and joint residuals; optional discrete Coulomb revolute brakes, sphere-plane contact with regularised friction, and normal sphere-sphere penalty contact. No arbitrary surface contact, flexible bodies or certification.",
+        "actuationWork": 2.634453748604836e-06,
+        "energyUnit": "J",
+        "peakServoTrackingError": 0.1083632084341013,
+        "finalServoTrackingError": 0.0007054760794921178,
+        "servoSaturatedStepCount": 0
+      },
+      "coSimulation": {
+        "source": "MBDyn native TCP streams",
+        "algorithm": "Sampled PD with one-step command hold",
+        "exchangeCount": 1502,
+        "actuatorCount": 1,
+        "transport": "127.0.0.1 TCP, ephemeral ports",
+        "status": "completed",
+        "controllerSha256": "97b9de4b25333d0f4dc1afe348ae45815dc02cb5881af14e67e4117055f6191b"
+      },
+      "maxIndependentAngleError": 0.0006796667462425354
+    },
+    {
+      "name": "braked-positive",
+      "runId": "1a56ce447b4f40adb16d2d0ba38a0b14",
+      "deckSha256": "66911d2f971e83f8fbac9cdf0b812a11fc69812bddba1a373c6798f0cd5984b3",
+      "metrics": {
+        "duration": 1.501,
+        "sampleCount": 1502,
+        "bodyCount": 1,
+        "jointCount": 1,
+        "maxConstraintError": 0.0,
+        "maxJointVelocityError": 0.0,
+        "maxJointAngularError": 0.0,
+        "maxJointAngularVelocityError": 0.0,
+        "constraintErrorUnit": "m",
+        "angularConstraintErrorUnit": "rad",
+        "validationScope": "3D rigid body motion and joint residuals; optional discrete Coulomb revolute brakes, sphere-plane contact with regularised friction, and normal sphere-sphere penalty contact. No arbitrary surface contact, flexible bodies or certification.",
+        "actuationWork": 0.0362384988409732,
+        "energyUnit": "J",
+        "jointFrictionDissipatedEnergy": 0.03623831095611232,
+        "peakJointFrictionTorque": 0.05,
+        "peakServoTrackingError": 0.1132069657311654,
+        "finalServoTrackingError": 0.0049046238154915045,
+        "servoSaturatedStepCount": 0
+      },
+      "coSimulation": {
+        "source": "MBDyn native TCP streams",
+        "algorithm": "Sampled PD with one-step command hold",
+        "exchangeCount": 1502,
+        "actuatorCount": 1,
+        "transport": "127.0.0.1 TCP, ephemeral ports",
+        "status": "completed",
+        "controllerSha256": "97b9de4b25333d0f4dc1afe348ae45815dc02cb5881af14e67e4117055f6191b"
+      }
+    },
+    {
+      "name": "braked-negative",
+      "runId": "8bcf01d473034407b418f4203c8f7e31",
+      "deckSha256": "b79d767549b76f9c36ca6959bf075c4d02582cb0520f0d64083610594793999b",
+      "metrics": {
+        "duration": 1.501,
+        "sampleCount": 1502,
+        "bodyCount": 1,
+        "jointCount": 1,
+        "maxConstraintError": 0.0,
+        "maxJointVelocityError": 0.0,
+        "maxJointAngularError": 0.0,
+        "maxJointAngularVelocityError": 0.0,
+        "constraintErrorUnit": "m",
+        "angularConstraintErrorUnit": "rad",
+        "validationScope": "3D rigid body motion and joint residuals; optional discrete Coulomb revolute brakes, sphere-plane contact with regularised friction, and normal sphere-sphere penalty contact. No arbitrary surface contact, flexible bodies or certification.",
+        "actuationWork": 0.0362384988409732,
+        "energyUnit": "J",
+        "jointFrictionDissipatedEnergy": 0.03623831095611232,
+        "peakJointFrictionTorque": 0.05,
+        "peakServoTrackingError": 0.1132069657311654,
+        "finalServoTrackingError": 0.0049046238154915045,
+        "servoSaturatedStepCount": 0
+      },
+      "coSimulation": {
+        "source": "MBDyn native TCP streams",
+        "algorithm": "Sampled PD with one-step command hold",
+        "exchangeCount": 1502,
+        "actuatorCount": 1,
+        "transport": "127.0.0.1 TCP, ephemeral ports",
+        "status": "completed",
+        "controllerSha256": "97b9de4b25333d0f4dc1afe348ae45815dc02cb5881af14e67e4117055f6191b"
+      }
+    },
+    {
+      "name": "cancelled",
+      "runId": "6d41a803778f41bca71af71da983c36d",
+      "code": 409,
+      "childrenStopped": true
+    },
+    {
+      "name": "controller-failure",
+      "runId": "d01336c8dba3477994f5dd6cd4d31740",
+      "code": 422,
+      "elapsed": 0.375,
+      "childrenStopped": true
+    }
+  ]
+}

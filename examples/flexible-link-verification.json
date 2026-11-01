@@ -1,0 +1,152 @@
+{
+  "ok": true,
+  "scope": "Native flexible-node cantilever. Illustrative independent section properties, no hardware calibration. Static small-deflection Timoshenko and approximate Euler-Bernoulli first-frequency references; finite mesh/lumped inertia and numerical damping are explicit.",
+  "solverSha256": "fd3ed2af69ac6d5a4996cfb937c979cc7da1484dc820f657a17c2fe526aefca7",
+  "verifierSha256": "0faae9e3938ac3cd41b7a4febfe1a78e6aff3761301179e243e55a330b453087",
+  "generatorSha256": "4586fdc090b4b4d53df9ba43abc1526e9f086f4f9b5cb849f2ed760667497fd5",
+  "convergence": {
+    "timeDeflectionDifferences": [
+      5.157913019991633e-07,
+      1.289927099995536e-07
+    ],
+    "timeRefinementRatio": 3.998608153910003,
+    "meshStaticDifferences": [
+      2.7043614000965555e-08,
+      2.9640309998080205e-09
+    ],
+    "meshFrequencyDifferences": [
+      0.033953257127727454,
+      0.0030014524366768214
+    ]
+  },
+  "cases": [
+    {
+      "name": "3 nodes damping 0.02",
+      "ok": true,
+      "runId": "6ef4c25e0cee40fbbae919bf951c4762",
+      "staticReference": -0.008343333333333333,
+      "finalDeflection": -0.008340918416692,
+      "maxTipDeflection": 0.01062249752927,
+      "relativeStaticError": 0.0002894426657610305,
+      "rootForce": -1.000000002455,
+      "rootMoment": 0.4999174504095,
+      "maxStaticShapeError": 2.414916641333212e-06,
+      "modelSha256": "34e4f420e1d7c6577277a251f8a17ddedd315ac724d52f8befd6918b2a4caca4",
+      "deckSha256": "058415479fa477bd11635bcf60f9e848792116c32512c2d503393141a2df7dd0"
+    },
+    {
+      "name": "3 nodes damping 0",
+      "ok": true,
+      "runId": "a4ba9d556be444f282d6c835ff2edb4b",
+      "staticReference": -0.008343333333333333,
+      "finalDeflection": -0.005928433650248,
+      "maxTipDeflection": 0.01481201535815,
+      "frequencyHz": 5.029892480830881,
+      "frequencyReferenceHz": 5.0051359404025915,
+      "relativeFrequencyError": 0.0049462273798497325,
+      "modelSha256": "a9c98089cb18d0b2f48b966f8508949e01442667b04c164e41e779c222e1d45a",
+      "deckSha256": "44d45c0ba105e9dd206868f369cad4b6e50b13f80ca279c44af84a5a78bf74ee"
+    },
+    {
+      "name": "5 nodes damping 0.02",
+      "ok": true,
+      "runId": "bb52ba36bab94f779eea2a4d239f8b17",
+      "staticReference": -0.008343333333333333,
+      "finalDeflection": -0.008340945460306,
+      "maxTipDeflection": 0.01060395301539,
+      "relativeStaticError": 0.0002862013216938797,
+      "rootForce": -1.000000001183,
+      "rootMoment": 0.4999166361226,
+      "maxStaticShapeError": 2.3878730273322463e-06,
+      "modelSha256": "47e8e2a021d1f43a2c77ba761cbc456ecedd74bed474bb06f0ac4a6ee5c0dc55",
+      "deckSha256": "1d9629dbdc60fd9a47ef66e50600811ce111a36130608570e402e438a1ae3c64"
+    },
+    {
+      "name": "5 nodes damping 0",
+      "ok": true,
+      "runId": "fe9ba0e1a95f4abbbc92ab0eedd9557c",
+      "staticReference": -0.008343333333333333,
+      "finalDeflection": -0.008516921208439,
+      "maxTipDeflection": 0.01471657749777,
+      "frequencyHz": 4.995939223703154,
+      "frequencyReferenceHz": 5.0051359404025915,
+      "relativeFrequencyError": 0.0018374559270607493,
+      "modelSha256": "1cd39de5671eae549ebaa50791a59d991120020c6349f10cc6ee38184dbf4d14",
+      "deckSha256": "1dba107a306d664b99080a2a990ccc50a5481e6e4f4901e9a7916a0f1f776ba2"
+    },
+    {
+      "name": "9 nodes damping 0.02",
+      "ok": true,
+      "runId": "ba5204978c314c44a82f29a4890fbff6",
+      "staticReference": -0.008343333333333333,
+      "finalDeflection": -0.008340948424337,
+      "maxTipDeflection": 0.01059763493844,
+      "relativeStaticError": 0.0002858460642827243,
+      "rootForce": -1.000000001302,
+      "rootMoment": 0.499916585302,
+      "maxStaticShapeError": 2.3849089963324382e-06,
+      "modelSha256": "92bfed866686f670cb7f63207bf719384afac19f2d9398d0f4a309a9a4375888",
+      "deckSha256": "320c36d9563b31fb9271452ed6e0f410e7bbadb95b8751c3ee972f24bac0d7b9"
+    },
+    {
+      "name": "9 nodes damping 0",
+      "ok": true,
+      "runId": "90fbdd84535a4d8daffc1028feced742",
+      "staticReference": -0.008343333333333333,
+      "finalDeflection": -0.008334436076441,
+      "maxTipDeflection": 0.01470393009804,
+      "frequencyHz": 4.9989406761398305,
+      "frequencyReferenceHz": 5.0051359404025915,
+      "relativeFrequencyError": 0.0012377814182330527,
+      "modelSha256": "a2c7c50978c350ffd8f821504221728dcdaa6bdf4e5ea19b226345cbda79688b",
+      "deckSha256": "89bfd42d9b88d806d3eb3a6ce429068edc771acc1773bb27206013a7d2b505fd"
+    },
+    {
+      "name": "time refinement 0.001",
+      "ok": true,
+      "runId": "8f3601b56b804cadb9b67bd07382445c",
+      "step": 0.001,
+      "maxTipDeflection": 0.01059763828257,
+      "modelSha256": "55f89555e41f1a90f6089a779833928a2e7ed1b6b91a8f0d7f33830415153874",
+      "deckSha256": "fdf097bccc7a9febb274166df5363789405deb173286934c86bb3f28e79aab1b"
+    },
+    {
+      "name": "time refinement 0.0005",
+      "ok": true,
+      "runId": "7e6752e3e8e64a018c93ad9aab6abdca",
+      "step": 0.0005,
+      "maxTipDeflection": 0.01059763493844,
+      "modelSha256": "3bd24c8fb970f8450cf4e47609fa5942564cad116a1acd1e6d6506e125a4e244",
+      "deckSha256": "f2ba01929e681720581e27116e014446cbee9e7b54c99c2b949c8dfb36abf650"
+    },
+    {
+      "name": "time refinement 0.00025",
+      "ok": true,
+      "runId": "74473dee780c49b4b3587d9b093b1430",
+      "step": 0.00025,
+      "maxTipDeflection": 0.01059765250711,
+      "modelSha256": "16845bc2fd0319b7d84babf90f148f721bd3d4f53de4c815c89069387d55d08b",
+      "deckSha256": "bb4f1c895bd6182bbabc95901de4641fd49e28acf907cedd157760b7657eb066"
+    },
+    {
+      "name": "time refinement improves native deflection",
+      "ok": true
+    },
+    {
+      "name": "mesh refinement improves static shape and frequency",
+      "ok": true
+    },
+    {
+      "name": "changed length/mass/stiffness and upward load",
+      "ok": true,
+      "runId": "6de5d188df9d4956aa7bdf6124dd34bd",
+      "staticReference": 0.007156333333333332,
+      "finalDeflection": 0.007155565127051,
+      "relativeStaticError": 0.00010734635274101123,
+      "rootForce": 0.7500000093136,
+      "rootMoment": -0.5249671254937,
+      "modelSha256": "a06c794c04944cca26e30a94fc81a44c238e468162eb01ba5b086e8181fe94f4",
+      "deckSha256": "9a2dd9a85e81ccec46b04dda3848bbd815a29b28a185790cac24ee3f3521a6e1"
+    }
+  ]
+}

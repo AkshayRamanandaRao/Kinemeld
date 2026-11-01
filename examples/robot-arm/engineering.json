@@ -1,0 +1,372 @@
+{
+  "format": "kinemeld-engineering-example/1",
+  "study": "robot-arm",
+  "project": "examples/robot-arm/robot-arm.mbdyn-studio",
+  "modelSha256": "ae828ac97316281216cbe863aba5f9b4afea8c1d649a3d9a5e8323d4d6165e7f",
+  "generator": "examples/studies/build.py",
+  "generatorSha256Lf": "f4aa5939deaca44a5c8d8fe1165bd94a062a18c4208c7c230f6acba4621699a3",
+  "geometryProvenance": "Original parametric solids authored by Kinemeld; dimensions and densities are explicit inputs, not a manufacturer robot",
+  "upstream": null,
+  "units": {
+    "length": "m",
+    "mass": "kg",
+    "time": "s",
+    "angles": "degrees in saved poses; radians in reference equations"
+  },
+  "assets": [
+    {
+      "name": "turret-disc.step",
+      "sha256": "a0a5bae525087e80e60e29145b742cebab69ed7d6eee7f4739d620f34e846ea7"
+    },
+    {
+      "name": "shoulder-yoke.step",
+      "sha256": "41e41fab540c1f68c43c35d6a6ec7599fca686b0107bd9d59202badc982d1f0a"
+    },
+    {
+      "name": "upper-arm-beam.step",
+      "sha256": "3369a1fe571fa21b606a16775038fada086c7a80b69f2b090fef1176b9762661"
+    },
+    {
+      "name": "shoulder-motor.step",
+      "sha256": "4d3ae769c01c3c59a7896e89faaabfcea80e68598feeac9382fb72879d0def21"
+    },
+    {
+      "name": "forearm-beam.step",
+      "sha256": "f0ed05aa9667f41297d179f3c83690ac2c4e219abf56075f44dc4f079a27e19e"
+    },
+    {
+      "name": "elbow-motor.step",
+      "sha256": "e3565ea1f1bf7f3f8a5550ae5a96e559194184aefea0e7ca40f662d343eb707e"
+    },
+    {
+      "name": "payload.step",
+      "sha256": "10ceafef3f69d869036557cc8ef826cc007d8479ce2c99506af4b748dd397344"
+    },
+    {
+      "name": "pedestal.step",
+      "sha256": "c1209a648ba3c97a9eda339504ef231346f14c8d9653ca7faaac7bc03c418a0f"
+    },
+    {
+      "name": "floor-plate.step",
+      "sha256": "ca849d02ad81ddacbf8217a32780fbb1fd7ed9437071f1653050bf6b2aea1b8c"
+    }
+  ],
+  "bindings": {
+    "0:part-1": {
+      "body": "turret",
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.3,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "1:part-1": {
+      "body": "turret",
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.3,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "2:part-1": {
+      "body": "upper_arm",
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.42,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "3:part-1": {
+      "body": "upper_arm",
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.42,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "4:part-1": {
+      "body": "forearm",
+      "pose": {
+        "x": 0.42,
+        "y": 0.0,
+        "z": 0.42,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "5:part-1": {
+      "body": "forearm",
+      "pose": {
+        "x": 0.42,
+        "y": 0.0,
+        "z": 0.42,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "6:part-1": {
+      "body": "forearm",
+      "pose": {
+        "x": 0.42,
+        "y": 0.0,
+        "z": 0.42,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    }
+  },
+  "hardpoints": [
+    {
+      "joint": "base_yaw",
+      "type": "revolute",
+      "end": "A",
+      "body": "ground",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.3
+      },
+      "worldM": [
+        0.0,
+        0.0,
+        0.3
+      ],
+      "axisLocal": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      "basis": "Authored +Z turret axis at 0.30 m pedestal height."
+    },
+    {
+      "joint": "base_yaw",
+      "type": "revolute",
+      "end": "B",
+      "body": "turret",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "worldM": [
+        0.0,
+        0.0,
+        0.3
+      ],
+      "axisLocal": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      "basis": "Authored +Z turret axis at 0.30 m pedestal height."
+    },
+    {
+      "joint": "shoulder",
+      "type": "revolute",
+      "end": "A",
+      "body": "turret",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.12
+      },
+      "worldM": [
+        0.0,
+        0.0,
+        0.42
+      ],
+      "axisLocal": {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      "basis": "Authored local +Y axis, 0.12 m above turret origin; ideal prescribed joint."
+    },
+    {
+      "joint": "shoulder",
+      "type": "revolute",
+      "end": "B",
+      "body": "upper_arm",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "worldM": [
+        0.0,
+        0.0,
+        0.42
+      ],
+      "axisLocal": {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      "basis": "Authored local +Y axis, 0.12 m above turret origin; ideal prescribed joint."
+    },
+    {
+      "joint": "elbow",
+      "type": "revolute",
+      "end": "A",
+      "body": "upper_arm",
+      "localM": {
+        "x": 0.42,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "worldM": [
+        0.42,
+        0.0,
+        0.42
+      ],
+      "axisLocal": {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      "basis": "Authored local +Y axis at 0.42 m upper-link length; ideal prescribed joint."
+    },
+    {
+      "joint": "elbow",
+      "type": "revolute",
+      "end": "B",
+      "body": "forearm",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "worldM": [
+        0.42,
+        0.0,
+        0.42
+      ],
+      "axisLocal": {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      "basis": "Authored local +Y axis at 0.42 m upper-link length; ideal prescribed joint."
+    }
+  ],
+  "densityAssumptions": [
+    {
+      "binding": "0:part-1",
+      "body": "turret",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "1:part-1",
+      "body": "turret",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "2:part-1",
+      "body": "upper_arm",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "3:part-1",
+      "body": "upper_arm",
+      "densityKgM3": 7850.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "4:part-1",
+      "body": "forearm",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "5:part-1",
+      "body": "forearm",
+      "densityKgM3": 7850.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "6:part-1",
+      "body": "forearm",
+      "densityKgM3": 7850.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    }
+  ],
+  "gravityM_s2": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": -9.81
+  },
+  "initialVelocities": {
+    "turret": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "upper_arm": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "forearm": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    }
+  },
+  "forceLaws": [],
+  "contacts": [],
+  "jointMotions": {
+    "base_yaw": {
+      "speedDegPerS": 45.0,
+      "rampTime": 1.0
+    },
+    "shoulder": {
+      "amplitudeDeg": -25.0,
+      "frequencyHz": 0.3
+    },
+    "elbow": {
+      "amplitudeDeg": 40.0,
+      "frequencyHz": 0.45
+    }
+  },
+  "interpretationLimits": [
+    "Three ideal prescribed axes; torque is an inverse-dynamics requirement, not motor capability or closed-loop control performance.",
+    "Uniform aluminium/steel density assumptions and ideal rigid parts; no gearbox, friction, backlash, flexibility or measured payload inertia.",
+    "Reference checks apply to this yaw/shoulder/elbow chain and stated motion laws.",
+    "No hardware tracking, actuator thermal/electrical model, safety or collision qualification."
+  ],
+  "hardwareValidation": "not-performed"
+}

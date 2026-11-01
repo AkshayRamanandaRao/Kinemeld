@@ -1,0 +1,86 @@
+name: Native GUI
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Platform to verify (all remains the release gate)"
+        type: choice
+        default: all
+        options: [all, linux, macos, windows]
+      solver_run:
+        description: "Successful audited Release run containing solver-linux/macos/windows artifacts"
+        default: "41336308183"
+        required: true
+  pull_request:
+    paths:
+      - "native/**"
+      - "tests/native-dialog*"
+      - "tests/native-macos/**"
+      - ".github/workflows/native-gui.yml"
+      - "frontend/app.js"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: native-gui-${{ github.event_name }}-${{ github.ref }}-${{ inputs.platform || 'all' }}
+  cancel-in-progress: true
+
+jobs:
+  dialogs:
+    name: Real dialogs (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include: >-
+          ${{ fromJSON(
+            inputs.platform == 'linux' && '[{"os":"ubuntu-24.04","platform":"linux","solver":"solver-linux"}]' ||
+            inputs.platform == 'macos' && '[{"os":"macos-15","platform":"macos","solver":"solver-macos"}]' ||
+            inputs.platform == 'windows' && '[{"os":"windows-latest","platform":"windows","solver":"solver-windows"}]' ||
+            '[{"os":"ubuntu-24.04","platform":"linux","solver":"solver-linux"},{"os":"macos-15","platform":"macos","solver":"solver-macos"},{"os":"windows-latest","platform":"windows","solver":"solver-windows"}]'
+          ) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Linux real desktop and portal dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libxdo-dev xvfb openbox xdotool wmctrl scrot python3-pyatspi xdg-desktop-portal xdg-desktop-portal-gtk zenity dbus-x11
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+      - name: Build the actual release host
+        run: cargo build --manifest-path native/Cargo.toml --locked --release -p mbdyn-studio-desktop
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.solver }}
+          path: build
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.solver_run || '41336308183' }}
+      - name: Install CAD and GUI test dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          npm ci
+      - name: Packaged native GUI matrix with actual CAD and solver results
+        run: python tests/native-dialog-ci.py
+      - name: Retain all reports, native control inventories, screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-gui-${{ matrix.platform }}
+          path: |
+            tests/evidence/native-dialogs-*/**
+            tests/evidence/native-platform-*/**
+            tests/evidence/packaged-robotics-*/report.json
+            build/native-gui/*.sha256
