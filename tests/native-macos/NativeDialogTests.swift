@@ -97,10 +97,8 @@ final class NativeDialogTests: XCTestCase {
         let combo = sheet.comboBoxes.firstMatch
         let field = combo.exists ? combo : sheet.textFields.firstMatch
         try fill(field, text: opening ? destination.path : destination.deletingLastPathComponent().path)
-        var go: XCUIElement?
-        try wait("enabled native Go button") { go = self.button(["Go"], in: sheet); return go != nil }
         try evidence(action, sheet, index: index)
-        go!.click()
+        field.typeKey(XCUIKeyboardKey.return, modifierFlags: [])
         try wait("Go to Folder sheet closes") { !sheet.exists }
         if !opening {
             let named = panel.textFields.matching(NSPredicate(format: "label IN %@", ["Save As:", "Save As", "Name:", "Name"])).firstMatch
