@@ -43,9 +43,9 @@ impl GuiTest {
         match payload["command"].as_str().ok_or("Missing GUI-test command.")? {
             "read" => {
                 let path = self.path(payload["name"].as_str().ok_or("Missing GUI-test file.")?)?;
-                if !path.exists() { return Ok(Value::Null); }
+                if !path.exists() { return Ok(json!({"text":null})); }
                 if fs::metadata(&path).map_err(|e| e.to_string())?.len() > MAX_PROJECT_BYTES + 1024 * 1024 { return Err("GUI-test read exceeds project size limit.".into()); }
-                Ok(json!(fs::read_to_string(path).map_err(|e| e.to_string())?))
+                Ok(json!({"text":fs::read_to_string(path).map_err(|e| e.to_string())?}))
             }
             "list" => Ok(json!(fs::read_dir(&self.root).map_err(|e| e.to_string())?.map(|entry| entry.map(|e| e.file_name().to_string_lossy().into_owned())).collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?)),
             "write" => {
@@ -121,7 +121,7 @@ mod tests {
             assert!(test.call(&json!({"command":"write","name":name,"text":"{}"})).is_err());
         }
         test.call(&json!({"command":"write","name":"saved.mbdyn-studio","text":"{}"})).unwrap();
-        assert_eq!(test.call(&json!({"command":"read","name":"saved.mbdyn-studio"})).unwrap(), json!("{}"));
+        assert_eq!(test.call(&json!({"command":"read","name":"saved.mbdyn-studio"})).unwrap(), json!({"text":"{}"}));
         assert!(test.call(&json!({"command":"action","id":1,"actions":[{"kind":"open","path":root.parent().unwrap().join("outside.json") }]})).is_err());
         assert!(test.call(&json!({"command":"action","id":1,"actions":[{"kind":"replace-result"}]})).is_err());
         fs::remove_dir_all(root).unwrap();

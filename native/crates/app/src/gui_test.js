@@ -14,7 +14,7 @@
     return value;
   }
   const equal = (a, b, message) => assert(JSON.stringify(canonical(a)) === JSON.stringify(canonical(b)), message);
-  const read = name => io('read', { name });
+  const read = async name => (await io('read', { name })).text;
   const json = async name => { const value = await read(name); return value === null ? null : JSON.parse(value); };
   const write = (name, value) => io('write', { name, text: typeof value === 'string' ? value : JSON.stringify(value) });
   const saveReport = () => io('report', { report });
