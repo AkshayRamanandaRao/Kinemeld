@@ -77,12 +77,24 @@ final class NativeDialogTests: XCTestCase {
         return candidates.filter { self.button(["Replace", "Replace File"], in: $0) != nil }
             .min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }
     }
-    private func fill(_ field: XCUIElement, text: String) throws {
+    private func fill(_ field: XCUIElement, text: String, directory: Bool = false) throws {
         try wait("native editable text field") { field.exists && field.isEnabled && field.isHittable }
         field.click()
         field.typeKey("a", modifierFlags: [.command])
+        field.typeKey(XCUIKeyboardKey.delete, modifierFlags: [])
+        try waitValue(field, text: "")
         field.typeText(text)
-        try wait("native text readback") { (field.value as? String) == text }
+        try waitValue(field, text: text, directory: directory)
+    }
+    private func waitValue(_ field: XCUIElement, text: String, directory: Bool = false) throws {
+        do { try wait("native text readback") {
+            guard let value = field.value as? String else { return false }
+            return value == text || (directory && text.hasSuffix("/") && value == String(text.dropLast()))
+        } }
+        catch {
+            throw NSError(domain: "NativeDialogs", code: 5, userInfo: [NSLocalizedDescriptionKey:
+                "Native text readback mismatch for \(field.identifier): expected \(text.debugDescription), observed \(String(describing: field.value))"])
+        }
     }
     private func choose(_ action: [String: Any], next: [String: Any]?, index: Int) throws {
         let opening = action["kind"] as? String == "open"
@@ -96,7 +108,8 @@ final class NativeDialogTests: XCTestCase {
         try wait("native Go to Folder sheet") { sheet.exists }
         let combo = sheet.comboBoxes.firstMatch
         let field = combo.exists ? combo : sheet.textFields.firstMatch
-        try fill(field, text: opening ? destination.path : destination.deletingLastPathComponent().path)
+        let goPath = opening ? destination.path : destination.deletingLastPathComponent().path + "/"
+        try fill(field, text: goPath, directory: !opening)
         try evidence(action, sheet, index: index)
         field.typeKey(XCUIKeyboardKey.return, modifierFlags: [])
         try wait("Go to Folder sheet closes") { !sheet.exists }
