@@ -2,6 +2,7 @@
 
 mod project_open;
 mod private_runtime;
+mod gui_test;
 
 use project_open::ProjectOpenState;
 
@@ -157,6 +158,7 @@ fn run() -> Result<(), String> {
     let smoke = env::args().any(|arg| arg == "--smoke");
     let root = workspace()?;
     let data = data_directory(&root)?;
+    let gui_test = gui_test::GuiTest::from_args(&data, smoke)?;
     let recovery = RecoveryStore::new(data.join("recovery")).map_err(|error| format!("Cannot prepare the recovery folder in {}: {error}", data.display()))?;
     // A snapshot from a session that ended without saving waits for the user's decision;
     // until then autosave must not replace it.
@@ -201,6 +203,7 @@ fn run() -> Result<(), String> {
     if smoke {
         builder = builder.with_initialization_script(include_str!("smoke.js"));
     }
+    if let Some(test) = &gui_test { builder = builder.with_initialization_script(&test.script()); }
     #[cfg(target_os = "linux")]
     let webview = {
         use tao::platform::unix::WindowExtUnix;
@@ -219,6 +222,8 @@ fn run() -> Result<(), String> {
     let mut busy = false;
     let mut agent_busy = false;
     let mut exiting = false;
+    #[cfg(target_os = "macos")]
+    if let Some(test) = &gui_test { test.start_driver()?; }
     event_loop.run(move |event, _, flow| {
         let _keep_context = &context;
         *flow = if exiting { ControlFlow::Exit } else { ControlFlow::Wait };
@@ -237,6 +242,7 @@ fn run() -> Result<(), String> {
                 let Ok(request) = serde_json::from_str::<Request>(&body) else { return; };
                 let mut exit_after = false;
                 let result: Result<Value, String> = (|| match request.op.as_str() {
+                    "gui-test" if gui_test.is_some() => gui_test.as_ref().unwrap().call(&request.payload),
                     "dirty" => { projects.mark_dirty(); Ok(json!({})) }
                     "busy" => { busy = true; Ok(json!({})) }
                     "idle" => { busy = false; Ok(json!({})) }
@@ -362,7 +368,7 @@ fn run() -> Result<(), String> {
 
 fn main() {
     if let Err(error) = run() {
-        if env::args().any(|arg| arg == "--smoke") {
+        if env::args().any(|arg| arg == "--smoke" || arg == "--native-gui-test") {
             if let Ok(data) = workspace().and_then(|root| data_directory(&root)) {
                 let _ = smoke_report(&data, &json!({"ok":false,"error":error}));
             }
