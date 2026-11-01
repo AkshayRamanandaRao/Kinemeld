@@ -27,7 +27,14 @@ def load(path):
 def atomic(path, value):
     temp = path.with_name("." + path.name + ".tmp")
     temp.write_text(json.dumps(value, indent=2), encoding="utf-8")
-    temp.replace(path)
+    for attempt in range(20):
+        try:
+            temp.replace(path)
+            return
+        except PermissionError:
+            if sys.platform != "win32" or attempt == 19:
+                raise
+            time.sleep(0.01)  # The host may still hold the previous JSON open on Windows.
 
 
 def digest(path):
@@ -38,12 +45,13 @@ class LinuxControls:
     """AT-SPI buttons/fields, constrained to this private desktop's owned processes."""
     def __init__(self, root, app_pid, portal_pids):
         import pyatspi
-        from gi.repository import Atspi
+        from gi.repository import Atspi, GLib
         Atspi.set_timeout(1000, 1000)
         self.api, self.root, self.app_pid = pyatspi, root, app_pid
         self.groups = {app_pid, *portal_pids}
         self.current, self.index, self.stage, self.since = None, 0, 0, 0
         self.events = []
+        self.native_error = GLib.Error
 
     def owned(self, pid):
         try:
@@ -78,7 +86,7 @@ class LinuxControls:
         return (item.name or "").replace("_", "").replace("&", "").strip().lower()
 
     def buttons(self, window, enabled=True):
-        return [item for item in self.walk(window) if item.getRole() == self.api.ROLE_PUSH_BUTTON and (not enabled or item.getState().contains(self.api.STATE_ENABLED))]
+        return [item for item in self.walk(window) if item.getRole() == self.api.ROLE_PUSH_BUTTON and (not enabled or item.getState().contains(self.api.STATE_ENABLED) or item.getState().contains(self.api.STATE_SENSITIVE))]
 
     def press(self, button):
         action = button.queryAction()
@@ -108,6 +116,12 @@ class LinuxControls:
         atomic(self.root / "action-result.json", value)
 
     def advance(self):
+        try:
+            self._advance()
+        except self.native_error:
+            pass  # A closing portal/Zenity window invalidates its AT-SPI objects; retry within the deadline.
+
+    def _advance(self):
         plan = load(self.root / "action.json")
         if not plan:
             return
@@ -219,12 +233,12 @@ class WindowsControls:
             evidence = self.call("wait", "--title", title)
             self.call("screenshot", "--title", title, "--out", str(self.root / f"native-{self.current}-{self.index}.png"))
             if kind in ("open", "save"):
-                self.call("file", "--title", title, "--path", str(Path(action["path"])))
+                evidence = self.call("file", "--title", title, "--path", str(Path(action["path"])))
             elif kind == "cancel":
-                self.call("cancel", "--title", title)
+                evidence = self.call("cancel", "--title", title)
             else:
                 button = "No" if action["text"] == "refuse-overwrite" else action["text"]
-                self.call("button", "--title", title, "--text", f"^{button}$")
+                evidence = self.call("button", "--title", title, "--text", f"^{button}$")
         self.events.append({"action": action, "pid": self.app_pid, "control": evidence})
         self.index += 1
         atomic(self.root / "action-result.json", {"id": self.current, "done": self.index >= len(self.plan["actions"]), "events": self.events})
@@ -301,7 +315,7 @@ def main():
             report.setdefault("nativePids", []).append(app.pid)
             controls = LinuxControls(root, app.pid, [portal.pid for portal in portals]) if sys.platform == "linux" else WindowsControls(root, app.pid) if sys.platform == "win32" else None
             deadline, latest, observed = time.monotonic() + 900, None, {}
-            action_id, action_since, progress = None, time.monotonic(), None
+            action_id, action_since, progress, close_since = None, time.monotonic(), None, None
             while time.monotonic() < deadline:
                 if controls:
                     controls.advance()
@@ -330,6 +344,8 @@ def main():
                     if app.poll() is not None:
                         assert app.returncode == 0, f"Normal native close exited {app.returncode}"
                         break
+                    close_since = close_since or time.monotonic()
+                    assert time.monotonic() - close_since < 20, "Confirmed native close did not exit within 20 seconds."
                 if app.poll() is not None:
                     raise AssertionError(f"Native app exited early ({app.returncode}); see {log.name}")
                 time.sleep(0.1)

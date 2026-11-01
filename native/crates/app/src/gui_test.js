@@ -73,6 +73,7 @@
   window.addEventListener('error', event => report.pageErrors.push(event.message));
   window.addEventListener('unhandledrejection', event => report.pageErrors.push(String(event.reason)));
   (async () => {
+    await saveReport();
     await until(() => text('#solverStatus').includes('MBDyn ready'), 'actual viewer/solver startup', 90000);
     await sleep(500);
     if (config.phase === 'initial') {
@@ -184,6 +185,7 @@
     }
   })().catch(async error => {
     report.status = 'failed'; report.error = error.stack || String(error);
+    report.viewer = { userAgent: navigator.userAgent, readyState: document.readyState, solverStatus: text('#solverStatus'), notice: notice(), resources: performance.getEntriesByType('resource').map(item => ({name: item.name, duration: item.duration})) };
     try { await saveReport(); } catch { /* The supervisor also fails on timeout/early process exit. */ }
   });
 })();

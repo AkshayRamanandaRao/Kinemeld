@@ -16,6 +16,7 @@ export XDG_RUNTIME_DIR="$session_root/runtime"
 mkdir -m 700 "$XDG_RUNTIME_DIR"
 mkdir -p "$XDG_CONFIG_HOME/xdg-desktop-portal"
 printf '[preferred]\ndefault=gtk\n' > "$XDG_CONFIG_HOME/xdg-desktop-portal/portals.conf"
+dbus-update-activation-environment DISPLAY XAUTHORITY XDG_CURRENT_DESKTOP XDG_RUNTIME_DIR XDG_CONFIG_HOME GDK_BACKEND GTK_MODULES NO_AT_BRIDGE
 openbox > "$session_root/openbox.log" 2>&1 &
 wm_pid=$!
 /usr/bin/python3 tests/native-dialog-platform.py --exe "$1" --solver-config "$2"

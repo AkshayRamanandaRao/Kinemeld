@@ -86,7 +86,14 @@ impl GuiTest {
     fn atomic(&self, name: &str, value: &Value) -> Result<(), String> {
         let temp = self.root.join(format!(".{name}.tmp"));
         fs::write(&temp, serde_json::to_vec_pretty(value).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-        fs::rename(temp, self.root.join(name)).map_err(|e| e.to_string())
+        for attempt in 0..20 {
+            match fs::rename(&temp, self.root.join(name)) {
+                Ok(()) => return Ok(()),
+                Err(error) if cfg!(windows) && error.kind() == std::io::ErrorKind::PermissionDenied && attempt < 19 => std::thread::sleep(std::time::Duration::from_millis(10)),
+                Err(error) => return Err(error.to_string()),
+            }
+        }
+        unreachable!()
     }
 
     #[cfg(target_os = "macos")]
@@ -124,6 +131,9 @@ mod tests {
         assert_eq!(test.call(&json!({"command":"read","name":"saved.mbdyn-studio"})).unwrap(), json!({"text":"{}"}));
         assert!(test.call(&json!({"command":"action","id":1,"actions":[{"kind":"open","path":root.parent().unwrap().join("outside.json") }]})).is_err());
         assert!(test.call(&json!({"command":"action","id":1,"actions":[{"kind":"replace-result"}]})).is_err());
+        test.call(&json!({"command":"report","report":{"status":"running"}})).unwrap();
+        test.call(&json!({"command":"report","report":{"status":"complete"}})).unwrap();
+        assert_eq!(fs::read_to_string(root.join("viewer-report.json")).unwrap().contains("complete"), true);
         fs::remove_dir_all(root).unwrap();
     }
 }

@@ -34,14 +34,17 @@ pass without skips before a platform is qualified:
 12. Dirty-close refusal retains the viewer/service. Confirmed normal close exits
     successfully, removes recovery and stops the owned backend.
 
-On Windows, [native-dialog-ui.mjs](../tests/native-dialog-ui.mjs) connects Playwright
-to the actual WebView2 instance over loopback CDP. The existing Win32 helper only
-controls the launched application's PID and its owned descendants. It needs an
-English Windows desktop with WebView2. `KINEMELD_NATIVE_EXE`,
+The fresh Windows runner uses the shared in-app test script and the existing
+Win32 helper. It needs an English Windows desktop with WebView2. The helper only
+controls the launched application's PID and its owned descendants; it does not
+require a browser debugging port. The separately retained
+[native-dialog-ui.mjs](../tests/native-dialog-ui.mjs) also connects Playwright to
+the actual WebView2 instance over loopback CDP on configured development machines.
+For that existing CDP suite, `KINEMELD_NATIVE_EXE`,
 `KINEMELD_NATIVE_SOLVER_CONFIG` and `MBDYN_STUDIO_PYTHON` select a packaged app,
 an actual native solver and the CAD-enabled Python interpreter.
 
-On macOS and Linux, the host's explicit `--native-gui-test CONFIG.json` mode injects
+On all three runners, the host's explicit `--native-gui-test CONFIG.json` mode injects
 [gui_test.js](../native/crates/app/src/gui_test.js) into its own viewer. That script
 clicks the real DOM controls and checks the resulting UI and saved documents. The
 normal bridge and dialog operations are unchanged. The additional `gui-test` IPC

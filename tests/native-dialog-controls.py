@@ -326,14 +326,19 @@ def main():
     controls = children(window, args.pid)
     if args.command == "file":
         if not args.path or "\0" in args.path: raise ValueError("A nonempty file path without NUL is required.")
-        field = filename_field(controls)
         value = C.create_unicode_buffer(args.path)
-        if not send(field["hwnd"], 0x000C, 0, C.cast(value, C.c_void_p).value):
-            raise RuntimeError("The file-name field rejected WM_SETTEXT.")
-        if info(field["hwnd"], True)["text"] != args.path:
+        for attempt in range(5):
+            field = filename_field(children(window, args.pid))
+            # Real edit notifications keep IFileDialog's filename binding in sync.
+            send(field["hwnd"], 0x00B1, 0, -1)  # EM_SETSEL, select all.
+            send(field["hwnd"], 0x00C2, 1, C.cast(value, C.c_void_p).value)  # EM_REPLACESEL.
+            time.sleep(0.15)
+            if info(field["hwnd"], True)["text"] == args.path:
+                break
+        else:
             raise RuntimeError("The file-name field did not retain the requested path.")
-        result["field"] = field
-        button = choose(controls, "Button", 1)
+        result["field"] = info(field["hwnd"], True)
+        button = choose(children(window, args.pid), "Button", 1)
     elif args.command == "cancel":
         button = choose(controls, "Button", 2)
     else:

@@ -7,6 +7,7 @@
 @property(nonatomic, strong) NSMutableArray *events;
 @property NSUInteger index;
 @property NSInteger stage;
+@property NSInteger panelNumber;
 @property NSTimeInterval since;
 @property BOOL ticking;
 @end
@@ -18,7 +19,12 @@
 }
 - (void)result:(NSString *)error {
     NSMutableDictionary *result = [@{@"id": self.plan[@"id"], @"done": @(self.index >= [self.plan[@"actions"] count]), @"events": self.events} mutableCopy];
-    if (error) result[@"error"] = error;
+    if (error) {
+        result[@"error"] = error;
+        NSMutableArray *windows = [NSMutableArray array];
+        for (NSWindow *window in NSApp.windows) [windows addObject:@{@"title": window.title ?: @"", @"class": NSStringFromClass(window.class), @"visible": @(window.visible), @"modal": @(window == NSApp.modalWindow), @"firstResponder": NSStringFromClass(window.firstResponder.class) ?: @""}];
+        result[@"windows"] = windows;
+    }
     [self write:@"action-result.json" value:result];
 }
 - (void)record:(NSDictionary *)action window:(NSWindow *)window {
@@ -67,6 +73,16 @@
         }
         return;
     }
+    if (self.stage == 3 && ([kind isEqual:@"open"] || [kind isEqual:@"save"] || [kind isEqual:@"cancel"])) {
+        NSWindow *panel = [NSApp windowWithWindowNumber:self.panelNumber];
+        NSWindow *top = hostModal;
+        while (top.attachedSheet) top = top.attachedSheet;
+        BOOL overwrite = [kind isEqual:@"save"] && top && [self button:top.contentView titles:@[@"Replace", @"Replace File"]];
+        if (!panel || !panel.visible || overwrite) {
+            self.index++; self.stage = 0; self.since = NSProcessInfo.processInfo.systemUptime; [self result:nil];
+        }
+        return;
+    }
     if (!modal) return;
     if ([kind isEqual:@"button"]) {
         if ([modal isKindOfClass:NSSavePanel.class]) return;
@@ -80,12 +96,13 @@
     BOOL opening = [panel isKindOfClass:NSOpenPanel.class];
     if ([kind isEqual:@"cancel"]) {
         if (([action[@"dialog"] isEqual:@"open"] && !opening) || ([action[@"dialog"] isEqual:@"save"] && opening)) return;
-        [self record:action window:panel]; self.index++; self.stage = 0; self.since = NSProcessInfo.processInfo.systemUptime; [self result:nil];
+        [self record:action window:panel]; self.panelNumber = panel.windowNumber; self.stage = 3; self.since = NSProcessInfo.processInfo.systemUptime;
         [self key:@"\033" code:53 flags:0 window:panel]; return;
     }
     if (![kind isEqual:(opening ? @"open" : @"save")]) return;
     NSString *path = action[@"path"];
     if (self.stage == 0) {
+        self.panelNumber = panel.windowNumber;
         [self record:action window:panel]; [panel makeKeyAndOrderFront:nil]; [NSApp activateIgnoringOtherApps:YES];
         if (opening) {
             // Open's selection is made through its real Go to Folder field and native Return.
@@ -104,7 +121,7 @@
         [self key:@"\r" code:36 flags:0 window:key];
         self.stage = 2; self.since = NSProcessInfo.processInfo.systemUptime; return;
     }
-    self.index++; self.stage = 0; self.since = NSProcessInfo.processInfo.systemUptime; [self result:nil];
+    self.stage = 3; self.since = NSProcessInfo.processInfo.systemUptime;
     [self key:@"\r" code:36 flags:0 window:panel];
 }
 @end
@@ -112,6 +129,7 @@
 void kinemeld_gui_test_start(const char *root) {
     static KinemeldGuiTest *driver;
     driver = [KinemeldGuiTest new]; driver.root = [NSString stringWithUTF8String:root];
+    [driver write:@"mac-driver.json" value:@{@"started": @YES, @"pid": @(NSProcessInfo.processInfo.processIdentifier)}];
     NSTimer *timer = [NSTimer timerWithTimeInterval:0.1 target:driver selector:@selector(tick:) userInfo:nil repeats:YES];
     [NSRunLoop.mainRunLoop addTimer:timer forMode:NSDefaultRunLoopMode];
     [NSRunLoop.mainRunLoop addTimer:timer forMode:NSModalPanelRunLoopMode];

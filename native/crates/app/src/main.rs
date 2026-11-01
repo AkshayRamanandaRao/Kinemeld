@@ -170,6 +170,7 @@ fn run() -> Result<(), String> {
     let event_loop = EventLoopBuilder::<String>::with_user_event().build();
     let mut context = WebContext::new(Some(data.join("runs").join("desktop-webview")));
     let proxy = event_loop.create_proxy();
+    let close_proxy = proxy.clone();
     if smoke {
         let timeout_proxy = proxy.clone();
         std::thread::spawn(move || {
@@ -236,6 +237,8 @@ fn run() -> Result<(), String> {
                     if !recovery_pending { let _ = recovery.clear(); }
                     exiting = true;
                     *flow = ControlFlow::Exit;
+                    // RFD's nested Windows message loop can consume the final wake-up.
+                    let _ = close_proxy.send_event(String::new());
                 }
             }
             Event::UserEvent(body) => {
