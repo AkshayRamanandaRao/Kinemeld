@@ -5,6 +5,47 @@ not a claim of general-purpose CAE qualification or measured usability superiori
 Run records, generated reports and local logs are ignored and are not included in
 the public checkout; the commands below produce fresh evidence on the target system.
 
+## Robotics roadmap integration (1 November 2026)
+
+The review branch implements P4–P10 with bounded model contracts. These checks
+establish the listed numerical and interface cases, not physical calibration.
+
+- Integrated Windows/native backend suite: **291 tests**, one existing WSL-only
+  conditional skip. All **98 JavaScript unit checks** pass. Asset and Rust notice
+  inventories remain current; no new runtime dependencies were added.
+- P4: [four engineering records](engineering-example-verification.md), 16 actual
+  solver runs, CAD mass/COM/tensor assumptions and independent references.
+- P5: cones/tori, 13 frontend geometric checks, extraction checks on OCP 7.9 and 8,
+  and ordinary/curved CAD GUI round trips with transformed attachments.
+- P6: 40 assistant checks; eight proposal/study/result GUI workflows with four
+  native runs. Transport is deterministic; live-language-model accuracy is not
+  part of this evidence.
+- P7: [17 native brake/contact cases](../examples/robot-contact-verification.json),
+  existing plane-contact regressions, editor/Undo/plot/CSV/project workflows and
+  actual HTTP rejection of an energy-producing native brake startup.
+- P8: [nine native controlled cases and two cleanup cases](../examples/rotary-control-verification.json),
+  ten unit checks and five GUI workflows. Real native hinge feedback, previous-step
+  held torque and native applied couples are cross-checked. Cancel and peer failure
+  stop the solver and controller. Windows native is verified here; other platform
+  stream builds await CI. WSL transport is explicitly rejected.
+- P9: [ten native flexible-link runs](../examples/flexible-link-verification.json),
+  six backend/two renderer checks, actual node playback, section/mesh editing,
+  full CSV and native artifacts, save/reopen/stale gates and actual process Cancel.
+  Static shape, first frequency and mesh/timestep refinements have independent
+  references. Flexible joints, general FE import and stress/fatigue are outside
+  this initial cantilever contract.
+- P10: six unit checks and real GUI candidates ranked from complete CSVs against
+  independent RMS integration. Explicit Apply/Undo/Redo, exact baseline CSV,
+  configuration save/reopen, bounds, cancellation and the real 30-second stalled-CSV
+  deadline are checked. Failed and overflowed responses cannot win. Rankings are
+  session data; the configuration and exported table retain the setup/results.
+- Existing spatial regression: all nine GUI scripts pass against the native solver.
+  Existing and curved CAD GUI scripts pass without page errors. Reports and
+  screenshots are retained under `verification/integrated-regression-8794/`.
+
+P2 cross-platform native-dialog qualification is tracked separately below and in
+[native GUI testing](native-gui-testing.md). Current work remains unpublished.
+
 ## Dependency and license audit (1 November 2026)
 
 P3's [audit record](dependency-audit.md) identifies the three actual v1.2.1
@@ -282,7 +323,7 @@ shutdown grace; it explicitly reports time limits rather than implying a
 convergence failure. This is not a run-time performance guarantee.
 
 No live comparative interaction benchmark was completed. Screen
-readers, touch gestures, arbitrary assemblies, general contact, flexible bodies and
+readers, touch gestures, arbitrary assemblies, general contact and flexible assemblies, and
 current-development MBDyn remain outside this verification scope.
 
 

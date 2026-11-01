@@ -1,8 +1,8 @@
 # Local AI simulation assistant
 
-The desktop connects to an actual local Ollama model. It can select a supported example, change numerical template parameters and time settings, validate the draft, and request a real MBDyn run when the latest user message explicitly asks for one. The model does not execute Python, shell commands, arbitrary decks or URLs. Spatial drafts are presented with complete current and proposed model values for explicit Apply or Discard. The frontend revalidates before applying through its existing undo history; an authorized solver run is deferred until the user applies the reviewed spatial draft.
+The desktop connects to an actual local Ollama model. It can select a supported example, change numerical template parameters and time settings, validate the draft, and request a real MBDyn run when the latest user message explicitly asks for one. The model does not execute Python, shell commands, arbitrary decks or URLs. Spatial drafts, model names, joint-frame links and parameter-study setups require explicit Apply or Discard. Model changes show complete current and proposed values; studies show the input, units, baseline and case values. The frontend revalidates before applying through its existing undo history; an authorized solver run is deferred until the user applies the reviewed spatial draft.
 
-The implemented tool boundary covers the six editable templates and the verified upstream example catalog. Pinned upstream studies keep their source revision, input hashes and original time settings; the assistant cannot modify those studies. User-authored spatial assembly graphs support atomic add/update operations on bodies, joints, translational springs, external loads, rotational elements, joint efforts, named frames and sphere-plane contacts, plus gravity-vector edits. A body may be copied from an existing ID with its physical properties, pose and velocity. The assistant can inspect and validate planar graphs but cannot edit their topology. This is a scoped simulation assistant, not an unrestricted CAD/CAE agent.
+The implemented tool boundary covers the six editable templates and the verified upstream example catalog. Pinned upstream studies keep their source revision, input hashes and original time settings; the assistant cannot modify those studies. User-authored spatial assembly graphs support atomic add/update operations on bodies, joints, translational springs, external loads, rotational elements, joint efforts, named frames, revolute drives and bearing brakes, sphere-plane contacts and frictionless sphere-sphere pairs, plus gravity-vector edits. A body may be copied from an existing ID with its physical properties, pose and velocity. It can also prepare bounded parameter studies, link joint ends to existing named frames, rename the model and inspect recorded numeric metrics from a matching local MBDyn result. The assistant can inspect and validate planar graphs but cannot edit their topology. This is a scoped simulation assistant, not an unrestricted CAD/CAE agent.
 
 ## Connection
 
@@ -34,6 +34,16 @@ Examples of supported requests:
 - “List the available suspension and source examples.”
 - “Prepare the spatial slider crank source example and explain its validation limits.”
 - “Copy body arm to a payload, connect them with a spherical joint using zero local anchors, and do not run.”
+
+### Reviewed studies, named frames and result summaries
+
+For a robot mechanism, request: `Prepare an arm-mass study using 0.5, 1 and 2 kg. Do not run.` The assistant first lists the scalar inputs already supported by the study editor, then stages one exact input and 2-12 distinct finite values. Every case must pass the existing model validator, and the entire sweep including the current baseline is limited to 12 cases. The review shows the actual editor label, units, baseline and proposed values. **Apply proposal** changes only the study setup; it retains the baseline model and existing results. Undo and Redo restore the study setup and its input draft.
+
+To execute the sweep, explicitly request `Set up the arm-mass study at 0.5, 1 and 2 kg, then run the study.` **Apply and run study** validates again and starts the existing bounded study runner. A baseline `request_run` cannot execute a proposed sweep. Discarding, changing the project or study draft, or any rejected tool prevents execution. Project changes during asynchronous validation invalidate the proposal. A failed project open also restores the previous setup, raw study values and retained cases.
+
+Use `link_joint_frames` to place an existing joint end from an existing named frame on the same body. Select a CAD feature and create its body-local named frame using the normal CAD tools first, then request the exact frame, joint end and frame axis. The assistant validates and synchronizes live links; it does not infer topology, select CAD faces, change STEP bindings or invent feature coordinates. Unlink through the editor when needed.
+
+Ask `Summarize the current recorded result.` to inspect whole-run numeric metrics from the current successful MBDyn record. The application supplies a run ID only for a fresh result; the backend checks the retained model matches exactly. The summary reads at most 32 MiB from that run's own `summary.json`, returns at most 128 finite scalar metrics and 32 unit entries, and never reads CSV or solver logs. The interface displays the recorded metrics alongside any model explanation. Missing, stale or unretained results return an unavailable reason. This action starts no solver and cannot derive an unrecorded quantity or certify hardware behavior.
 
 ### Worked example: propose a full inertia tensor
 
@@ -118,7 +128,7 @@ Explanations generated by the language model can be wrong. The authoritative edi
 
 `available` means the service returned installed local models; individual tool capability is checked when selected. If unreachable, status returns `available:false` with an actionable `detail` and code.
 
-`POST /api/agent/chat` accepts exactly these fields (`history` optional):
+`POST /api/agent/chat` accepts exactly these fields (`history` and `currentRunId` optional):
 
 ```json
 {
@@ -138,14 +148,18 @@ Successful response fields:
 |---|---|
 | `ok`, `provider`, `chatModel` | Transport completion and exact selected provider/model |
 | `answer` | Model-generated explanation; render as text, never executable HTML |
-| `actions` | Ordered accepted `{type:"load_example",id}`, `{type:"set_parameters",values}` or `{type:"set_simulation",values}`, `{type:"edit_spatial_assembly",edits}` or `{type:"set_spatial_gravity",values}` proposals |
-| `proposedModel` | Complete final validated draft if there are accepted edits; otherwise `null` |
+| `actions` | Ordered accepted model edits, `set_parameter_study`, `link_joint_frames` and `set_model_name` proposals |
+| `proposedModel` | Complete final validated model draft when the model changed; study-only proposals return `null` |
+| `proposedStudy` | Reviewed `{input,values}` setup or `null`; `input` is an exact catalogue path such as `bodies/arm/mass` |
+| `studyRunRequested` | Separately gated study execution request; requires the latest human to explicitly request running a study, sweep or cases and explicit Apply |
 | `validation` | Existing backend validator's result, including physical warnings |
 | `toolResults` | Ordered `{name,ok,result}` or `{name,ok:false,error}`; rejected edits retain their diagnostics |
 | `runRequested` | True only after the model calls `request_run`, the latest human explicitly requests a run, the draft is valid, and no tool operation failed |
-| `requiresUserRun` | Inverse of `runRequested`; when true, no automatic solver invocation is authorized |
+| `requiresUserRun` | Inverse of baseline `runRequested`; study execution is separately gated by `studyRunRequested` and reviewed Apply |
 
-For spatial proposals the frontend must display the complete current and proposed model, explain any affected STEP bindings, and require explicit Apply or Discard. It must ensure the current project and STEP bindings still match the request, revalidate `proposedModel`, and apply it atomically through undo before considering the run flag. An explicitly requested run is deferred until the user applies the reviewed spatial proposal. Never evaluate the assistant's prose, tool names, JSON strings or returned URLs as commands. Keep a failed run's existing solver diagnostics and partial artifacts.
+`currentRunId`, when supplied, must be the current local 32-character lowercase hexadecimal run ID; it is not a filesystem path. `current_result_summary` returns its inspectable evidence through `toolResults`.
+
+For spatial proposals and the additional reviewed workflows, the frontend must display the complete current and proposed model, explain any affected STEP bindings, and require explicit Apply or Discard. It must ensure the current project and STEP bindings still match the request, revalidate `proposedModel`, and apply it atomically through undo before considering the run flag. An explicitly requested run is deferred until the user applies the reviewed spatial proposal. Never evaluate the assistant's prose, tool names, JSON strings or returned URLs as commands. Keep a failed run's existing solver diagnostics and partial artifacts.
 
 Run authorization recognizes direct clauses such as “run”, “please solve”, “can you simulate” or “then run” in the latest human message. Quotes/code and earlier history cannot authorize execution. Messages containing obvious negation (`not`, `don't`, `never`, `without`, etc.) fail the gate. This is deliberately conservative: for ambiguous phrasing, use the existing Run button or a short direct request. Even if explicitly requested, no run occurs unless the model also calls the run tool. `agent.py` has no solver execution call.
 
@@ -161,11 +175,13 @@ The integration uses Ollama's non-streaming `/api/chat` with native function too
 
 ## Spatial edit contract
 
-`edit_spatial_assembly` accepts `edits`, a nonempty array of at most 32 operations. Each `add` or `update` names one of `bodies`, `joints`, `forces`, `loads`, `rotationalElements`, `jointTorques`, `jointForces`, `frames` or `contacts`, an existing or new `id`, and typed `values`. A `copy` operation is available only for bodies and names `sourceId`, a new `id`, and `values.name`; it preserves all physical properties from the source. A body can be free; use a single batch to add a body and its joint when a connection is desired, or to make coordinated changes whose intermediate states would be invalid. `set_spatial_gravity` accepts a partial world gravity vector. Joint anchors and axes are local to their bodies (world coordinates for ground); body poses use Euler123 degrees. A body's optional `centerOfMass` is a body-local vector in metres from its origin, defaulting to zero for existing projects. `jointForces` is a sinusoidal force effort in newtons on a prismatic or cylindrical joint, not a prescribed motion. For a prismatic joint, `motion` has `amplitude` in metres and `frequencyHz` in hertz. Adding it requires both; updating existing motion may specify either. The joint and all initial velocities must pass the normal physics validator, and invalid batches leave the staged model unchanged. `frames` may be copied or live-linked to joint ends in the editor; AI edits of linked frames synchronize the joint, while direct edits to linked joint ends are rejected. The assistant cannot create or remove those links. `contacts` are explicit frictionless sphere-plane elements.
+`edit_spatial_assembly` accepts `edits`, a nonempty array of at most 32 operations. Each `add` or `update` names one of `bodies`, `joints`, `forces`, `loads`, `rotationalElements`, `jointTorques`, `jointForces`, `frames` or `contacts`, an existing or new `id`, and typed `values`. A `copy` operation is available only for bodies and names `sourceId`, a new `id`, and `values.name`; it preserves all physical properties from the source. A body can be free; use a single batch to add a body and its joint when a connection is desired, or to make coordinated changes whose intermediate states would be invalid. `set_spatial_gravity` accepts a partial world gravity vector. Joint anchors and axes are local to their bodies (world coordinates for ground); body poses use Euler123 degrees. A body's optional `centerOfMass` is a body-local vector in metres from its origin, defaulting to zero for existing projects. `jointForces` is a sinusoidal force effort in newtons on a prismatic or cylindrical joint, not a prescribed motion. For a prismatic joint, `motion` has `amplitude` in metres and `frequencyHz` in hertz. Adding it requires both; updating existing motion may specify either. The joint and all initial velocities must pass the normal physics validator, and invalid batches leave the staged model unchanged. `frames` may be copied or live-linked to joint ends in the editor; AI edits of linked frames synchronize the joint, while direct edits to linked joint ends are rejected. The assistant can create or replace links through `link_joint_frames`; remove links in the editor. `contacts` support explicit sphere-plane elements with optional regularised friction, and frictionless sphere-sphere pairs with two distinct dynamic bodies and body-local centers. Pair contacts reject plane-only friction and slip settings. A free revolute joint may have `friction:{coefficient,radius,preload}`: all values must be positive, coefficient at most 2, radius in metres and preload in newtons. Brakes require zero initial relative axial speed and reject prescribed motion. The normal startup validator also rejects a super-threshold instantaneous effort at time zero; use a resolved ramp. Revolute motion may instead use `{speedDegPerS,rampTime}` or `{amplitudeDeg,frequencyHz}`. No drive laws are combined.
 
 For an `oleo-strut`, the assistant may add all required parameters or update explicitly supplied fields such as reference gas pressure and metering areas. Values are SI and must pass the same gas-volume, stroke and timestep checks as manual edits. The assistant must not invent calibrated aircraft data. The [oleo guide](oleo-strut.md) explains the model and its limitations.
 
-The agent cannot delete or rename entities or change an existing element's type. It does not directly alter STEP files or bindings; the review warns if replacing a model would detach STEP parts. A solver-valid model may still differ from the user's request: the full before/after review is mandatory, and reviewing engineering inputs remains the user's responsibility.
+For controlled `jointTorques`, the assistant can propose a `type:"servo"` actuator with explicit `kp`, `kd`, `targetAngleDeg`, `rampTime` and `torqueLimit`. The same native-only, time-step, stationary-start and joint checks apply. Review and Apply are still required. Actual local sampled feedback, held-command semantics and export limits are documented in [closed-loop rotary actuators](rotary-control.md).
+
+The agent can rename the model through `set_model_name`; it cannot delete or rename graph entities or change an existing element's type. It does not directly alter STEP files or bindings; the review warns if replacing a model would detach STEP parts. A solver-valid model may still differ from the user's request: the full before/after review is mandatory, and reviewing engineering inputs remains the user's responsibility.
 
 ![Controlled AI proposal to change oleo pressure awaiting user review](images/spatial-ai-oleo.png)
 
@@ -174,10 +190,13 @@ The agent cannot delete or rename entities or change an existing element's type.
 Run focused boundary tests with:
 
 ```powershell
-python -m unittest discover -s backend -p test_agent.py -v
+python -m unittest discover -s backend -p "test_agent*.py" -v
+npm run test:agent-workflows
 ```
 
 The tests use an owned temporary HTTP model service, including actual HTTP tool calls, source provenance, current-project immutability, malformed/duplicate/nonfinite calls, cross-family edits, local-only transport, missing/disguised remote models, inference timeout, explicit run gating and failed-edit suppression. Temporary services are stopped afterward.
+
+`test_agent_workflows.py` adds exact study catalogues, case validation and run gating, named-frame placement, verified rotary-drive/brake/pair schemas, bounded recorded metrics, naming and immutable rejected batches. `tests/agent-workflows-ui.mjs` starts its own temporary local model service and actual Studio server, uses the browser controls, and runs a baseline plus three study cases with the local native MBDyn binary. Set `MBDYN_AGENT_TEST_SOLVER` to an existing solver executable when the dependency-audit fixture path is absent. The test verifies review, Discard, Apply, Undo/Redo, saved setup, stale proposals, unblurred edits during validation, result evidence and post-view project-open rollback. It writes scoped reports/screenshots under ignored `tests/evidence/`. This deterministic transport tests workflows; it does not measure live language-model accuracy or download/configure a provider.
 
 `node tests/spatial-ai-inertia-ui.mjs` exercises the worked inertia example in the actual browser application with a deterministic model fixture. It checks the old tensor remains unchanged before approval, the requested entries are applied exactly after review, and no simulation is started. It also captures the screenshot above.
 

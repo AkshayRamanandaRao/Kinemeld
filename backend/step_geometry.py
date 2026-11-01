@@ -110,7 +110,7 @@ def _worker(source):
     try:
         from OCP.BRep import BRep_Tool
         from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
-        from OCP.GeomAbs import GeomAbs_Circle, GeomAbs_Cylinder, GeomAbs_Plane
+        from OCP.GeomAbs import GeomAbs_Circle, GeomAbs_Cone, GeomAbs_Cylinder, GeomAbs_Plane, GeomAbs_Torus
         from OCP.gp import gp_Vec
         from OCP.BRepMesh import BRepMesh_IncrementalMesh
         from OCP.IFSelect import IFSelect_RetDone
@@ -213,6 +213,22 @@ def _worker(source):
                 centre = axis.Location().Translated(gp_Vec(axis.Direction()).Multiplied((start + end) / 2))
                 return {"type": "cylinder", "centre": metres(centre), "axis": direction(axis.Direction()),
                         "radius": round(cylinder.Radius()*.001, 9), "length": round(abs(end - start)*.001, 9)}
+            if kind == GeomAbs_Cone:
+                cone = surface.Cone()
+                apex = metres(cone.Apex())
+                angle = cone.SemiAngle()
+                if all(math.isfinite(value) and abs(value) <= 1e6 for value in apex) and math.isfinite(angle) and 0 < abs(angle) < math.pi / 2:
+                    axis = cone.Axis().Direction()
+                    if angle < 0:
+                        axis = axis.Reversed()
+                    return {"type": "cone", "apex": apex, "axis": direction(axis), "semiAngle": abs(angle)}
+            if kind == GeomAbs_Torus:
+                torus = surface.Torus()
+                centre = metres(torus.Location())
+                major, minor = torus.MajorRadius()*.001, torus.MinorRadius()*.001
+                if all(math.isfinite(value) and abs(value) <= 1e6 for value in centre) and all(math.isfinite(value) and 0 < value <= 1e6 for value in (major, minor)):
+                    return {"type": "torus", "centre": centre, "axis": direction(torus.Axis().Direction()),
+                            "majorRadius": round(major, 9), "minorRadius": round(minor, 9)}
             if kind == GeomAbs_Plane:
                 plane = surface.Plane()
                 normal = plane.Axis().Direction()

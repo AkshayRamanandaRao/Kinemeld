@@ -121,6 +121,14 @@ export function buildGlyphs(model, scale, offset) {
     group.add(object);
     links.push({ object, ends, g });
   }
+  for (const contact of model.contacts || []) {
+    if (contact.type !== "sphere-sphere") continue;
+    for (const [bodyKey, centerKey, radiusKey] of [["body", "center", "radius"], ["otherBody", "otherCenter", "otherRadius"]]) {
+      const sphere = part(group, new THREE.SphereGeometry(contact[radiusKey], 28, 18), FORCE_COLOR, `contact-${contact.id}`);
+      sphere.material.transparent = true; sphere.material.opacity = 0.25; sphere.material.depthWrite = false;
+      items.push({ object: sphere, body: contact[bodyKey], anchor: vector(contact[centerKey]), axis: new THREE.Quaternion() });
+    }
+  }
   const frames = [];
   for (const frame of model.frames || []) {
     if (frame.body !== "ground" && !bodies.has(frame.body)) continue;

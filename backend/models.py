@@ -1,10 +1,13 @@
 """Small, explicit MBDyn model families; all parameters use SI units except angle."""
 
 import math
+import json
+from pathlib import Path
 import industry_models
 import gear_deployment
 import planar_assembly
 import spatial_assembly
+import flexible_link
 
 DOUBLE_PENDULUM = {"kind": "double-pendulum", "name": "Coupled double pendulum", "parameters": {"mass1": 1.0, "mass2": 1.0, "length1": 1.0, "length2": 1.0, "angle1": 20.0, "angle2": 45.0, "gravity": 9.81}, "simulation": {"duration": 5.0, "step": 0.005}}
 
@@ -27,11 +30,17 @@ EXAMPLES.extend(gear_deployment.EXAMPLES)
 RANGES.update(gear_deployment.RANGES)
 EXAMPLES.extend(planar_assembly.EXAMPLES)
 EXAMPLES.extend(spatial_assembly.EXAMPLES)
+EXAMPLES.extend(flexible_link.EXAMPLES)
+_servo_model = json.loads((Path(__file__).resolve().parents[1] / "examples/robot-arm-servo.json").read_text(encoding="utf-8"))
+EXAMPLES.append({"id": "spatial-robot-servo", "title": _servo_model["name"], "description": "A two-link robot arm follows ramped targets using torque-limited local PD controllers and native hinge feedback.", "model": _servo_model})
+RANGES.update(flexible_link.RANGES)
 RANGES[planar_assembly.KIND] = {"gravity": (0, 100)}
 FAMILIES = {**{kind:industry_models for kind in industry_models.RANGES}, **{kind:gear_deployment for kind in gear_deployment.RANGES}}
 
 
 def validate(model):
+    if isinstance(model, dict) and model.get("kind") == flexible_link.KIND:
+        return flexible_link.validate(model)
     if isinstance(model, dict) and model.get("kind") == spatial_assembly.KIND:
         return spatial_assembly.validate(model)
     if isinstance(model, dict) and model.get("kind") == planar_assembly.KIND:
@@ -98,6 +107,8 @@ def validate(model):
 
 
 def deck(model):
+    if isinstance(model, dict) and model.get("kind") == flexible_link.KIND:
+        return flexible_link.deck(model)
     if isinstance(model, dict) and model.get("kind") == spatial_assembly.KIND:
         return spatial_assembly.deck(model)
     if isinstance(model, dict) and model.get("kind") == planar_assembly.KIND:
@@ -216,7 +227,7 @@ def sample(kind, time, position, velocity, angle=0):
 
 def preview(model):
     """Independent reference calculation; never presented as MBDyn output."""
-    if isinstance(model, dict) and model.get("kind") in (planar_assembly.KIND, spatial_assembly.KIND):
+    if isinstance(model, dict) and model.get("kind") in (planar_assembly.KIND, spatial_assembly.KIND, flexible_link.KIND):
         raise ValueError("Authored assemblies require an actual MBDyn run; no reference-preview solver is provided.")
     if not validate(model)["valid"]:
         raise ValueError("Model validation failed")
@@ -289,6 +300,8 @@ def preview(model):
 
 
 def metrics(model, samples):
+    if model["kind"] == flexible_link.KIND:
+        return flexible_link.metrics(model, samples)
     if model["kind"] == spatial_assembly.KIND:
         return spatial_assembly.metrics(model, samples)
     if model["kind"] == planar_assembly.KIND:

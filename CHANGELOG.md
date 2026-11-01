@@ -6,6 +6,24 @@ rules in [docs/project-format.md](docs/project-format.md).
 
 ## Unreleased
 
+- Add traceable engineering records for four studies, with 16 fresh solver runs,
+  mass/COM/tensor provenance and independent kinematics, torque and drop references.
+- Pick analytic cones and tori for joint/frame placement and measurement, including
+  transformed STEP occurrences, Undo/Redo and original-CAD project round trips.
+- Review assistant proposals for parameter studies, named-frame links and model
+  names; summarize actual stored results and reject stale proposals atomically.
+- Add native static/sliding revolute brakes and moving sphere-pair normal contact,
+  with editor, glyphs, plots, full CSV and numerical/GUI benchmarks. Initial brake
+  loading is bounded; energy-producing native startup states fail explicitly.
+- Add bounded constrained design search with up to 25 actual MBDyn candidates,
+  full-resolution response ranking, explicit Apply/Undo and saved configurations.
+- Add torque-limited rotary PD actuators with real native hinge feedback and a
+  separate trusted local controller, inspectable command/feedback traces and
+  owned process cancellation. Controlled runs use the managed native solver;
+  standalone deck export and WSL transport fail with an actionable explanation.
+- Add a clamped flexible robot-link template using native beam3 elements and
+  actual node playback, section/inertia inputs, root reactions, full CSV and
+  mesh/timestep/static/frequency benchmarks.
 - Audit all three desktop dependency sets, retain missing Rust/Microsoft/solver
   notices, and require exact runtime source packages with distribution patches
   beside solver binaries. Check full archive coverage and reject stale or incomplete
@@ -27,8 +45,8 @@ rules in [docs/project-format.md](docs/project-format.md).
 - Refreshed both aircraft nose-gear MP4/GIF pairs with concise model titles and
   captions. Engineering assumptions and interpretation limits remain in the study
   guide. The workflow recorder now generates and checks its GIF alongside its MP4.
-- Ordered the remaining roadmap work with completion checks and a review before
-  each next item; removed the already-released contact friction feature from "next".
+- Prioritize the remaining roadmap around robotics multibody dynamics; proceed
+  across the authorized items and keep aerodynamics outside the active scope.
 
 ## 1.2.1 — Documentation, help text and first launch
 

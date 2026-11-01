@@ -15,6 +15,7 @@ import { parseSolverCsv, fullSeries, seriesStatistics, envelope } from "./full-r
 import { faceAt, cadPlacement, worldFeature, jointFromFeature, frameFromFeature, measureFeatures, worldFromBody, alongAxis, inPlane } from "./cad-features.js";
 import { studyParameters as listStudyParameters, parameterValue, caseModel, parseValues, suggestValues, caseSummary, summaryCsv, caseColors, pathKey, MAX_CASES } from "./studies.js";
 import { syncFrameLinks } from "./frame-editor.js";
+import { setupDesignSearch } from "./design-search-view.js";
 
 const $ = (id) => document.getElementById(id);
 const paths = {
@@ -142,7 +143,7 @@ let view,
   playTime = 0,
   pendingDownload,
   referenceLoad = 0, stepLoad = 0, stepAppend = false;
-let applyingNativeProject = false, projectRevision = 0, browserDirty = false, activeRunToken = null;
+let applyingNativeProject = false, projectRevision = 0, browserDirty = false, activeRunToken = null, designSearch;
 const nativeDesktop = window.mbdynNative;
 const stepMass = setupStepMass({
   getState:()=>({asset:state.step,model:state.model,partId:$("stepPart").value,busy:state.busy || state.saving || state.opening}),
@@ -382,7 +383,7 @@ async function runSource(id, runToken = null) {
   }
   return data;
 }
-function snapshot() { return {model:structuredClone(state.model),step:state.step}; }
+function snapshot() { return {model:structuredClone(state.model),step:state.step,designDraft:designSearch?.snapshot(),studyDraft:{setup:structuredClone(state.studySetup || null),input:$("studyParameter").value,values:$("studyValues").value}}; }
 function pushHistory() {
   state.history.push(snapshot());
   if (state.history.length > 50) state.history.shift();
@@ -450,6 +451,7 @@ function setNumber(section, key, raw) {
   changed();
 }
 function renderMetadata() {
+  $("previewButton").disabled=state.model.kind === "flexible-link";
   $("kinematicsButton").hidden = state.model.kind !== "spatial-assembly";
   const m = state.model;
   const source = sourceInfo(m);
@@ -664,7 +666,7 @@ function renderTree() {
   if (state.model.kind === "spatial-assembly") {
     entries[0] = ["BODIES", String(state.model.bodies.length), state.model.bodies.map((body,index)=>[index?`node-${body.id}`:"body","cube",body.name,body.id])];
     entries[1] = ["JOINTS", String(state.model.joints.length), state.model.joints.map(joint=>[`joint-${joint.id}`,"joint",joint.id,`${joint.a} ↔ ${joint.b}`])];
-    entries[2] = ["FORCES", String(1+(state.model.forces || []).length+(state.model.loads || []).length+(state.model.rotationalElements || []).length+(state.model.jointTorques || []).length+(state.model.jointForces || []).length+(state.model.contacts || []).length), [["load","gravity","Gravity",""],...(state.model.forces || []).map(item=>[`force-${item.id}`,"spring",item.id,`${item.a} ↔ ${item.b}`]),...(state.model.loads || []).map(item=>[`applied-${item.id}`,"gravity",item.id,item.body]),...(state.model.rotationalElements || []).map(item=>[`rotary-${item.id}`,"spring",item.id,item.joint]),...(state.model.jointTorques || []).map(item=>[`torque-${item.id}`,"joint",item.id,item.joint]),...(state.model.jointForces || []).map(item=>[`joint-force-${item.id}`,"joint",item.id,item.joint]),...(state.model.contacts || []).map(item=>[`contact-${item.id}`,"force",item.id,item.body])]];
+    entries[2] = ["FORCES", String(1+(state.model.forces || []).length+(state.model.loads || []).length+(state.model.rotationalElements || []).length+(state.model.jointTorques || []).length+(state.model.jointForces || []).length+(state.model.contacts || []).length), [["load","gravity","Gravity",""],...(state.model.forces || []).map(item=>[`force-${item.id}`,"spring",item.id,`${item.a} ↔ ${item.b}`]),...(state.model.loads || []).map(item=>[`applied-${item.id}`,"gravity",item.id,item.body]),...(state.model.rotationalElements || []).map(item=>[`rotary-${item.id}`,"spring",item.id,item.joint]),...(state.model.jointTorques || []).map(item=>[`torque-${item.id}`,"joint",item.id,item.joint]),...(state.model.jointForces || []).map(item=>[`joint-force-${item.id}`,"joint",item.id,item.joint]),...(state.model.contacts || []).map(item=>[`contact-${item.id}`,"force",item.id,item.type === "sphere-sphere" ? `${item.body} ↔ ${item.otherBody}` : item.body])]];
   }
   const root = $("modelTree");
   root.replaceChildren();
@@ -713,7 +715,7 @@ function describeEntity(entity) {
     const force = entity.startsWith("force-") && (model.forces || []).find((f) => f.id === id);
     if (force) return [force.id, `${force.type === "oleo-strut" ? "Oleo-pneumatic strut" : "Spring-damper"} · ${force.a} ↔ ${force.b}`];
     const contact = entity.startsWith("contact-") && (model.contacts || []).find((c) => c.id === id);
-    if (contact) return [contact.id, `Sphere-plane contact · ${contact.body}`];
+    if (contact) return [contact.id, contact.type === "sphere-sphere" ? `Sphere–sphere contact · ${contact.body} ↔ ${contact.otherBody}` : `Sphere-plane contact · ${contact.body}`];
   }
   const item = document.querySelector(`#modelTree [data-entity="${CSS.escape(entity)}"]`);
   return item ? [item.children[1]?.textContent || entity, item.children[2]?.textContent || ""] : [entity, ""];
@@ -772,7 +774,7 @@ function startPick(text, onFeature, atFrame = false) {
     },
     select: (hit) => {
       const feature = featureFromHit(hit);
-      if (!feature) return notice("Pick a cylindrical or planar face, or a circular edge, of a STEP part.", "warn");
+      if (!feature) return notice("Pick a cylindrical, conical, toroidal or planar face, or a circular edge, of a STEP part.", "warn");
       onFeature(feature);
     },
   });
@@ -791,7 +793,7 @@ $("pickCancel").onclick = stopPick;
 /** Put both ends of a joint on one picked feature: the anchors coincide and the axes agree. */
 function pickJointFromCad(jointId) {
   if ((state.model.frameLinks || []).some((link) => link.joint === jointId)) return notice("This joint follows a linked reference frame; unlink it before placing it from CAD.", "warn");
-  startPick(`Joint ${jointId}: click a bore, shaft or pin (cylindrical face), a hole rim (circular edge) or a planar face.`, (feature) => {
+  startPick(`Joint ${jointId}: click a cylinder, cone (apex), torus (centre), circular rim or planar face.`, (feature) => {
     stopPick();
     placeJoint(jointId, feature);
   });
@@ -868,7 +870,7 @@ const jointDrag = {
 };
 /** Put a named frame's origin on a picked feature with local +Z along its axis; linked joints follow. */
 function pickFrameFromCad(frameId) {
-  startPick(`Frame ${frameId}: click a cylindrical or planar face; local +Z follows its axis or normal.`, (feature) => {
+  startPick(`Frame ${frameId}: click a cylinder, cone (apex), torus (centre), circular rim or plane; local +Z follows its axis or normal.`, (feature) => {
     const frame = (state.model.frames || []).find((item) => item.id === frameId);
     if (!frame) return stopPick();
     // Linked joint ends follow the frame; check them on a copy before touching the model.
@@ -961,7 +963,7 @@ function renderProperties() {
     for (const item of state.model.rotationalElements || []) titles[`rotary-${item.id}`] = `Rotational spring / damper · ${item.id}`;
     for (const item of state.model.jointTorques || []) titles[`torque-${item.id}`] = `Time-varying torque · ${item.id}`;
     for (const item of state.model.jointForces || []) titles[`joint-force-${item.id}`] = `Axial joint force · ${item.id}`;
-    for (const item of state.model.contacts || []) titles[`contact-${item.id}`] = `Sphere-plane contact · ${item.id}`;
+    for (const item of state.model.contacts || []) titles[`contact-${item.id}`] = `${item.type === "sphere-sphere" ? "Sphere–sphere" : "Sphere-plane"} contact · ${item.id}`;
   }
   $("propertyMode").textContent = source ? "Read-only deck" : "Editable";
   $("selectionTitle").textContent = titles[state.selection] || "Mechanism";
@@ -1021,8 +1023,10 @@ function renderProperties() {
     label.textContent = title;
     const wrapper = document.createElement("span");
     wrapper.className = "number-field";
-    const input = document.createElement("input");
-    input.type = "number";
+    const mesh = state.model.kind === "flexible-link" && key === "nodes";
+    const input = document.createElement(mesh ? "select" : "input");
+    if(mesh)for(const count of [3,5,9]){const option=document.createElement("option");option.value=count;option.textContent=`${count} nodes · ${(count-1)/2} beam elements`;input.append(option);}
+    else input.type = "number";
     input.id = `field-${key}`;
     input.value = state.model.parameters[key] ?? "";
     input.step = String(step);
@@ -1292,7 +1296,7 @@ function setBusy(busy) {
     "deckButton",
     "studyRunButton",
   ])
-    $(id).disabled = busy || (id === "previewButton" && Boolean(visualInfo())) || (state.saving && ["saveButton", "saveAsButton"].includes(id));
+    $(id).disabled = busy || (id === "previewButton" && (Boolean(visualInfo()) || state.model.kind === "flexible-link")) || (state.saving && ["saveButton", "saveAsButton"].includes(id));
   document
     .querySelectorAll(".inspector input")
     .forEach((i) => (i.disabled = busy || Boolean(sourceInfo())));
@@ -1382,6 +1386,19 @@ async function run(preview = false) {
 }
 function elementSignals(model, result) {
   return [
+    ...((model?.jointTorques || []).some(item=>item.type === "servo") ? [
+      {type:"servo",title:"Servo angle · measured / commanded",unit:"rad",channels:[["angle","Measured"],["desiredAngle","Commanded"]]},
+      {type:"servo",title:"Servo speed · measured / commanded",unit:"rad/s",channels:[["speed","Measured"],["desiredSpeed","Commanded"]]},
+      {type:"servo",title:"Servo tracking error",unit:"rad",channels:[["error","Error"]]},
+      {type:"servo",title:"Servo held torque",unit:"N·m",channels:[["torque","Torque"]]},
+      {type:"servo",title:"Servo saturation",unit:"",channels:[["saturated","Limited"]]},
+    ] : []),
+    ...((model?.joints || []).some(joint => joint.friction) ? [
+      {type:"brake",title:"Joint friction torque (native)",unit:"N·m",channels:[["torque","Torque"]]},
+      {type:"brake",title:"Joint friction speed",unit:"rad/s",channels:[["speed","Speed"]]},
+      {type:"brake",title:"Joint friction dissipation power",unit:"W",channels:[["power","Power"]]},
+      {type:"brake",title:"Joint friction dissipated energy",unit:"J",channels:[["dissipatedEnergy","Energy"]]},
+    ] : []),
     ...((model?.forces || []).length ? [
       {type:"force",title:"Spring length / extension",unit:"m",channels:[["length","Length"],["extension","Extension"]]},
       {type:"force",title:(model.forces || []).some(force=>force.type==="oleo-strut") ? "Axial tension (native / reconstructed)" : "Spring tension (reconstructed)",unit:"N",channels:[["force","Tension"]]},
@@ -1409,7 +1426,7 @@ function elementSignals(model, result) {
     ] : []),
     ...((model?.contacts || []).length ? [
       {type:"contact",title:"Contact gap / penetration",unit:"m",channels:[["gap","Gap"],["penetration","Penetration"]]},
-      {type:"contact",title:"Contact normal force (reconstructed)",unit:"N",channels:[["force","Force"]]},
+      {type:"contact",title:(model.contacts || []).every(contact=>contact.type==="sphere-sphere") ? "Contact normal force (native)" : (model.contacts || []).some(contact=>contact.type==="sphere-sphere") ? "Contact normal force (native / reconstructed)" : "Contact normal force (reconstructed)",unit:"N",channels:[["force","Force"]]},
       {type:"contact",title:"Contact elastic energy",unit:"J",channels:[["energy","Energy"]]},
       ...((model?.contacts || []).some(contact=>contact.damping>0) ? [
         {type:"contact",title:"Contact damping power (reconstructed)",unit:"W",channels:[["dampingPower","Power"]]},
@@ -1458,7 +1475,7 @@ function resultSignal() {
     const extra=elementSignals(state.result.model,state.result)[state.signal-NODE_SIGNALS];
     if (extra) {
       if(extra.type==="system")return extra;
-      const selected=["slider","cylinder","reaction","drive"].includes(extra.type) ? state.selectedJoint : state.selectedForce;
+      const selected=["slider","cylinder","reaction","drive","brake"].includes(extra.type) ? state.selectedJoint : state.selectedForce;
       return {...extra,channels:extra.channels.map(([key,label])=>[`${extra.type}:${selected}:${key}`,label])};
     }
     const node =
@@ -1488,6 +1505,8 @@ function resultSignal() {
   return signals[state.signal] || signals[0];
 }
 function channelValue(sample, key) {
+  if (key.startsWith("servo:")) {const [,id,field]=key.split(":");const value=sample.servoStates?.find(item=>item.id===id)?.[field];return field === "saturated" && typeof value === "boolean" ? Number(value) : value;}
+  if (key.startsWith("brake:")) {const [,id,field]=key.split(":");return sample.jointFrictionStates?.find(item=>item.id===id)?.[field];}
   if (key.startsWith("force:")) {const [,id,field]=key.split(":");return sample.forces?.find(item=>item.id===id)?.[field];}
   if (key.startsWith("oleo:")) {const [,id,field]=key.split(":");return sample.forces?.find(item=>item.id===id)?.[field];}
   if (key.startsWith("rotary:")) {const [,id,field]=key.split(":");return sample.rotationalStates?.find(item=>item.id===id)?.[field];}
@@ -1537,6 +1556,14 @@ function renderResult() {
         : "Reference preview";
   $("samplesMetric").textContent = result.samples.length.toLocaleString();
   const kind = result.model?.kind || state.model.kind;
+  const controller=$("controllerSummary");controller.replaceChildren();controller.hidden=!result.coSimulation;
+  if(result.coSimulation){
+    controller.append(document.createTextNode(`Local PD controller · one-step hold · ${Number(result.coSimulation.exchangeCount) || 0} native feedback exchanges. `));
+    for(const [key,label] of [["controllerTrace","Controller trace"],["controllerLog","Controller log"]]){
+      const url=result.files?.[key];
+      if(typeof url === "string" && /^\/api\/runs\/[0-9a-f]{32}\/[a-zA-Z0-9_.-]+$/.test(url)){const link=document.createElement("a");link.href=url;link.textContent=label;link.download="";controller.append(link,document.createTextNode(" · "));}
+    }
+  }
   const source = visualInfo(result.model);
   const forces=assemblyKind(result.model) ? result.model.forces || [] : [];
   const joints=assemblyKind(result.model) ? result.model.joints : [];
@@ -1557,10 +1584,10 @@ function renderResult() {
     state.selectedNode = source.nodes[0]?.id;
   if (state.signal >= signals.length) state.signal = 0;
   const selectedExtra=extraSignals[state.signal-NODE_SIGNALS];
-  const selectedElements=selectedExtra?.type === "rotary" ? result.model.rotationalElements || [] : selectedExtra?.type === "torque" ? result.model.jointTorques || [] : selectedExtra?.type === "joint-force" ? result.model.jointForces || [] : selectedExtra?.type === "contact" ? result.model.contacts || [] : selectedExtra?.type === "load" ? result.model.loads || [] : selectedExtra?.type === "oleo" ? forces.filter(force=>force.type==="oleo-strut") : forces;
+  const selectedElements=selectedExtra?.type === "servo" ? (result.model.jointTorques || []).filter(item=>item.type === "servo") : selectedExtra?.type === "rotary" ? result.model.rotationalElements || [] : selectedExtra?.type === "torque" ? result.model.jointTorques || [] : selectedExtra?.type === "joint-force" ? result.model.jointForces || [] : selectedExtra?.type === "contact" ? result.model.contacts || [] : selectedExtra?.type === "load" ? result.model.loads || [] : selectedExtra?.type === "oleo" ? forces.filter(force=>force.type==="oleo-strut") : forces;
   if (!selectedElements.some(item=>item.id===state.selectedForce)) state.selectedForce=selectedElements[0]?.id ?? null;
   const availableReactions=new Set((result.samples[0]?.jointReactions || []).map(item=>item.id));
-  const selectedJoints=selectedExtra?.type === "reaction" ? joints.filter(joint=>availableReactions.has(joint.id)) : selectedExtra?.type === "drive" ? joints.filter(joint=>joint.type==="revolute" && joint.motion) : joints.filter(joint=>joint.type===(selectedExtra?.type === "cylinder" ? "cylindrical" : "prismatic"));
+  const selectedJoints=selectedExtra?.type === "brake" ? joints.filter(joint=>joint.friction) : selectedExtra?.type === "reaction" ? joints.filter(joint=>availableReactions.has(joint.id)) : selectedExtra?.type === "drive" ? joints.filter(joint=>joint.type==="revolute" && joint.motion) : joints.filter(joint=>joint.type===(selectedExtra?.type === "cylinder" ? "cylindrical" : "prismatic"));
   if (!selectedJoints.some(joint=>joint.id===state.selectedJoint)) state.selectedJoint=selectedJoints[0]?.id ?? null;
   $("signalTitle").textContent = resultSignal().title;
   $("signalSelect").replaceChildren(
@@ -1574,9 +1601,9 @@ function renderResult() {
   $("signalSelect").value = String(state.signal);
   $("signalSelect").hidden = signals.length < 2;
   $("nodeSelect").hidden = !source || Boolean(selectedExtra);
-  $("forceSelect").hidden = !["force","rotary","torque","joint-force","load","contact","oleo"].includes(selectedExtra?.type);
+  $("forceSelect").hidden = !["force","rotary","torque","servo","joint-force","load","contact","oleo"].includes(selectedExtra?.type);
   $("forceSelect").setAttribute("aria-label",selectedExtra?.type === "load" ? "Result external load" : selectedExtra?.type === "rotary" ? "Result rotational spring" : selectedExtra?.type === "torque" ? "Result joint torque" : selectedExtra?.type === "joint-force" ? "Result axial joint force" : selectedExtra?.type === "contact" ? "Result contact" : selectedExtra?.type === "oleo" ? "Result oleo strut" : "Result spring or damper");
-  $("jointSelect").hidden = !["slider","cylinder","reaction","drive"].includes(selectedExtra?.type);
+  $("jointSelect").hidden = !["slider","cylinder","reaction","drive","brake"].includes(selectedExtra?.type);
   if(selectedElements.length){$("forceSelect").replaceChildren(...selectedElements.map(item=>{const option=document.createElement("option");option.value=item.id;option.textContent=item.id;return option;}));$("forceSelect").value=state.selectedForce;}
   if(selectedJoints.length){$("jointSelect").replaceChildren(...selectedJoints.map(joint=>{const option=document.createElement("option");option.value=joint.id;option.textContent=joint.id;return option;}));$("jointSelect").value=state.selectedJoint;}
   if (source) {
@@ -1599,7 +1626,7 @@ function renderResult() {
   const resultStep = result.model?.simulation?.step ?? state.model.simulation.step;
   $("stepMetric").innerHTML = `${Number.isFinite(resultStep) ? String(resultStep) : "—"} <span>s</span>`;
   refreshTrails();
-  if (!isStale && view && assemblyKind(result.model)) view.placeGround(view.resultEnvelopeMinZ(result));
+  if (!isStale && view && (assemblyKind(result.model) || kind === "flexible-link")) view.placeGround(view.resultEnvelopeMinZ(result));
   $("timeSlider").max = String(result.samples.length - 1);
   $("endTime").textContent = `${format(result.samples.at(-1).time)} s`;
   drawPlot();
@@ -1938,6 +1965,33 @@ function updateStudyInput() {
     : "This model has no inputs a study can vary.";
   $("studyRunButton").disabled = state.busy || !item;
 }
+async function checkAgentStudy(study, model) {
+  if (!study || Object.keys(study).sort().join(",") !== "input,values" || !Array.isArray(study.values) || study.values.some(value => typeof value !== "number" || !Number.isFinite(value))) throw Error("The parameter-study proposal is malformed.");
+  const input = listStudyParameters(model, fields).find(item => pathKey(item.path) === study.input);
+  if (!input) throw Error("The proposed study input is not available in the current model.");
+  const values = parseValues(study.values.join(","));
+  if (values.length !== study.values.length) throw Error("Study values must be distinct.");
+  const cases = [...new Set([parameterValue(model,input.path),...values])];
+  if (cases.length > MAX_CASES) throw Error(`A study runs at most ${MAX_CASES} cases, including the baseline.`);
+  const checked = await Promise.all(cases.map(async value => ({value,check:await checkModel(caseModel(model,input.path,value))})));
+  const bad = checked.find(item => !item.check.valid);
+  if (bad) throw Error(`Study value ${bad.value} is invalid: ${(bad.check.issues || []).map(issue => issue.message).join(" ")}`);
+  return {label:`${input.group} · ${input.label}`,unit:input.unit,baseline:parameterValue(model,input.path)};
+}
+function setStudySetup(setup) {
+  state.studySetup = structuredClone(setup);
+  studySetupPending = true;
+  renderStudyControls();
+  markNativeDirty();
+}
+function applyAgentProposal(model, study) {
+  pushHistory();
+  if (JSON.stringify(model) !== signature()) applyModel(model,false);
+  if (study) setStudySetup(study);
+  markNativeDirty();
+  saveLocal();
+  updateHistoryButtons();
+}
 $("studyParameter").onchange = () => { $("studyValues").value = ""; updateStudyInput(); };
 async function runStudy() {
   if (state.busy || state.saving || state.opening) return;
@@ -2176,7 +2230,7 @@ function showGuide() {
     <p><strong>Examples</strong> includes editable planar and spatial assemblies, six parameterized mechanism families and verified upstream MBDyn studies. Upstream inputs retain their original definitions and source provenance.</p>
     <h3>2. Build a planar body and hinge graph</h3>
     <p>In a planar assembly, add a body with a revolute hinge or prismatic slider. Edit its mass, principal inertia, pose and velocity; assign linear axial spring-dampers or constant global force and torque. Select a joint to edit its frame and anchors, and validate the initial constraints. Undo and Redo retain edits and STEP attachments.</p>
-    <p>The planar editor supports rooted trees. The spatial editor supports free bodies and disconnected graphs as well as closed loops, with revolute, prismatic, cylindrical, universal, spherical and weld joints. Constraints must have compatible initial states and non-redundant degrees of freedom; MBDyn decides whether a model is solvable. Elastic sphere-plane contact with optional damping and regularised Coulomb friction is available; general surface contact and flexible bodies are not. Units are metres, kilograms and seconds; body angles are entered in degrees.</p>
+    <p>The planar editor supports rooted trees. The spatial editor supports free bodies and disconnected graphs as well as closed loops, with revolute, prismatic, cylindrical, universal, spherical and weld joints. Constraints must have compatible initial states and non-redundant degrees of freedom; MBDyn decides whether a model is solvable. Sphere-plane contact supports damping and regularised Coulomb friction; sphere pairs support normal contact. Free revolute joints can use preloaded native stick/slip friction from a stationary start. General CAD surface contact and flexible bodies are not available in this editor. Units are metres, kilograms and seconds; body angles are entered in degrees.</p>
     <h3>3. Validate and run</h3>
     <p><strong>Validate model</strong> checks supported topology, physical inputs and time resolution. <strong>Inspect MBDyn deck</strong> shows the solver input. <strong>Run simulation</strong> uses the configured local MBDyn solver and retains errors and partial logs when a run fails. Validation alone is not engineering certification.</p>
     <h3>4. Explore the response</h3>
@@ -2441,6 +2495,7 @@ $("durationInput").onchange = (e) =>
 $("stepInput").onchange = (e) =>
   setNumber("simulation", "step", e.target.value);
 async function cancelActiveRun() {
+  designSearch?.stop();
   const token=activeRunToken;
   if(!token || !state.busy)return;
   if(studyRunning)studyCancelled=true;
@@ -2464,8 +2519,20 @@ $("validateButton").onclick = () => {
 // Undo and Redo keep the selected entity when it still exists, so editing continues in place.
 function restoreHistory(entry) {
   const selection = state.selection;
-  state.step=entry.step;if(view)view.stepAsset=entry.step;
-  applyModel(entry.model, false);replaceStep(entry.step,false);
+  if (JSON.stringify(entry.model) !== signature() || entry.step !== state.step) {
+    state.step=entry.step;if(view)view.stepAsset=entry.step;
+    applyModel(entry.model, false);replaceStep(entry.step,false);
+  }
+  state.studySetup=structuredClone(entry.studyDraft?.setup || null);
+  studySetupPending=Boolean(state.studySetup);
+  renderStudyControls();
+  if(entry.studyDraft && studyInputs.some(item => pathKey(item.path) === entry.studyDraft.input)) {
+    $("studyParameter").value=entry.studyDraft.input;
+    $("studyValues").value=entry.studyDraft.values;
+    updateStudyInput();
+  }
+  designSearch?.restore(entry.designDraft);
+  markNativeDirty();saveLocal();updateHistoryButtons();
   if (selection !== state.selection && document.querySelector(`#modelTree [data-entity="${CSS.escape(selection)}"]`)) select(selection);
 }
 $("undoButton").onclick = () => {
@@ -2629,6 +2696,7 @@ async function setRecoveryAside(reason = "") {
 }
 function currentViewState() {
   return {
+    designSearch: designSearch?.snapshot(),
     selection: state.selection,
     selectedNode: state.selectedNode,
     selectedForce: state.selectedForce,
@@ -2665,6 +2733,7 @@ function validSavedResult(result) {
     if (!Number.isFinite(sample.time) || sample.time <= previous) return false;
     previous = sample.time;
     if(firstReactions===undefined ? sample.jointReactions!==undefined : !Array.isArray(sample.jointReactions) || sample.jointReactions.length!==firstReactions.length || !firstReactions.every(expected=>{const matches=sample.jointReactions.filter(item=>item?.id===expected.id);return matches.length===1 && ["force","moment"].every(key=>matches[0][key] && ["x","y","z"].every(axis=>Number.isFinite(matches[0][key][axis])));} )) return false;
+    if(result.model.kind === "flexible-link")return result.source === "MBDyn" && Array.isArray(sample.nodes) && sample.nodes.length === result.model.parameters.nodes && Array.from({length:result.model.parameters.nodes},(_,i)=>`flex${i+1}`).every(id=>sample.nodes.filter(node=>node.id===id).length===1) && sample.nodes.every(node=>["x","y","z","rx","ry","rz","vx","vy","vz","wx","wy","wz"].every(key=>Number.isFinite(node[key]))) && ["tipDeflection","tipVelocity","tipSlope","appliedForce","rootForce","rootMoment","x","y","z","angle","velocity","value"].every(key=>Number.isFinite(sample[key]));
     if (source)
       return (
         Array.isArray(sample.nodes) &&
@@ -2709,6 +2778,8 @@ function validSavedResult(result) {
         )) && (!(result.model.loads || []).length || (["loadPower","appliedWork"].every(key=>Number.isFinite(sample[key])) && (result.model.kind !== "spatial-assembly" || (Array.isArray(sample.loadStates) && sample.loadStates.length === result.model.loads.length && result.model.loads.every(expected=>{const item=sample.loadStates.find(item=>item.id===expected.id);return item && Number.isFinite(item.power) && ["force","torque","moment"].every(key=>item[key] && ["x","y","z"].every(axis=>Number.isFinite(item[key][axis])));}))))) &&
         (!(result.model.rotationalElements || []).length || (Array.isArray(sample.rotationalStates) && sample.rotationalStates.length === result.model.rotationalElements.length && result.model.rotationalElements.every(expected=>{const item=sample.rotationalStates.find(item=>item.id===expected.id);return item && ["angle","velocity","torque"].every(key=>Number.isFinite(item[key]));}))) &&
         (!(result.model.jointTorques || []).length || (Array.isArray(sample.actuationStates) && sample.actuationStates.length === result.model.jointTorques.length && result.model.jointTorques.every(expected=>{const item=sample.actuationStates.find(item=>item.id===expected.id);return item && ["torque","power"].every(key=>Number.isFinite(item[key]));}) && ["actuationPower","actuationWork"].every(key=>Number.isFinite(sample[key])))) &&
+        (!(result.model.jointTorques || []).some(item=>item.type === "servo") || (Array.isArray(sample.servoStates) && sample.servoStates.length === result.model.jointTorques.filter(item=>item.type === "servo").length && result.model.jointTorques.filter(item=>item.type === "servo").every(expected=>{const matches=sample.servoStates.filter(item=>item.id === expected.id),item=matches[0];return matches.length === 1 && ["angle","speed","desiredAngle","desiredSpeed","error","torque","power"].every(key=>Number.isFinite(item[key])) && [true,false,0,1].includes(item.saturated) && Math.abs(item.torque) <= expected.torqueLimit+1e-9*Math.max(1,expected.torqueLimit);}))) &&
+        (!(result.model.joints || []).some(joint=>joint.friction) || (Array.isArray(sample.jointFrictionStates) && sample.jointFrictionStates.length === result.model.joints.filter(joint=>joint.friction).length && result.model.joints.filter(joint=>joint.friction).every(expected=>{const item=sample.jointFrictionStates.find(item=>item.id===expected.id);return item && ["torque","speed","power","dissipatedEnergy"].every(key=>Number.isFinite(item[key])) && item.power >= -1e-8*Math.max(1,Math.abs(item.torque)) && item.dissipatedEnergy>=-1e-6;}))) &&
         (!(result.model.contacts || []).length || (Array.isArray(sample.contactStates) && sample.contactStates.length === result.model.contacts.length && result.model.contacts.every(expected=>{const item=sample.contactStates.find(item=>item.id===expected.id);return item && ["gap","penetration","force","power","energy",...(expected.damping>0?["dampingPower","dissipatedEnergy"]:[]),...(expected.friction>0?["frictionForce","slip","frictionPower","frictionEnergy"]:[])].every(key=>Number.isFinite(item[key])) && (!(expected.friction>0) || ["x","y","z"].every(axis=>Number.isFinite(item.frictionVector?.[axis])));}))) &&
         (!(result.model.jointForces || []).length || (Array.isArray(sample.jointForceStates) && sample.jointForceStates.length === result.model.jointForces.length && result.model.jointForces.every(expected=>{const item=sample.jointForceStates.find(item=>item.id===expected.id);return item && ["force","power"].every(key=>Number.isFinite(item[key]));}) && ["jointForcePower","jointForceWork"].every(key=>Number.isFinite(sample[key]))))
       );
@@ -2719,6 +2790,7 @@ function validSavedResult(result) {
   });
 }
 function clearResult() {
+  $("controllerSummary").hidden=true;
   state.result = null;
   state.resultSignature = null;
   state.playing = false;
@@ -2764,11 +2836,14 @@ function applyDisplayPreset(preset) {
   setGlyphs(preset?.glyphs !== false);
   state.studySetup = validStudySetup(preset?.study);
   studySetupPending = Boolean(state.studySetup);
+  designSearch?.restore(preset?.designSearch);
 }
 // Keep the previous document and its live reference geometry until the new view is complete.
 function commitOpenedProject(project, reference, step) {
-  const keys = ["model","selection","history","future","result","resultSignature","validation","selectedNode","selectedForce","selectedJoint","measureNode","reference","step","playing","frame","signal"];
+  const keys = ["model","selection","history","future","result","resultSignature","validation","selectedNode","selectedForce","selectedJoint","measureNode","reference","step","playing","frame","signal","study","studySetup"];
   const previous = Object.fromEntries(keys.map(key=>[key,state[key]]));
+  const previousStudyDraft={pending:studySetupPending,input:$("studyParameter").value,values:$("studyValues").value};
+  const previousDesign=designSearch?.checkpoint();
   const previousRevision=projectRevision, previousDirty=browserDirty, previousApplying=applyingNativeProject;
   const camera=view ? {position:view.camera.position.clone(),target:view.controls.target.clone(),isolated:view.isolatedReference} : null;
   let stored, storageAvailable=false;
@@ -2813,6 +2888,7 @@ function commitOpenedProject(project, reference, step) {
     clearTimeout(validationTimer);
     Object.assign(state,previous);
     projectRevision=previousRevision;browserDirty=previousDirty;
+    designSearch?.rollback(previousDesign);
     if(storageAvailable)try {if(stored===null)localStorage.removeItem("mbdyn-studio-project");else localStorage.setItem("mbdyn-studio-project",stored);} catch {}
     let restoreError;
     try {
@@ -2821,6 +2897,10 @@ function commitOpenedProject(project, reference, step) {
       if(view)view.isolateReference(camera.isolated);
       renderMetadata();renderTree();renderProperties();renderStepControls();updateHistoryButtons();
       if(previous.result){renderResult();setFrame(previous.frame);}else clearResult();
+      renderStudyControls();
+      if(studyInputs.some(item=>pathKey(item.path)===previousStudyDraft.input))$("studyParameter").value=previousStudyDraft.input;
+      $("studyValues").value=previousStudyDraft.values;
+      studySetupPending=previousStudyDraft.pending;
       if(view && camera){view.camera.position.copy(camera.position);view.controls.target.copy(camera.target);view.controls.update();view.setSelection(previous.selection);}
     } catch (failure) {restoreError=failure;}
     if(restoreError)throw new Error(`${error.message} The previous document is retained, but its view could not be fully restored: ${restoreError.message}`);
@@ -3419,9 +3499,42 @@ async function init() {
     notice(`The guided tour could not start: ${error.message}. The model workspace remains available.`, "warn");
   }
 }
-setupAgent({getModel:()=>state.model, getSignature:signature, getBindings:()=>state.step?.metadata.bindings || {}, checkModel, applyModel, run, isBusy:()=>state.busy || state.saving || state.opening, nativeDesktop});
+setupAgent({getModel:()=>state.model, getSignature:()=>JSON.stringify([signature(),projectRevision,state.studySetup,$("studyParameter").value,$("studyValues").value,state.result?.runId,state.resultSignature]), getBindings:()=>state.step?.metadata.bindings || {}, getRunId:()=>!stale() && state.result?.ok && state.result.source === "MBDyn" ? state.result.runId : null, checkModel, checkStudy:checkAgentStudy, applyModel, applyProposal:applyAgentProposal, run, runStudy, isBusy:()=>state.busy || state.saving || state.opening, nativeDesktop});
 const kinematics=setupKinematics({getModel:()=>state.model,getBindings:()=>state.step?.metadata.bindings || {},isBusy:()=>state.busy || state.saving || state.opening,applyModel,notify:notice});
 setupPointProbe({getResult:()=>state.result,getModel:()=>state.model,getBindings:()=>state.step?.metadata.bindings || {},getFrame:()=>state.frame,isStale:()=>Boolean(stale()),notify:notice});
 setupWheelKinematics({getResult:()=>state.result,getModel:()=>state.model,getBindings:()=>state.step?.metadata.bindings || {},getFrame:()=>state.frame,isStale:()=>Boolean(stale()),notify:notice});
+async function designData(result) {
+  const deadline=Date.now()+30000;
+  loadFullResolution(result);
+  while(fullResolutionLoading.has(result) && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,25));
+  const data=fullResolution.get(result);
+  if(!data || data.times.length<2)throw Error("Design search requires the complete solver CSV. Run MBDyn again if it is unavailable.");
+  return data;
+}
+designSearch=setupDesignSearch({
+  inputs:()=>listStudyParameters(state.model,fields), fields,
+  baseline:async()=>{
+    const result=savedResult();
+    if(!result?.ok || result.source!=="MBDyn" || stale() || JSON.stringify(result.model)!==signature())throw Error("Run the current model with MBDyn before choosing design responses.");
+    return {data:await designData(result),model:structuredClone(result.model),runId:result.runId};
+  },
+  revision:()=>projectRevision,
+  busy:()=>state.busy || state.saving || state.opening,
+  changed:()=>{markNativeDirty();saveLocal();},
+  begin:()=>setBusy(true), end:()=>{activeRunToken=null;setBusy(false);status("Design search finished");},
+  check:checkModel,
+  solve:async model=>{
+    activeRunToken=[...crypto.getRandomValues(new Uint8Array(16))].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+    $("cancelRunButton").hidden=false;
+    try {
+      const result=await api("run",model,activeRunToken);
+      if(!result.ok || result.source!=="MBDyn")throw Error(result.error || "The candidate did not produce a native MBDyn result.");
+      return {data:await designData(result),runId:result.runId};
+    } finally {activeRunToken=null;$("cancelRunButton").hidden=true;}
+  },
+  cancel:cancelActiveRun,
+  apply:model=>{pushHistory();applyModel(model,false);notice("Applied the best evaluated inputs. Run MBDyn to inspect the updated design.");},
+  notice,download,
+});
 $("kinematicsButton").onclick=kinematics.open;
 init();

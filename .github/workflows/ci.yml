@@ -52,6 +52,7 @@ jobs:
         run: |
           npm ci
           npm run check
+          node --test tests/*.test.mjs
       - name: Backend unit and solver tests
         working-directory: backend
         run: python -m unittest discover -p 'test_*.py'
@@ -61,6 +62,49 @@ jobs:
           python -B verify_featured_studies.py
           python -B verify_constraint_analysis.py
           python -B verify_engineering_examples.py
+          python -B verify_robot_contact.py
+          python -B verify_rotary_control.py "$PWD/vendor/mbdyn-1.7.3/mbdyn/mbdyn"
+          python -B verify_flexible_link.py
+      - name: Automated robotics and project GUI workflows
+        env:
+          MBDYN_STUDIO_URL: http://127.0.0.1:8768
+        run: |
+          npx playwright install --with-deps chromium
+          mkdir -p tests/evidence
+          export MBDYN_DESIGN_TEST_SOLVER="$PWD/backend/vendor/mbdyn-1.7.3/mbdyn/mbdyn"
+          export MBDYN_CONTROL_TEST_SOLVER="$MBDYN_DESIGN_TEST_SOLVER"
+          export MBDYN_AGENT_TEST_SOLVER="$MBDYN_DESIGN_TEST_SOLVER"
+          python -B backend/server.py --port 8768 > tests/evidence/server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          python -B - <<'PY'
+          import time, urllib.request
+          for attempt in range(120):
+              try:
+                  urllib.request.urlopen("http://127.0.0.1:8768/api/health", timeout=1).close()
+                  break
+              except OSError:
+                  time.sleep(.25)
+          else:
+              raise SystemExit("GUI server did not start")
+          PY
+          npm run test:project-safety
+          npm run test:cad
+          npm run test:agent-workflows
+          npm run test:robot-contact
+          npm run test:controls
+          npm run test:flexible-link
+          npm run test:design
+          node tests/parameter-study-ui.mjs
+      - name: Retain graphical verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: robotics-gui-evidence
+          path: |
+            tests/evidence/**
+            verification/rotary-control/verification.json
+            examples/*-verification.json
 
   native:
     name: Desktop host (${{ matrix.os }})

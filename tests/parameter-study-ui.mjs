@@ -49,6 +49,12 @@ try {
   await page.waitForFunction(() => document.querySelector('#studyTable tbody tr:nth-child(3)')?.classList.contains('shown'));
   assert.notEqual(await page.locator('#runId').textContent(), baselineRun);
   assert.equal(await page.locator('#plot path.plot-curve[stroke-width="2.6"]').count(), 1);
+  // Design search must use the unchanged baseline, even while another study case animates.
+  await page.locator('[data-step="simulate"]').click();
+  await page.locator('#designSearchCard summary').click();
+  await page.locator('#designRefresh').click();
+  await page.waitForFunction(id => document.querySelector('#designContext')?.textContent.includes(id), baselineRun.trim());
+  assert.notEqual(await page.locator('#runId').textContent(), baselineRun);
   await page.locator('#playButton').click();
   await page.waitForTimeout(400);
   await page.locator('#playButton').click();

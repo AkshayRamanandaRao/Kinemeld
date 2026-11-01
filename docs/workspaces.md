@@ -18,7 +18,8 @@ higher than this estimate; MBDyn reports a singular assembly when constraints co
 ![Picking the hub cylinder of the wheel-end assembly to place the hub bearing](images/cad-picking.png)
 
 STEP imports keep each face's analytic geometry: cylinders (bores, shafts, pins) with
-their axis, centre, radius and length, and planes with a point and outward normal. They also
+their axis, centre, radius and length; cones with their apex, axis and half angle;
+tori with their centre, axis and both radii; and planes with a point and outward normal. They also
 keep each full circular edge — a hole rim or shaft end — with its centre, axis and radius.
 In a 3D assembly with imported parts:
 
@@ -30,6 +31,13 @@ In a 3D assembly with imported parts:
   hole rims are drawn as thin orange circles; a rim near the pointer wins over the face it
   bounds, and its centre and axis place the joint (*Circle Ø55.0 mm · axis −x*). Rims hidden
   behind a surface cannot be picked. Universal joints keep their perpendicular cross axes.
+
+  On a **cone**, the anchor is its exact apex, including the virtual apex beyond a truncated
+  face; the axis points from the apex into the cone. Its preview shows that construction cone,
+  rather than a fit to the tessellated facets. On a **torus**, the anchor is the centre of its
+  major circle and the axis is perpendicular to that circle. The tooltip shows the major and
+  tube diameters. The clicked tube point does not become the anchor. Enter a different anchor
+  by value when the application calls for a face point instead of these geometric centres.
 
   ![Hole rims drawn while picking; the hub's Ø55 rim is under the pointer](images/cad-rims.png)
 
@@ -44,7 +52,7 @@ In a 3D assembly with imported parts:
   The tooltip names the feature or the distance moved; **Esc** cancels, and each drag is one
   undo step. Dragging works in any 3D assembly, with or without CAD.
 - **Named reference frames → Place from CAD feature…** puts the frame's origin on the
-  feature and its local **+Z** along the cylinder axis or plane normal. Joint ends linked to
+  feature and its local **+Z** along the feature axis or plane normal. Joint ends linked to
   the frame follow it.
 - **Measure** (ruler in the view header, or **M**) reports the distance between two picked
   features — faces or rims — its x/y/z components, and the angle between their axes (0° for
@@ -55,8 +63,10 @@ body follows the body's initial pose, an unattached part stays where the STEP fi
 and the view shows the initial pose while you pick. In **Post-processing**, Measure uses the
 frame on screen instead: each attached part follows its body's solved pose at that time, and
 the result states the time (*… at t = 0.2250 s*), so clearances and travel can be read
-during the motion. Every placement is one undo step. Faces that are not cylinders or planes
-(fillets, splines, tori) and partial arcs cannot be picked; enter those anchors by value.
+during the motion. Every placement is one undo step. Non-analytic fillets/splines and
+partial arcs cannot be picked; enter those anchors by value. Cone/tori extracted as spline
+surfaces by an exporter remain display meshes; Kinemeld does not infer analytic geometry
+from an approximate mesh.
 
 ## 2 · Solve
 

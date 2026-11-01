@@ -237,6 +237,7 @@
               <div><small>Samples</small><strong id="samplesMetric">—</strong></div>
               <div><small>Run</small><strong id="runId" class="run-id">No solver run</strong></div>
             </div>
+            <p id="controllerSummary" class="field-help" hidden></p>
           </section>
           <section class="card study-results" id="studyResults" hidden>
             <h3><span data-icon="layers"></span>Parameter study</h3>
@@ -365,7 +366,7 @@
       <label class="agent-model-label">Model <select id="agentModel" aria-label="Local AI model"></select></label>
       <div class="agent-status-row"><p id="agentStatus" class="agent-status" role="status">Checking local AI service…</p><button id="agentRefresh" class="text-button" type="button">Refresh</button></div>
       <div id="agentMessages" class="agent-messages" aria-live="polite"></div>
-      <form id="agentForm"><label for="agentInput">Ask the agent to set up a supported simulation</label><textarea id="agentInput" rows="3" maxlength="4000" placeholder="Create a quarter-car bump study with 2000 N·s/m damping and run it"></textarea><div><small>Spatial proposals require review. Applied changes use Undo. Conversation is not saved.</small><button id="agentSend" type="submit" class="primary">Send</button></div></form>
+      <form id="agentForm"><label for="agentInput">Ask the agent to set up a supported simulation</label><textarea id="agentInput" rows="3" maxlength="4000" placeholder="Prepare an arm-mass study at 0.5, 1 and 2 kg. Do not run."></textarea><div><small>Spatial edits and new workflow proposals require review. Applied changes use Undo. Conversation is not saved.</small><button id="agentSend" type="submit" class="primary">Send</button></div></form>
     </aside>
     <script type="module" src="app.js"></script>
   </body>

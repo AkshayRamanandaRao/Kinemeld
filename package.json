@@ -5,7 +5,7 @@
   "description": "An open-source local workbench for MBDyn multibody simulations",
   "license": "MIT",
   "scripts": {
-    "check": "node --check frontend/app.js && node --check frontend/viewport.js && node --check frontend/industry.js && node --check frontend/industry-view.js && node --check frontend/source-view.js && node --check frontend/assembly-editor.js && node --check frontend/solid-editor.js && node --check frontend/frame-editor.js && node --check frontend/spatial-editor.js && node --check frontend/mass-properties.js && node --check frontend/polygon-extrusion.js && node --check frontend/revolution-profile.js && node --check frontend/point-probe.js && node --check frontend/wheel-kinematics.js && node --check frontend/reference-geometry.js && node --check frontend/step-asset.js && node --check frontend/step-mass.js && node --check frontend/step-view.js && node --check frontend/kinematics.js && node --check frontend/agent.js && node --check frontend/tour.js && node --check frontend/glyphs.js && node --check frontend/full-resolution.js && node --check frontend/cad-features.js && node --check frontend/studies.js",
+    "check": "node --check frontend/app.js && node --check frontend/viewport.js && node --check frontend/industry.js && node --check frontend/industry-view.js && node --check frontend/source-view.js && node --check frontend/assembly-editor.js && node --check frontend/solid-editor.js && node --check frontend/frame-editor.js && node --check frontend/spatial-editor.js && node --check frontend/mass-properties.js && node --check frontend/polygon-extrusion.js && node --check frontend/revolution-profile.js && node --check frontend/point-probe.js && node --check frontend/wheel-kinematics.js && node --check frontend/reference-geometry.js && node --check frontend/step-asset.js && node --check frontend/step-mass.js && node --check frontend/step-view.js && node --check frontend/kinematics.js && node --check frontend/agent.js && node --check frontend/tour.js && node --check frontend/glyphs.js && node --check frontend/full-resolution.js && node --check frontend/cad-features.js && node --check frontend/studies.js && node --check frontend/design-search.js && node --check frontend/design-search-view.js && node --check frontend/flexible-link.js",
     "test": "node tests/ui-smoke.mjs",
     "test:industry": "node tests/industry-ui.mjs",
     "test:source": "node tests/source-ui.mjs",
@@ -13,6 +13,7 @@
     "test:mass": "node --test tests/mass-properties.test.mjs && node tests/mass-properties-ui.mjs",
     "test:multibody": "node tests/primitive-ui.mjs && node tests/prismatic-ui.mjs && node tests/spring-ui.mjs && node tests/load-ui.mjs && node tests/combined-multibody-ui.mjs && node tests/step-rotation-branch-ui.mjs && node tests/oversized-save-ui.mjs",
     "test:agent": "node tests/agent-ui.mjs",
+    "test:agent-workflows": "node tests/agent-workflows-ui.mjs",
     "test:tour": "node tests/tour-ui.mjs && node tests/guided-workflow.mjs",
     "test:step": "node --test tests/step-view.test.mjs tests/step-spatial-occurrence.test.mjs tests/step-part-label.test.mjs && node tests/step-ui.mjs",
     "test:native-ui": "node tests/native-project-ui.mjs",
@@ -52,10 +53,14 @@
     "test:aircraft-nose-kinematics": "node tests/aircraft-nose-kinematics-ui.mjs",
     "test:oleo-strut": "node tests/oleo-strut-ui.mjs",
     "test:ai-oleo": "node tests/spatial-ai-oleo-ui.mjs",
-    "test:cad": "node --test tests/cad-features.test.mjs && node tests/cad-picking-ui.mjs",
+    "test:cad": "node --test tests/cad-features.test.mjs && node tests/cad-picking-ui.mjs && node tests/cad-curved-picking-ui.mjs",
     "test:post": "node tests/post-processing-ui.mjs",
     "test:drives": "node tests/rotary-drive-ui.mjs",
-    "test:studies": "node --test tests/studies.test.mjs && node tests/parameter-study-ui.mjs && node tests/featured-study-ui.mjs"
+    "test:studies": "node --test tests/studies.test.mjs && node tests/parameter-study-ui.mjs && node tests/featured-study-ui.mjs",
+    "test:design": "node --test tests/design-search.test.mjs && node tests/design-search-ui.mjs",
+    "test:robot-contact": "node --test tests/robot-contact.test.mjs && node tests/robot-contact-ui.mjs",
+    "test:flexible-link": "node --test tests/flexible-link.test.mjs && node tests/flexible-link-ui.mjs",
+    "test:controls": "node tests/rotary-control-ui.mjs"
   },
   "dependencies": {
     "three": "0.186.1"
