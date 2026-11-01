@@ -61,6 +61,9 @@ or legal permission where the upstream package itself leaves it unclear.
   `sourceArtifacts` field. Embedded-Python ZIPs and wheels are acquisition binaries,
   not corresponding source. This optional test bundle is outside standard public
   releases and remains `redistributionStatus: not-established`.
+- **Optional OCP compatibility:** the broader CI run found that OCP 8.0.1.1.0
+  renamed its indexed-shape collection. The shared compatibility module now
+  supplies the correct hasher-specific type; the dependency range is unchanged.
 
 ## Exact published solver dependencies
 

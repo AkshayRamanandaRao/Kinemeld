@@ -117,13 +117,12 @@ def _worker(source):
         from OCP.Interface import Interface_Static
         from OCP.STEPCAFControl import STEPCAFControl_Reader
         from OCP.TCollection import TCollection_ExtendedString
-        from ocp_compat import TColStd_SequenceOfAsciiString, TDF_LabelSequence
+        from ocp_compat import TColStd_SequenceOfAsciiString, TDF_LabelSequence, TopTools_IndexedMapOfShape
         from OCP.TDataStd import TDataStd_Name
         from OCP.TDF import TDF_Label
         from OCP.TDocStd import TDocStd_Document
         from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_REVERSED
         from OCP.TopExp import TopExp, TopExp_Explorer
-        from OCP.TopTools import TopTools_IndexedMapOfShape
         from OCP.TopLoc import TopLoc_Location
         from OCP.TopoDS import TopoDS
         from OCP.XCAFDoc import XCAFDoc_DocumentTool, XCAFDoc_ShapeTool

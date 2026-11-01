@@ -12,6 +12,8 @@ rules in [docs/project-format.md](docs/project-format.md).
   notices and sources. Build from filtered MBDyn source with unused Y12 implementations
   removed; preserve its provenance and COLAMD/OpenLDAP notices. See the
   [dependency audit](docs/dependency-audit.md) for scope and unresolved rights.
+- Keep STEP import working with `cadquery-ocp` 8.0.1 by mapping its renamed
+  indexed-shape collection through the existing OCP compatibility module.
 - Preserve newer model edits, CAD attachments and solver results when delayed
   imports, generated solids, example loads or project opens finish. Stale autosave
   payloads and acknowledgements cannot replace the active document's recovery state.
