@@ -67,17 +67,19 @@ fall back to a surrounding source checkout.
 The macOS driver runs an AppKit timer in the application's modal run loop. It
 operates only the app's own `NSOpenPanel`, `NSSavePanel` and alert controls.
 It sends the real Go to Folder
-shortcut to its key modal window, fills the native sheet's text control, and
-invokes its Go button. Save uses the labelled native filename control. Accessible
-attributes/actions use AppKit for local controls and Apple's public `AXUIElement`
-client API for remote controls. Client requests run off the main thread, start
-only from this app's PID and exact modal title, and have bounded traversal and
-messaging timeouts. Actual text writes require a native value readback; actual
-presses require an enabled control and its advertised press action. Numeric AX
-errors and accessibility trust state are retained, including permission failures.
-The harness does not request or change system permissions. No panel configuration
-properties are read or changed while it is running.
-The driver invokes actual enabled Open/Save controls and the native Cancel action.
+shortcut to its key modal window, enters text through native key-down/key-up
+events, and presses Return for Go and the default Open/Save action. Save enters
+the basename in the initially focused filename field before navigating to the
+existing parent folder. Escape cancels the picker. Overwrite refusal first
+requires an actual enabled native Replace button, then presses that confirmation's
+Cancel button and verifies the Save panel remains for its final cancellation.
+Missing native confirmation controls fail the case.
+Other alerts use their actual enabled AppKit buttons. All key events target the
+app's own modal window or its attached sheet. Input events and window identities
+are retained; no global keyboard, clipboard or permission changes are made.
+The fresh macOS runner denied remote accessibility queries with
+`kAXErrorAPIDisabled` (-25211), so this route does not depend on those queries.
+No panel configuration properties are read or changed while it is running.
 After the modal returns, the viewer checks the actual returned Open path, saved
 destination, complete project snapshots and target files. Overwrite
 refusal requires the actual confirmation controls. AppKit captures the app's own

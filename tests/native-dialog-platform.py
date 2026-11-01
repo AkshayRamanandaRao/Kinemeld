@@ -211,9 +211,20 @@ class WindowsControls:
 
     def call(self, command, *args):
         helper = Path(__file__).with_name("native-dialog-controls.py")
-        result = subprocess.run([os.environ.get("MBDYN_STUDIO_PYTHON", sys.executable), str(helper), "--pid", str(self.app_pid), command, *args], capture_output=True, text=True, timeout=25)
+        started = time.monotonic()
+        try:
+            result = subprocess.run([os.environ.get("MBDYN_STUDIO_PYTHON", sys.executable), str(helper), "--pid", str(self.app_pid), command, *args], capture_output=True, text=True, timeout=25)
+        except subprocess.TimeoutExpired as error:
+            output = lambda value: value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value or ""
+            evidence = {"command": command, "args": args, "elapsedSeconds": time.monotonic() - started,
+                "stdout": output(error.stdout), "stderr": output(error.stderr)}
+            atomic(self.root / "win32-helper-failure.json", evidence)
+            raise RuntimeError(f"Win32 {command} exceeded 25 seconds; retained helper diagnostics: {evidence}") from error
         if result.returncode:
-            raise RuntimeError(f"Win32 {command}: {result.stdout or result.stderr}")
+            evidence = {"command": command, "args": args, "elapsedSeconds": time.monotonic() - started,
+                "returncode": result.returncode, "stdout": result.stdout, "stderr": result.stderr}
+            atomic(self.root / "win32-helper-failure.json", evidence)
+            raise RuntimeError(f"Win32 {command}: {evidence}")
         value = json.loads(result.stdout)
         assert value["ok"], value
         return value

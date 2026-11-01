@@ -5,6 +5,7 @@ Only windows belonging to --pid are inspected or controlled. No global input is 
 import argparse
 import ctypes as C
 from ctypes import wintypes as W
+import faulthandler
 import json
 import os
 from pathlib import Path
@@ -118,6 +119,10 @@ def send(hwnd, message, wparam=0, lparam=0, timeout=1000):
     if not U.SendMessageTimeoutW(hwnd, message, wparam, lparam, 0x0002 | 0x0020, timeout, C.byref(result)):
         raise RuntimeError(f"Window {hwnd} did not acknowledge message {message:#06x} within {timeout} ms (Win32 error {C.get_last_error()}).")
     return result.value
+
+
+def phase(name, **details):
+    print(json.dumps({"phase": name, "monotonic": time.monotonic(), **details}), file=sys.stderr, flush=True)
 
 
 def info(hwnd, deadline=None):
@@ -347,6 +352,7 @@ def main():
             selector.add_argument("--id", type=int)
             selector.add_argument("--text")
     args = parser.parse_args()
+    phase("started", command=args.command, pid=args.pid)
     if args.self_check:
         item = {"hwnd": 1, "class": "Edit", "id": 1001, "parent": 0, "text": "name", "visible": True, "enabled": True}
         assert filename_field([item]) == item
@@ -381,6 +387,7 @@ def main():
         return terminate_child(args.pid, args.child_pid)
     if not 0 <= args.timeout <= 15:
         parser.error("--timeout must be between 0 and 15 seconds")
+    phase("wait-window", title=args.title)
     window = wait_window(args.pid, args.title, args.timeout, dialogs=args.command not in ("close", "screenshot"))
     result = {"ok": True, "window": window}
     if args.command == "wait": return result
@@ -388,34 +395,45 @@ def main():
     if args.command == "close":
         post(window["hwnd"], 0x0010)
         return result
+    phase("initial-controls", hwnd=window["hwnd"])
     controls = children(window, args.pid)
     if args.command == "file":
         if not args.path or "\0" in args.path: raise ValueError("A nonempty file path without NUL is required.")
         value = C.create_unicode_buffer(args.path)
         for attempt in range(5):
+            phase("find-file-field", attempt=attempt + 1)
             field = filename_field(children(window, args.pid))
             # Real edit notifications keep IFileDialog's filename binding in sync.
+            phase("select-file-field", hwnd=field["hwnd"])
             send(field["hwnd"], 0x00B1, 0, -1)  # EM_SETSEL, select all.
+            phase("replace-file-field", hwnd=field["hwnd"])
             send(field["hwnd"], 0x00C2, 1, C.cast(value, C.c_void_p).value)  # EM_REPLACESEL.
             time.sleep(0.15)
+            phase("read-file-field", hwnd=field["hwnd"])
             if info(field["hwnd"])["text"] == args.path:
                 break
         else:
             raise RuntimeError("The file-name field did not retain the requested path.")
         result["field"] = info(field["hwnd"])
+        phase("find-accept-button")
         button = choose(children(window, args.pid), "Button", 1)
     elif args.command == "cancel":
         button = choose(controls, "Button", 2)
     else:
         button = choose(controls, "Button", args.id, args.text)
+    phase("post-button", hwnd=button["hwnd"])
     post(button["hwnd"], 0x00F5)
     return dict(result, button=button)
 
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"): sys.stdout.reconfigure(encoding="utf-8")
+    # A stalled Win32 call must leave its Python stack before the supervisor's 25 s limit.
+    faulthandler.dump_traceback_later(20, exit=True)
     try:
         print(json.dumps(main(), ensure_ascii=False))
     except Exception as error:
         print(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False))
         raise SystemExit(1)
+    finally:
+        faulthandler.cancel_dump_traceback_later()
