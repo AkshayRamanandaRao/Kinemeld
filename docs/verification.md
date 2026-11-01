@@ -2,17 +2,23 @@
 
 This records historical checks performed on a local development version. It is
 not a claim of general-purpose CAE qualification or measured usability superiority.
-Run records, generated reports and local logs are ignored and are not included in
-the public checkout; the commands below produce fresh evidence on the target system.
+Detailed run directories, GUI reports and local logs are ignored; selected numerical
+summaries in `examples/` are retained. The commands below produce fresh evidence on
+the target system.
 
 ## Robotics roadmap integration (1 November 2026)
 
 The review branch implements P4–P10 with bounded model contracts. These checks
 establish the listed numerical and interface cases, not physical calibration.
 
-- Integrated Windows/native backend suite: **291 tests**, one existing WSL-only
-  conditional skip. All **98 JavaScript unit checks** pass. Asset and Rust notice
-  inventories remain current; no new runtime dependencies were added.
+- [Integrated Linux CI](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41350498026):
+  **294 backend tests**, two platform-conditional skips; all **98 JavaScript unit
+  checks**, native numerical verifiers and project/robotics GUI workflows pass.
+  Asset and Rust notice inventories remain current; no new runtime dependencies
+  were added.
+- Current packaging and test-helper regression suite: **59 script checks pass**,
+  including macOS bundle sealing, external-manifest coverage, signature rejection,
+  and a closing Linux accessibility node. The earlier P3 count below is historical.
 - P4: [four engineering records](engineering-example-verification.md), 16 actual
   solver runs, CAD mass/COM/tensor assumptions and independent references.
 - P5: cones/tori, 13 frontend geometric checks, extraction checks on OCP 7.9 and 8,
@@ -26,8 +32,9 @@ establish the listed numerical and interface cases, not physical calibration.
 - P8: [nine native controlled cases and two cleanup cases](../examples/rotary-control-verification.json),
   ten unit checks and five GUI workflows. Real native hinge feedback, previous-step
   held torque and native applied couples are cross-checked. Cancel and peer failure
-  stop the solver and controller. Windows native is verified here; other platform
-  stream builds await CI. WSL transport is explicitly rejected.
+  stop the solver and controller. Linux integration CI and extracted Windows,
+  macOS and Linux packages also exercise the real controller and solver.
+  WSL transport is explicitly rejected.
 - P9: [ten native flexible-link runs](../examples/flexible-link-verification.json),
   six backend/two renderer checks, actual node playback, section/mesh editing,
   full CSV and native artifacts, save/reopen/stale gates and actual process Cancel.

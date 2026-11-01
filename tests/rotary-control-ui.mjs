@@ -12,12 +12,14 @@ const service=spawn('python',['tests/rotary-control-server.py',binary],{windowsH
 const lines=createInterface({input:service.stdout});let diagnostics='',browser,page;
 service.stderr.on('data',data=>diagnostics+=data);
 const report={scope:'Actual browser, backend validators, native MBDyn and separate trusted Python feedback controller; no external AI or desktop automation.',checks:[],errors:[]};
+service.on('exit',(code,signal)=>{report.serverExit={code,signal};});
 const record=text=>{report.checks.push(text);console.log(text);};
 try{
  let timer;const ready=await Promise.race([once(lines,'line').then(([line])=>JSON.parse(line)),once(service,'exit').then(()=>{throw Error(diagnostics);}),new Promise((_,reject)=>timer=setTimeout(()=>reject(Error('Owned servo server did not start')),15000))]).finally(()=>clearTimeout(timer));
  const base=`http://127.0.0.1:${ready.port}`;
  browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader']});page=await browser.newPage({viewport:{width:1540,height:1100},acceptDownloads:true});
  page.on('pageerror',error=>report.errors.push(error.message));page.on('dialog',dialog=>dialog.accept());
+ page.on('requestfailed',request=>(report.requestFailures||=[]).push({url:request.url(),error:request.failure()?.errorText}));
  await page.route('**/api/tour-preference',route=>route.fulfill({json:{enabled:false}}));
  await page.goto(base);await page.waitForFunction(()=>document.querySelector('#solverStatus')?.textContent.includes('MBDyn ready'));
  const open=async project=>{await page.locator('#projectFile').setInputFiles({name:'robot-servo.mbdyn-studio',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(project))});await page.waitForFunction(name=>document.querySelector('#documentName')?.textContent===name&&document.querySelector('#notice')?.textContent.includes('Project imported and validated'),project.model.name);};
@@ -49,5 +51,5 @@ try{
  await page.locator('#cancelRunButton').click();const cancelled=await(await cancellation).json();report.cancelled=cancelled;assert.equal(cancelled.runId,active.runId);assert.equal(cancelled.cancelled,true);await page.waitForFunction(()=>document.querySelector('#statusText')?.textContent.includes('Run cancelled'));assert(await page.locator('#cancelRunButton').isHidden());const partial=await page.request.get(`${base}${cancelled.files.controllerTrace}`);assert.equal(partial.status(),200,JSON.stringify({files:cancelled.files,active:await(await page.request.get(`${base}/fixture/active-controller`)).json(),error:await partial.text()}));assert((await partial.text()).length>1000);
  record('GUI Cancel stops an actual native feedback run and retains its partial controller trace');
  assert.deepEqual(report.errors,[]);report.ok=true;report.actualMBDynRuns=2;console.log(JSON.stringify({ok:true,checks:report.checks.length,actualMBDynRuns:2}));
-}catch(error){report.ok=false;report.failure=error.stack;if(page)await page.screenshot({path:'tests/evidence/rotary-control-ui-failure.png',fullPage:true}).catch(()=>{});console.error(error);process.exitCode=1;}
+}catch(error){report.ok=false;report.failure=error.stack;report.serverState={pid:service.pid,exitCode:service.exitCode,signalCode:service.signalCode,diagnostics};if(page){report.notice=await page.locator('#notice').textContent().catch(()=>null);await page.screenshot({path:'tests/evidence/rotary-control-ui-failure.png',fullPage:true}).catch(()=>{});}console.error(error);process.exitCode=1;}
 finally{await mkdir('tests/evidence',{recursive:true});await writeFile('tests/evidence/rotary-control-ui.json',JSON.stringify(report,null,2));await browser?.close();service.kill();}

@@ -65,12 +65,18 @@ verification. Both the native host and supervisor use the bundle's
 fall back to a surrounding source checkout.
 
 The macOS driver runs an AppKit timer in the application's modal run loop. It
-operates the app's own `NSOpenPanel`, `NSSavePanel` and alert controls, avoiding
-cross-application Accessibility permissions. It sends the real Go to Folder
+operates only the app's own `NSOpenPanel`, `NSSavePanel` and alert controls.
+It sends the real Go to Folder
 shortcut to its key modal window, fills the native sheet's text control, and
 invokes its Go button. Save uses the labelled native filename control. Accessible
-attributes/actions use the public modern API or advertised legacy compatibility
-API; no panel configuration properties are read or changed while it is running.
+attributes/actions use AppKit for local controls and Apple's public `AXUIElement`
+client API for remote controls. Client requests run off the main thread, start
+only from this app's PID and exact modal title, and have bounded traversal and
+messaging timeouts. Actual text writes require a native value readback; actual
+presses require an enabled control and its advertised press action. Numeric AX
+errors and accessibility trust state are retained, including permission failures.
+The harness does not request or change system permissions. No panel configuration
+properties are read or changed while it is running.
 The driver invokes actual enabled Open/Save controls and the native Cancel action.
 After the modal returns, the viewer checks the actual returned Open path, saved
 destination, complete project snapshots and target files. Overwrite

@@ -200,9 +200,12 @@ The default suspension/drop displacement errors relative to reference were under
 drop variant released tire contact twice and remained within 0.074 mm of its
 independent reference. These statements cover the specified reduced force laws.
 
-These checks do not establish arbitrary-mechanism or general contact support,
-flexible bodies, fatigue, safety or industry/flight qualification. The drop tire's
-one-dimensional unilateral law is the only contact model currently exposed.
+These historical reduced-model checks do not establish arbitrary-mechanism or
+general contact support, flexible-body accuracy, fatigue, safety or industry/flight
+qualification. The drop tire uses a one-dimensional unilateral law. Current
+[spatial contact/brakes](robot-contact.md), [local actuator control](rotary-control.md)
+and [flexible-link](robot-flexible-link.md) workflows have separate numerical
+contracts and verification records.
 The deployment example is an original generic mechanism inspired by a spacecraft
 workflow, not an authentic Shuttle geometry or hydraulic/locking simulation.
 

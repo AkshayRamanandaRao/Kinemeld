@@ -61,6 +61,8 @@ class LinuxControls:
             return False
 
     def walk(self, item):
+        if item is None:
+            return  # AT-SPI can return a null child while a native window closes.
         yield item
         try:
             for child in item:

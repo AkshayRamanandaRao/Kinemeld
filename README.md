@@ -197,7 +197,7 @@ build the native desktop host see [desktop builds](native/README.md).
 
 ## Verification
 
-- `python -m unittest discover -p 'test_*.py'` in `backend/` — 220+ unit, deck and real-MBDyn tests.
+- `python -m unittest discover -p 'test_*.py'` in `backend/` — 290+ unit, deck and real-MBDyn tests.
 - `python -B backend/verify_featured_studies.py` — every featured study against independent
   physics (gyroscopic theory, momentum conservation, closed-form kinematics, power and static
   balance).
@@ -213,12 +213,19 @@ for scope and limitations.
 
 ## Roadmap
 
-The current increment preserves edits during asynchronous CAD/project operations and
-verifies native project dialogs on Windows. macOS/Linux dialog checks remain open.
-Next: dependency provenance, stronger engineering examples, then CAD picking and
-assistant extensions. Each item is reviewed before starting the next. See the
-[prioritized roadmap](docs/roadmap.md) for acceptance checks and longer-term work,
-and the [changelog](CHANGELOG.md) for released changes.
+Current development focuses on robotics multibody dynamics. It adds
+[native joint brakes and moving sphere contact](docs/robot-contact.md),
+[closed-loop rotary actuators with local co-simulation](docs/rotary-control.md),
+[native flexible links](docs/robot-flexible-link.md), and
+[constrained design search](docs/design-search.md). Cone/torus CAD picking,
+reviewed assistant workflows, engineering provenance and dependency notices are
+also implemented with numerical and GUI checks. The work remains unpublished;
+cross-platform native-dialog runner qualification is being completed.
+
+See the [prioritized roadmap](docs/roadmap.md) for evidence and exact model limits,
+the [robotics follow-on candidates](docs/robotics-backlog.md) for proposed next
+improvements, and the [changelog](CHANGELOG.md) for released changes. Aerodynamics
+is outside the active roadmap.
 
 ## License and attribution
 

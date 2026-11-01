@@ -26,6 +26,9 @@ rules in [docs/project-format.md](docs/project-format.md).
   mesh/timestep/static/frequency benchmarks.
 - Hash the retained native deck bytes consistently on Windows, including CRLF
   newlines, so provenance matches the downloadable input file.
+- Prefer the macOS bundle's own resources over surrounding source checkouts,
+  seal the complete bundle before hashing it, and verify its signature and
+  external package manifest without changing audited solver binaries.
 - Audit all three desktop dependency sets, retain missing Rust/Microsoft/solver
   notices, and require exact runtime source packages with distribution patches
   beside solver binaries. Check full archive coverage and reject stale or incomplete
@@ -40,10 +43,10 @@ rules in [docs/project-format.md](docs/project-format.md).
 - New assemblies and opened examples start as unsaved native documents, with their
   own file identity. Save asks for a destination; cancellation and failed opens keep
   the current document and its recovery origin.
-- Added an automated Windows GUI suite for real native dialogs, full project
+- Added automated desktop GUI suites for real native dialogs, full project
   round trips, conflicts and crash recovery. Accepted close ignores queued events
-  and shuts down the owned service; Windows checks pass, while macOS/Linux dialog
-  qualification remains open.
+  and shuts down the owned service; Windows and Linux fresh-runner checks pass,
+  while macOS dialog qualification remains open.
 - Refreshed both aircraft nose-gear MP4/GIF pairs with concise model titles and
   captions. Engineering assumptions and interpretation limits remain in the study
   guide. The workflow recorder now generates and checks its GIF alongside its MP4.
