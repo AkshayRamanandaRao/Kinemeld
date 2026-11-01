@@ -10,12 +10,14 @@ import json
 import lzma
 from pathlib import Path, PurePosixPath
 import re
+import struct
 import subprocess
 import sys
 import tarfile
 import urllib.request
 
-from prepare_solver_sources import MBDYN_SHA, NAMES, ROOT, digest, prepare
+from prepare_solver_sources import NAMES, ROOT, digest, prepare
+from filter_mbdyn_source import UPSTREAM_SHA, SOURCE_VERSION, transform
 
 MBDYN_URL = "https://raw.githubusercontent.com/mmorandi/MBDyn-web/main/userfiles/downloads/mbdyn-1.7.3.tar.gz"
 CYGWIN_MIRROR = "https://mirrors.kernel.org/sourceware/cygwin/"
@@ -48,6 +50,44 @@ def source(path, url, version):
 
 def run(*args):
     return subprocess.check_output(args, text=True).strip()
+
+
+def macho_identity(path, data=None):
+    """Identity unaffected by install_name_tool's load paths and ad-hoc signing."""
+    data = path.read_bytes() if data is None else data
+    if data[:4] in (b"\xca\xfe\xba\xbe", b"\xca\xfe\xba\xbf"):
+        count, = struct.unpack_from(">I", data, 4)
+        wide = data[:4] == b"\xca\xfe\xba\xbf"
+        result = {}
+        for index in range(count):
+            position = 8 + index * (32 if wide else 20)
+            start, length = struct.unpack_from(">QQ" if wide else ">II", data, position + 8)
+            result.update(macho_identity(path, data[start:start + length])["architectures"])
+        return {"architectures": result}
+    if data[:4] != b"\xcf\xfa\xed\xfe":
+        raise ValueError(f"Expected a little-endian Mach-O 64 library: {path}")
+    commands, = struct.unpack_from("<I", data, 16)
+    offset, result = 32, {}
+    for _ in range(commands):
+        kind, size = struct.unpack_from("<II", data, offset)
+        if size < 8 or offset + size > len(data):
+            raise ValueError(f"Invalid Mach-O load command: {path}")
+        if kind == 0x1b:  # LC_UUID
+            result["uuid"] = data[offset + 8:offset + 24].hex()
+        if kind == 0x19:  # LC_SEGMENT_64
+            sections, = struct.unpack_from("<I", data, offset + 64)
+            for index in range(sections):
+                section = offset + 72 + index * 80
+                name = data[section:section + 16].split(b"\0", 1)[0]
+                segment = data[section + 16:section + 32].split(b"\0", 1)[0]
+                length, start = struct.unpack_from("<QI", data, section + 40)
+                if name == b"__text" and segment == b"__TEXT":
+                    result["textSha256"] = hashlib.sha256(data[start:start + length]).hexdigest()
+        offset += size
+    if set(result) != {"uuid", "textSha256"}:
+        raise ValueError(f"Mach-O library has no code/UUID identity: {path}")
+    cpu, subtype = struct.unpack_from("<II", data, 4)
+    return {"architectures": {f"{cpu}:{subtype}": result}}
 
 
 def source_tar(archive, work):
@@ -194,6 +234,7 @@ def collect_homebrew(solver, work, origins):
         path = download(url, work / PurePosixPath(url).name, checksum)
         sources.append(source(path, url, version))
     groups = {}
+    identities = {}
     for filename, original in origins.items():
         if filename.startswith("bin/mbdyn"):
             continue
@@ -202,26 +243,38 @@ def collect_homebrew(solver, work, origins):
         family = next((key for key, pattern in NAMES.items() if pattern.fullmatch(PurePosixPath(filename).name)), None)
         if family not in ("gcc-runtime", "quadmath"):
             raise ValueError(f"Unreviewed Homebrew runtime: {filename}")
+        original_identity = macho_identity(Path(original))
+        if macho_identity(solver / filename) != original_identity:
+            raise ValueError(f"Bundled Homebrew library code/UUID differs from its installed owner: {filename}")
+        identities[filename] = original_identity
         groups.setdefault(family, []).append(filename)
+    identities_file = work / "homebrew-library-identities.json"
+    identities_file.write_text(json.dumps(identities, indent=2) + "\n")
     return [{"name": "homebrew-" + family, "family": family, "version": version, "sourceVersion": version,
              "files": files, "packageNotice": reference(copyright_notice(archive, family, work)), "sources": sources,
-             "evidence": [reference(receipt), reference(api_file), reference(keg_receipt), reference(installed_formula)]} for family, files in groups.items()]
+             "evidence": [reference(receipt), reference(api_file), reference(keg_receipt), reference(installed_formula),
+                          reference(identities_file)]} for family, files in groups.items()]
 
 
 def collect(solver, work):
     work.mkdir(parents=True, exist_ok=True)
     origins_file = solver / "BUILD-ORIGINS.tsv"
     origins = dict(line.split("\t", 1) for line in origins_file.read_text().splitlines())
-    archive = download(MBDYN_URL, work / "mbdyn-1.7.3.tar.gz", MBDYN_SHA)
+    # The original archive is a local input only, never part of the distributed
+    # source companion: its eleven unlicensed Y12 implementations are removed.
+    upstream = download(MBDYN_URL, work / "mbdyn-1.7.3.tar.gz", UPSTREAM_SHA)
+    archive = work / f"mbdyn-{SOURCE_VERSION}.tar"
+    transformation = work / "mbdyn-source-transform.json"
+    transform(upstream, archive, transformation)
     notice = work / "MBDyn-COPYRIGHT.txt"
     with tarfile.open(archive) as bundle:
         notice.write_bytes(b"MBDyn 1.7.3 original upstream notices\n\n" + b"\n\n".join(
             bundle.extractfile("mbdyn-1.7.3/" + name).read() for name in ("AUTHORS", "COPYING")))
     platform = "windows" if sys.platform.startswith("cygwin") else "macos" if sys.platform == "darwin" else "linux"
-    components = [{"name": "mbdyn", "family": "mbdyn", "version": "1.7.3", "sourceVersion": "1.7.3",
+    components = [{"name": "mbdyn", "family": "mbdyn", "version": "1.7.3", "sourceVersion": SOURCE_VERSION,
                    "files": [name for name in origins if name.startswith("bin/mbdyn")],
-                   "packageNotice": reference(notice), "sources": [source(archive, MBDYN_URL, "1.7.3")],
-                   "evidence": [reference(origins_file), reference(ROOT / "backend/evidence/mbconfig.h")]}]
+                   "packageNotice": reference(notice), "sources": [source(archive, MBDYN_URL, SOURCE_VERSION)],
+                   "evidence": [reference(origins_file), reference(ROOT / "backend/evidence/mbconfig.h"), reference(transformation)]}]
     if platform == "windows":
         components.extend(collect_cygwin(solver, work, origins))
     elif platform == "macos":
@@ -232,7 +285,7 @@ def collect(solver, work):
     inputs = [ROOT / name for name in ("backend/build_solver.sh", "scripts/bundle_solver.sh", ".github/workflows/release.yml",
                                       "backend/evidence/configure-arguments.txt", "backend/evidence/mbconfig.h",
                                       "scripts/collect_solver_sources.py", "scripts/collect_solver_linux.py",
-                                      "scripts/prepare_solver_sources.py", "notices/solver/REBUILD.txt")]
+                                      "scripts/prepare_solver_sources.py", "scripts/filter_mbdyn_source.py", "notices/solver/REBUILD.txt")]
     config = (ROOT / "backend/evidence/mbconfig.h").read_text()
     if re.search(r"^#define USE_Y12\s+1", config, re.M):
         raise ValueError("Y12 has no verified redistribution grant in the archived source; disable it")

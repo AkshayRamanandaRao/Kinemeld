@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 FORMAT = "kinemeld-solver-compliance/1"
-MBDYN_SHA = "3cf05cd1cb14c1af3d987aac119b6ecf0d835bc1aee06bc4cf7cc5a245c1f36d"
+MBDYN_SHA = "1fd09e766c30485423d57e0379b5248e095aeec59bcec59a3f4b518e19f0fcc3"
 LICENSES = {
     "mbdyn": "GPL-2.0-only",
     "gcc-runtime": "GPL-3.0-or-later WITH GCC-exception-3.1",
@@ -34,7 +34,7 @@ NAMES = {
     "lapack-blas": re.compile(r"lib(?:lapack|blas|openblas)[.-].+", re.I),
 }
 LEGAL_FILES = {
-    "mbdyn": ["GPL-2.0.txt", "COLAMD-2.1.txt"],
+    "mbdyn": ["GPL-2.0.txt", "COLAMD-2.1.txt", "OpenLDAP-getopt.txt", "OpenLDAP-COPYRIGHT.txt", "OpenLDAP-LICENSE.txt"],
     "gcc-runtime": ["GPL-3.0.txt", "GCC-exception-3.1.txt"],
     "quadmath": ["LGPL-2.1.txt"],
     "cygwin": ["GPL-3.0.txt", "LGPL-3.0.txt", "Cygwin-exception.txt", "Cygwin-NEWLIB.txt"],
@@ -141,7 +141,7 @@ def verify(solver, sources):
             if urlparse(record.get("url", "")).scheme != "https" or record.get("sourceVersion") != component["sourceVersion"]:
                 raise ValueError(f"Source version/HTTPS provenance missing for {component['name']}")
         if family == "mbdyn" and not any(record["sha256"] == MBDYN_SHA for record in component["sources"]):
-            raise ValueError("MBDyn corresponding source is not the pinned official 1.7.3 archive.")
+            raise ValueError("MBDyn corresponding source is not the pinned Y12-filtered 1.7.3 archive.")
         for record in component["evidence"]:
             check_record(sources, record)
     if covered != binaries(solver):

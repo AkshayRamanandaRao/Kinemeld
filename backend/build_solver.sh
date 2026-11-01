@@ -12,9 +12,15 @@ if [ ! -f "$archive" ]; then
     python3 -c 'import sys, urllib.request; urllib.request.urlretrieve("https://raw.githubusercontent.com/mmorandi/MBDyn-web/main/userfiles/downloads/mbdyn-1.7.3.tar.gz",sys.argv[1])' "$archive"
 fi
 python3 -c 'import hashlib, sys; d = hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest(); sys.exit(0 if d == sys.argv[2] else "MBDyn archive digest mismatch")' "$archive" 3cf05cd1cb14c1af3d987aac119b6ecf0d835bc1aee06bc4cf7cc5a245c1f36d
-if [ ! -d "$base/vendor/mbdyn-1.7.3" ]; then
-    tar -xzf "$archive" -C "$base/vendor"
-fi
+filtered="$base/vendor/mbdyn-1.7.3-kinemeld-no-y12.tar"
+python3 "$base/../scripts/filter_mbdyn_source.py" "$archive" "$filtered" --manifest "$base/evidence/mbdyn-source-transform.json"
+# Build only from the verified archive, never a stale or locally edited tree.
+vendor_dir="$(cd -- "$base/vendor" && pwd -P)"
+source_dir="$vendor_dir/mbdyn-1.7.3"
+[ ! -L "$source_dir" ] || { echo 'Refusing to replace a linked source directory.' >&2; exit 1; }
+[ "$(dirname "$source_dir")" = "$vendor_dir" ] || exit 1
+rm -rf -- "$source_dir"
+tar -xf "$filtered" -C "$vendor_dir"
 cd "$base/vendor/mbdyn-1.7.3"
 # An older configured source tree may still include Y12. Its archived README
 # contains no redistribution grant, so reconfigure it before producing a bundle.

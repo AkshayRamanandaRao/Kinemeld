@@ -46,7 +46,7 @@ def copy_resources(target):
             shutil.copy2(source, target / name)
             continue
         for path in sorted(source.rglob("*")):
-            if path.is_file() and wanted(path):
+            if wanted(path) and path.is_file():
                 destination = target / path.relative_to(ROOT)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, destination)

@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+import struct
 import unittest
 from unittest.mock import patch
 
@@ -53,6 +54,47 @@ class SourceCollectionTests(unittest.TestCase):
         self.assertTrue(NAMES['quadmath'].fullmatch('cygquadmath-0.dll'))
         self.assertFalse(NAMES['gcc-runtime'].fullmatch('libquadmath.0.dylib'))
         self.assertEqual(LICENSES['quadmath'], 'LGPL-2.1-or-later')
+
+    def test_macho_identity_ignores_load_paths_and_rejects_changed_code(self):
+        # One UUID and one __TEXT,__text section, followed by code and signing data.
+        header = bytearray(32)
+        struct.pack_into('<IIIIIIII', header, 0, 0xfeedfacf, 0x100000c, 0, 6, 2, 176, 0, 0)
+        uuid = struct.pack('<II', 0x1b, 24) + b'1234567890abcdef'
+        segment = bytearray(152)
+        struct.pack_into('<II', segment, 0, 0x19, 152)
+        struct.pack_into('<I', segment, 64, 1)
+        segment[72:78] = b'__text'
+        segment[88:94] = b'__TEXT'
+        struct.pack_into('<QI', segment, 112, 4, 208)
+        data = header + uuid + segment + b'CODE' + b'signature'
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'runtime.dylib'
+            path.write_bytes(data)
+            identity = collector.macho_identity(path)
+            data[-4:] = b'edit'
+            path.write_bytes(data)
+            self.assertEqual(identity, collector.macho_identity(path))
+            data[208] ^= 1
+            path.write_bytes(data)
+            self.assertNotEqual(identity, collector.macho_identity(path))
+            # Homebrew's libgcc may be a one-slice universal container while
+            # other GCC libraries are thin Mach-O files.
+            thin = path.read_bytes()
+            fat = struct.pack('>IIIIIII', 0xcafebabe, 1, 0x100000c, 0, 4096, len(thin), 12)
+            path.write_bytes(fat + b'\0' * (4096 - len(fat)) + thin)
+            self.assertEqual(collector.macho_identity(path), collector.macho_identity(path, thin))
+
+    def test_homebrew_cannot_substitute_an_unreviewed_local_keg(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'INSTALL_RECEIPT.json').write_text('{"source":{"tap_git_head":"not-a-commit"}}')
+            info = {'formulae': [{'installed': [{'version': '1.0', 'built_as_bottle': False}]}]}
+            api = root / 'api.json'
+            api.write_text('{"versions":{"stable":"1.0"}}')
+            with patch.object(collector, 'run', side_effect=[json.dumps(info), str(root)]), \
+                 patch.object(collector, 'download', return_value=api):
+                with self.assertRaisesRegex(ValueError, 'official bottle'):
+                    collector.collect_homebrew(root, root, {})
 
 
 if __name__ == '__main__':
