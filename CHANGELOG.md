@@ -24,6 +24,8 @@ rules in [docs/project-format.md](docs/project-format.md).
 - Add a clamped flexible robot-link template using native beam3 elements and
   actual node playback, section/inertia inputs, root reactions, full CSV and
   mesh/timestep/static/frequency benchmarks.
+- Hash the retained native deck bytes consistently on Windows, including CRLF
+  newlines, so provenance matches the downloadable input file.
 - Audit all three desktop dependency sets, retain missing Rust/Microsoft/solver
   notices, and require exact runtime source packages with distribution patches
   beside solver binaries. Check full archive coverage and reject stale or incomplete

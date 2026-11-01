@@ -41,6 +41,9 @@ config.write_text(json.dumps({"mode": "native", "executable": str(solver)}), enc
 environment = os.environ.copy()
 environment["MBDYN_STUDIO_PYTHON"] = sys.executable
 environment.pop("MBDYN_STUDIO_WORKSPACE", None)
+subprocess.run([sys.executable, "-B", str(root / "tests/packaged-robotics.py"), "--resources", str(resources),
+                "--solver", str(solver), "--out", str(root / f"tests/evidence/packaged-robotics-{platform}")],
+               cwd=root, env=environment, check=True)
 if platform == "windows":
     command = [sys.executable, str(root / "tests/native-dialog-platform.py"), "--exe", str(exe), "--solver-config", str(config)]
 elif platform == "linux":

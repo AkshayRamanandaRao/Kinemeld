@@ -362,7 +362,7 @@ def run(model, control=None):
         argv = [sys.executable, '-B', str(Path(rotary_control.__file__).resolve()), '--run', str(directory.resolve()), '--', *argv]
     start = time.monotonic()
     result = {"ok": False, "source": "MBDyn", "runId": run_id, "model": model,
-              "solver": info, "deckSha256": hashlib.sha256(model_text.encode()).hexdigest(),
+              "solver": info, "deckSha256": hashlib.sha256((directory / "model.mbd").read_bytes()).hexdigest(),
               "files": {"deck": f"/api/runs/{run_id}/model.mbd", "log": f"/api/runs/{run_id}/solver.log", "csv": f"/api/runs/{run_id}/results.csv", "project": f"/api/runs/{run_id}/project.json"}}
     try:
         outcome = execute(argv, directory, control=control, wsl=bool(control) and config["mode"] == "wsl")

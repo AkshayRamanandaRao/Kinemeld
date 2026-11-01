@@ -69,4 +69,5 @@ jobs:
           path: |
             tests/evidence/native-dialogs-*/**
             tests/evidence/native-platform-*/**
+            tests/evidence/packaged-robotics-*/report.json
             build/native-gui/*.sha256
