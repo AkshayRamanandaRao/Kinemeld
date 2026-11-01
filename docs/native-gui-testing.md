@@ -59,12 +59,16 @@ must match the current test root/phase and a fresh native PID. Darwin kqueue
 `NOTE_EXITSTATUS` measures that PID's actual exit status; the launch helper's
 exit code is not used as a substitute. Crash cleanup checks the owned process
 and its descendants. Bundle signing metadata and scoped system logs are retained
-for picker-service failures.
+for picker-service failures. The launcher requires strict bundle-signature
+verification. Both the native host and supervisor use the bundle's
+`Contents/Resources/app` directory; a missing bundled backend cannot silently
+fall back to a surrounding source checkout.
 
 The macOS driver runs an AppKit timer in the application's modal run loop. It
 operates the app's own `NSOpenPanel`, `NSSavePanel` and alert controls, avoiding
 cross-application Accessibility permissions. It fills the live directory/name
-controls, selects the file's accessible row where available, and invokes native
+controls for Save, selects Open's actual accessible file row and verifies its
+read-only selected URL, and invokes native
 Open/Save/Cancel controls or their documented panel action handlers. Overwrite
 refusal requires the actual confirmation controls. AppKit captures the app's own
 panels; macOS can exclude remote file-service subviews from those screenshots.

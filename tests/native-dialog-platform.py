@@ -319,7 +319,8 @@ def main():
     atomic(data / "runs/tour-preference.json", {"enabled": False})
     shutil.copy2(args.solver_config, data / "solver.json")
     exe = args.exe.resolve()
-    resources = next((path for path in [*exe.parents, exe.parent.parent / "Resources/app"] if (path / "backend/server.py").is_file()), None)
+    candidates = [exe.parent.parent / "Resources/app"] if sys.platform == "darwin" else [*exe.parents]
+    resources = next((path for path in candidates if (path / "backend/server.py").is_file()), None)
     assert resources, "The actual executable needs its packaged resources."
     fixture = (args.project or resources / "examples/open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio").resolve()
     shutil.copy2(fixture, root / "fixture.mbdyn-studio")

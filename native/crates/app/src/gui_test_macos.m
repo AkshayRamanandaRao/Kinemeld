@@ -166,9 +166,9 @@
     if (self.stage == 0) {
         self.panelNumber = panel.windowNumber;
         [self record:action window:panel]; [panel makeKeyAndOrderFront:nil]; [NSApp activateIgnoringOtherApps:YES];
-        // These are the live native controls, also used by RFD's panel builder.
+        // Open has no editable name field; its real selected row supplies the URL below.
         panel.directoryURL = [NSURL fileURLWithPath:path.stringByDeletingLastPathComponent isDirectory:YES];
-        panel.nameFieldStringValue = path.lastPathComponent;
+        if (!opening) panel.nameFieldStringValue = path.lastPathComponent;
         self.stage = 1; self.since = NSProcessInfo.processInfo.systemUptime; return;
     }
     if (NSProcessInfo.processInfo.systemUptime - self.since < 0.6) return;
@@ -176,7 +176,7 @@
     // Do not invoke OK while the remote panel is still loading or has no real selection.
     if (opening && ![panel.URL.path isEqual:path]) return;
     if (!opening && ![panel.nameFieldStringValue isEqual:path.lastPathComponent]) return;
-    [self.events addObject:@{@"action": action, @"directory": panel.directoryURL.path ?: @"", @"nameField": panel.nameFieldStringValue, @"selectedAccessibleRow": @(selected)}];
+    [self.events addObject:@{@"action": action, @"directory": panel.directoryURL.path ?: @"", @"nameField": opening ? @"" : panel.nameFieldStringValue, @"selectedAccessibleRow": @(selected)}];
     self.stage = 3; self.since = NSProcessInfo.processInfo.systemUptime;
     NSButton *button = [self button:panel.contentView titles:(opening ? @[@"Open"] : @[@"Save"])];
     id accessible = button ? nil : [self accessibleButton:panel titles:(opening ? @[@"Open"] : @[@"Save"])];

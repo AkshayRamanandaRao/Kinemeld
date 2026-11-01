@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 import shutil
 import stat
+import subprocess
 import tarfile
 import zipfile
 
@@ -25,6 +26,7 @@ from prepare_solver_sources import verify as verify_solver, verify_license_texts
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ["backend", "frontend", "examples", "docs", "notices", "LICENSE", "THIRD_PARTY_NOTICES.md", "README.md", "start.py", "requirements.txt"]
 RUST_TARGETS = {"windows": "x86_64-pc-windows-msvc", "linux": "x86_64-unknown-linux-gnu", "macos": "aarch64-apple-darwin"}
+MACOS_APP_ROOT = "Kinemeld.app/Contents/Resources/app"
 SKIP_PARTS = {"__pycache__", "evidence", "demos", "node_modules"}
 SKIP_FILES = {"solver.json", "agent.json"}
 
@@ -116,15 +118,30 @@ def bundle_solver(solver, app):
     return True
 
 
+def sign_macos_bundle(stage):
+    bundle = stage / "Kinemeld.app"
+    # Nested solver code was already signed and audited; do not re-sign it with --deep.
+    subprocess.run(["/usr/bin/codesign", "--force", "--sign", "-", str(bundle)], check=True)
+    subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(bundle)], check=True)
+
+
 def manifest(app, stage, version, platform, solver, sources):
+    destination = app / "package-manifest.json"
+    metadata = {}
+    if platform == "macos":
+        if app != stage / MACOS_APP_ROOT:
+            raise ValueError("macOS application resources must use the fixed bundle layout")
+        # Writing inside the bundle after signing would invalidate its resource seal.
+        destination = stage / "package-manifest.json"
+        metadata["appRoot"] = MACOS_APP_ROOT
     files = {}
     for path in sorted(app.rglob("*")):
-        if path.is_file():
+        if path.is_file() and path != destination:
             files[path.relative_to(app).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
-    archive_files = {p.relative_to(stage).as_posix(): digest(p) for p in sorted(stage.rglob("*")) if p.is_file()}
-    (app / "package-manifest.json").write_text(json.dumps({"format": "kinemeld-desktop-package/2", "application": "Kinemeld",
+    archive_files = {p.relative_to(stage).as_posix(): digest(p) for p in sorted(stage.rglob("*")) if p.is_file() and p != destination}
+    destination.write_text(json.dumps({"format": "kinemeld-desktop-package/2", "application": "Kinemeld",
         "version": version, "platform": platform, "rustTarget": RUST_TARGETS[platform], "bundledSolver": solver,
-        "solverSources": sources, "files": files, "archiveFiles": archive_files}, indent=1) + "\n", encoding="utf-8")
+        "solverSources": sources, "files": files, "archiveFiles": archive_files, **metadata}, indent=1) + "\n", encoding="utf-8")
 
 
 def checksum(path):
@@ -197,6 +214,10 @@ def main():
     verify_rust(app / "notices/rust", target=RUST_TARGETS[args.platform])
     if bundled:
         verify_solver(app / "solver", args.solver_sources)
+    if args.platform == "macos":
+        sign_macos_bundle(top)
+        if bundled:
+            verify_solver(app / "solver", args.solver_sources)
     manifest(app, top, args.version, args.platform, bundled, source_record)
     path = archive(top, args.out, stem, args.platform)
     shutil.rmtree(stage)

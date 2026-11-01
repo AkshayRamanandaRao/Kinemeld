@@ -46,6 +46,7 @@ class MacApplication:
         usage = subprocess.run(["/usr/bin/open", "-h"], capture_output=True, text=True, timeout=5)
         metadata["openUsage"] = usage.stdout + usage.stderr
         (self.root / f"mac-launch-{self.phase}.json").write_text(json.dumps(metadata, indent=2))
+        assert signing.returncode == 0, "The actual packaged .app must pass codesign --verify --deep --strict before native GUI qualification."
         assert "--env" in metadata["openUsage"], "The native GUI launcher requires open --env on this supported runner."
         data = Path(environment["MBDYN_STUDIO_DATA_DIR"])
         python = Path(environment["MBDYN_STUDIO_PYTHON"])
@@ -107,25 +108,26 @@ class MacApplication:
         return self.returncode
 
     def terminate_owned(self):
-        table = process_table()
-        if self.native_pid is None:
-            matches = [pid for pid in table if self.owned(pid, table)]
-            assert len(matches) <= 1, "Ambiguous native GUI ownership."
-            if matches:
-                self.bind(matches[0])
-        if self.native_pid and self.native_pid in table:
-            assert self.owned(self.native_pid, table), "Native process ownership changed."
-            # Stop deepest descendants first, checking each current parent and command.
-            for pid in descendants(table, self.native_pid):
-                current = process_table().get(pid)
-                if current == table[pid]:
-                    try:
-                        os.kill(pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-            if self.owned(self.native_pid, process_table()):
-                os.kill(self.native_pid, signal.SIGKILL)
-            self.wait(10)
+        if self.returncode is None:
+            table = process_table()
+            if self.native_pid is None:
+                matches = [pid for pid in table if self.owned(pid, table)]
+                assert len(matches) <= 1, "Ambiguous native GUI ownership."
+                if matches:
+                    self.bind(matches[0])
+            if self.native_pid and self.native_pid in table:
+                assert self.owned(self.native_pid, table), "Native process ownership changed."
+                # Stop deepest descendants first, checking each current parent and command.
+                for pid in descendants(table, self.native_pid):
+                    current = process_table().get(pid)
+                    if current == table[pid]:
+                        try:
+                            os.kill(pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                if self.owned(self.native_pid, process_table()):
+                    os.kill(self.native_pid, signal.SIGKILL)
+                self.wait(10)
         if self.launcher.poll() is None:
             self.launcher.kill(); self.launcher.wait(timeout=2)
         if self.queue:

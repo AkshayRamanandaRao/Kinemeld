@@ -140,6 +140,15 @@ For an audited package, keep its `*-solver-sources.tar.gz` companion beside it.
 source companion without executing platform-specific binaries. The checker intentionally
 rejects historical packages that lack the audited inventory format.
 
+New macOS archives ad-hoc sign the completed `Kinemeld.app` and verify it with
+`codesign --verify --deep --strict` before creating the archive. The manifest lives beside
+the signed bundle, with `appRoot` fixed to `Kinemeld.app/Contents/Resources/app`; it hashes
+the final signed executable, `CodeResources`, every application resource and every other
+archive file. Keeping this inventory outside the bundle avoids changing its resource seal.
+The checker also verifies the bundle signature when run on macOS. Older macOS packages
+with an internal audited manifest retain file/source verification, without a signature
+validation claim. Ad-hoc signing does not provide Developer ID identity or notarization.
+
 The release workflow runs these checks on fresh Ubuntu 24.04, macOS 14 and Windows runners
 that have only Python (and, on Linux, `libwebkit2gtk-4.1-0` and Xvfb) installed, and
 publishes a release only when every package passes.

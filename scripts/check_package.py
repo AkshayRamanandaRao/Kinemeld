@@ -28,6 +28,8 @@ from check_asset_notices import verify as verify_assets, unique_keys
 from collect_rust_notices import check_bundle as verify_rust
 from prepare_solver_sources import verify as verify_solver, verify_license_texts, child
 
+MACOS_APP_ROOT = "Kinemeld.app/Contents/Resources/app"
+
 
 def ok(message):
     print(f"ok    {message}", flush=True)
@@ -86,12 +88,21 @@ def verify_files(archive, target, version):
     manifests = list(target.rglob("package-manifest.json"))
     if len(manifests) != 1:
         fail(f"expected one package-manifest.json, found {len(manifests)}")
-    root = manifests[0].parent
     manifest = json.loads(manifests[0].read_text(encoding="utf-8"), object_pairs_hook=unique_keys)
     if manifest.get("format") != "kinemeld-desktop-package/2":
         fail("package lacks the current dependency/source inventory; rebuild it with the audited packager")
     if version and manifest.get("version") != version:
         fail(f"manifest version {manifest.get('version')} is not {version}")
+    root = manifests[0].parent
+    if "appRoot" in manifest:
+        if manifest["platform"] != "macos" or manifest["appRoot"] != MACOS_APP_ROOT or root != target:
+            fail("package appRoot must name the fixed macOS bundle from an archive-root manifest")
+        root = target / MACOS_APP_ROOT
+        signed_files = {"Kinemeld.app/Contents/MacOS/kinemeld", "Kinemeld.app/Contents/_CodeSignature/CodeResources"}
+        if not signed_files <= set(manifest["archiveFiles"]) or any(not (target / name).is_file() for name in signed_files):
+            fail("macOS signed host or bundle resource signature is missing from the inventory")
+    elif manifest["platform"] == "macos" and root != target / MACOS_APP_ROOT:
+        fail("legacy macOS manifest is not inside the fixed application resource folder")
     for relative, digest in manifest["files"].items():
         path = child(root, relative)
         if not path.is_file():
@@ -105,6 +116,9 @@ def verify_files(archive, target, version):
     for relative, expected_digest in manifest["archiveFiles"].items():
         if sha256(child(target, relative)) != expected_digest:
             fail(f"archive file does not match its manifest: {relative}")
+    if manifest.get("appRoot") and sys.platform == "darwin":
+        subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(target / "Kinemeld.app")], check=True)
+        ok("macOS application bundle signature and sealed resources verified")
     verify_assets(root)
     verify_license_texts(root / "notices/solver")
     verify_rust(root / "notices/rust", target=manifest["rustTarget"])

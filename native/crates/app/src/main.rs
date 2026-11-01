@@ -44,10 +44,42 @@ fn workspace() -> Result<PathBuf, String> {
         };
     }
     let exe = env::current_exe().map_err(|e| e.to_string())?;
-    // A macOS bundle keeps resources in Contents/Resources/app next to Contents/MacOS.
-    let bundled = exe.parent().and_then(Path::parent).map(|contents| contents.join("Resources").join("app"));
-    exe.ancestors().map(Path::to_path_buf).chain(bundled).find(|path| path.join("backend/server.py").is_file())
+    workspace_from_executable(&exe)
         .ok_or_else(|| "Could not locate the workspace. Place the executable inside the Kinemeld folder or set MBDYN_STUDIO_WORKSPACE.".into())
+}
+
+fn workspace_from_executable(exe: &Path) -> Option<PathBuf> {
+    // A macOS bundle keeps resources in Contents/Resources/app next to Contents/MacOS.
+    let bundled = exe.parent().filter(|path| path.file_name().is_some_and(|name| name == "MacOS"))
+        .and_then(Path::parent).filter(|path| path.file_name().is_some_and(|name| name == "Contents"))
+        .map(|contents| contents.join("Resources").join("app"));
+    if let Some(path) = bundled {
+        return path.join("backend/server.py").is_file().then_some(path);
+    }
+    exe.ancestors().find(|path| path.join("backend/server.py").is_file()).map(Path::to_path_buf)
+}
+
+#[cfg(test)]
+mod workspace_tests {
+    use super::*;
+
+    #[test]
+    fn packaged_bundle_wins_over_the_checkout_it_was_extracted_inside() {
+        let stamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let root = env::temp_dir().join(format!("kinemeld-bundle-{}-{stamp}", std::process::id()));
+        let resources = root.join("stage/Kinemeld.app/Contents/Resources/app");
+        for path in [&root, &resources] {
+            fs::create_dir_all(path.join("backend")).unwrap();
+            fs::write(path.join("backend/server.py"), "# resource fixture").unwrap();
+        }
+        let exe = root.join("stage/Kinemeld.app/Contents/MacOS/kinemeld");
+        assert_eq!(workspace_from_executable(&exe), Some(resources.clone()));
+        assert_eq!(workspace_from_executable(&root.join("kinemeld")), Some(root.clone()));
+        fs::remove_file(resources.join("backend/server.py")).unwrap();
+        assert_eq!(workspace_from_executable(&exe), None, "A broken bundle cannot silently load the surrounding checkout.");
+        assert!(root.canonicalize().unwrap().starts_with(env::temp_dir().canonicalize().unwrap()));
+        fs::remove_dir_all(root).unwrap();
+    }
 }
 
 fn data_directory(_workspace: &Path) -> Result<PathBuf, String> {
