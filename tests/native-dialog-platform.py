@@ -344,6 +344,7 @@ def main():
     environment.pop("MBDYN_STUDIO_WORKSPACE", None)
     environment["MBDYN_STUDIO_DATA_DIR"] = str(data)
     try:
+        resource_reader = runpy.run_path(str(Path(__file__).with_name("native-dialog-controls.py")))["resource_snapshot"] if sys.platform == "win32" else None
         if sys.platform == "darwin":
             MacXCTest = runpy.run_path(str(Path(__file__).with_name("native-dialog-xctest.py")))["MacXCTest"]
             mac_suite = MacXCTest(repo, root, exe, environment)
@@ -370,7 +371,16 @@ def main():
             controls = LinuxControls(root, app.pid, [portal.pid for portal in portals]) if sys.platform == "linux" else WindowsControls(root, app.pid) if sys.platform == "win32" else mac_suite.for_phase(app, phase)
             deadline, latest, observed = time.monotonic() + 900, None, {}
             action_id, action_since, progress, close_since = None, time.monotonic(), None, None
+            resource_since = 0
             while time.monotonic() < deadline:
+                if resource_reader and time.monotonic() - resource_since > 5:
+                    try:
+                        metrics = {"phase": phase, **resource_reader(app.pid)}
+                    except Exception as error:
+                        metrics = {"phase": phase, "monotonic": time.monotonic(), "error": repr(error)}
+                    with (root / "windows-resources.jsonl").open("a", encoding="utf-8") as output:
+                        output.write(json.dumps(metrics) + "\n")
+                    resource_since = time.monotonic()
                 if sys.platform == "darwin":
                     app.poll()
                     if app.native_pid and app.native_pid not in report.setdefault("nativePids", []):
