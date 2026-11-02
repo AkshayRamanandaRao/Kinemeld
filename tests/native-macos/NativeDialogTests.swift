@@ -27,9 +27,10 @@ final class NativeDialogTests: XCTestCase {
         throw NSError(domain: "NativeDialogs", code: 1, userInfo: [NSLocalizedDescriptionKey: "Timed out: \(label)"])
     }
     private func button(_ names: [String], in scope: XCUIElement) -> XCUIElement? {
-        let nativeIDs = ["Cancel": "CancelButton", "Open": "OKButton", "Save": "OKButton"]
+        let nativeIDs = ["Cancel": "CancelButton", "Open": "OKButton", "Save": "OKButton",
+                         "Yes": "action-button-1", "No": "action-button-2"]
         for name in names {
-            for identifier in [name, nativeIDs[name]].compactMap({ $0 }) {
+            for identifier in [nativeIDs[name], name].compactMap({ $0 }) {
                 for control in scope.descendants(matching: .button).matching(identifier: identifier).allElementsBoundByIndex {
                     if control.exists && control.isEnabled && control.isHittable { return control }
                 }
@@ -151,8 +152,12 @@ final class NativeDialogTests: XCTestCase {
                 try wait("Replace confirmation dismissed") { self.overwriteSheet() == nil }
                 _ = try picker(false)
             } else {
+                let confirmation = app.windows["Kinemeld"].sheets.firstMatch
+                try wait("owned Unsaved project confirmation") {
+                    confirmation.exists && confirmation.staticTexts.matching(NSPredicate(format: "value == %@", "Unsaved project")).firstMatch.exists
+                }
                 var control: XCUIElement?
-                try wait("actual native \(text) button") { control = self.button([text], in: self.app); return control != nil }
+                try wait("actual native \(text) button") { control = self.button([text], in: confirmation); return control != nil }
                 try evidence(action, control!, index: index); control!.click()
             }
         case "close":
