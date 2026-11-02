@@ -282,16 +282,10 @@ class WindowsControls:
         atomic(self.root / "action-result.json", {"id": self.current, "done": self.index >= len(self.plan["actions"]), "events": self.events})
 
     def terminate(self, process):
-        children = self.call("children")["children"]
-        process.kill(); process.wait(timeout=10)
-        remaining = self.call("children")["children"]
-        for child in remaining:
-            if any(before["pid"] == child["pid"] for before in children):
-                try:
-                    self.call("terminate-child", "--child-pid", str(child["pid"]))
-                except RuntimeError:
-                    if any(item["pid"] == child["pid"] for item in self.call("children")["children"]):
-                        raise
+        # Stop the tree while the owned parent is alive, including WebView2 grandchildren.
+        stopped = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, text=True, check=True, timeout=15)
+        atomic(self.root / "win32-forced-stop.json", {"pid": process.pid, "stdout": stopped.stdout, "stderr": stopped.stderr})
+        process.wait(timeout=10)
 
 
 def health(url):
@@ -308,14 +302,7 @@ def terminate(process, root):
         return
     if process and process.poll() is None:
         if sys.platform == "win32":
-            try:
-                WindowsControls(root, process.pid).terminate(process)
-            except Exception:
-                if process.poll() is None:
-                    # A failed control helper must not leave the supervised app tree running.
-                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, check=True, timeout=15)
-                    process.wait(timeout=10)
-                raise
+            WindowsControls(root, process.pid).terminate(process)
             return
         os.killpg(process.pid, signal.SIGKILL)
         process.wait(timeout=10)

@@ -9,16 +9,26 @@ from unittest.mock import Mock, patch
 
 
 class NativeControlTests(unittest.TestCase):
-    def test_failed_windows_cleanup_stops_only_owned_tree_and_keeps_failure(self):
+    def test_windows_cleanup_stops_owned_tree_without_control_helper(self):
         module = runpy.run_path(str(Path(__file__).resolve().parents[1] / "tests" / "native-dialog-platform.py"))
         process = Mock(pid=1234)
         process.poll.return_value = None
-        with patch.object(module["sys"], "platform", "win32"), \
-                patch.object(module["WindowsControls"], "terminate", side_effect=RuntimeError("helper stalled")), \
-                patch("subprocess.run") as run, self.assertRaisesRegex(RuntimeError, "helper stalled"):
-            module["terminate"](process, Path("owned-evidence"))
-        run.assert_called_once_with(["taskkill", "/PID", "1234", "/T", "/F"], capture_output=True, check=True, timeout=15)
+        with tempfile.TemporaryDirectory() as directory, patch.object(module["sys"], "platform", "win32"), \
+                patch.object(module["WindowsControls"], "call", side_effect=AssertionError("Control helper must not be needed for cleanup")), \
+                patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, "owned tree stopped", "")) as run:
+            module["terminate"](process, Path(directory))
+            evidence = json.loads((Path(directory) / "win32-forced-stop.json").read_text())
+            self.assertEqual(evidence, {"pid": 1234, "stdout": "owned tree stopped", "stderr": ""})
+        run.assert_called_once_with(["taskkill", "/PID", "1234", "/T", "/F"], capture_output=True, text=True, check=True, timeout=15)
         process.wait.assert_called_once_with(timeout=10)
+
+    def test_exited_process_is_never_targeted_by_pid(self):
+        module = runpy.run_path(str(Path(__file__).resolve().parents[1] / "tests" / "native-dialog-platform.py"))
+        process = Mock(pid=1234)
+        process.poll.return_value = 0
+        with patch.object(module["sys"], "platform", "win32"), patch("subprocess.run") as run:
+            module["terminate"](process, Path("owned-evidence"))
+        run.assert_not_called()
 
     def test_xctest_write_scope_requires_marked_matching_data_root(self):
         suite = runpy.run_path(str(Path(__file__).resolve().parents[1] / "tests" / "native-dialog-xctest.py"))["MacXCTest"]

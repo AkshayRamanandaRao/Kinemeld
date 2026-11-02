@@ -127,17 +127,14 @@ async function launch() {
 }
 async function stop(crash = false) {
   if (!app) return;
-  const children = (await control('children')).children;
-  if (crash) { if (app.exitCode === null && app.signalCode === null) app.kill(); }
-  else { await control('close'); await question(true, undefined, true); }
-  await until(() => app.exitCode !== null || app.signalCode !== null, 15000, 'native process exit');
   if (crash) {
-    const remaining = (await control('children')).children;
-    for (const child of remaining.filter(item => children.some(before => before.pid === item.pid))) {
-      try { await control('terminate-child', '--child-pid', String(child.pid)); }
-      catch (error) { if ((await control('children')).children.some(item => item.pid === child.pid)) throw error; }
+    if (app.exitCode === null && app.signalCode === null) {
+      const stopped = await run('taskkill', ['/PID', String(app.pid), '/T', '/F'], { timeout: 15000, encoding: 'utf8' });
+      report.forcedStop = { pid: app.pid, stdout: stopped.stdout, stderr: stopped.stderr };
     }
   }
+  else { await control('close'); await question(true, undefined, true); }
+  await until(() => app.exitCode !== null || app.signalCode !== null, 15000, 'native process exit');
   await browser?.close().catch(() => {});
   await until(async () => !(await health()), 10000, 'owned backend stopped');
   stopped = true;

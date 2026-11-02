@@ -134,9 +134,11 @@ unchanged. A missing runner pass, timeout, failed case or missing native-control
 evidence is a qualification failure; adding the harness alone does not establish
 macOS/Linux native-dialog support.
 
-Failure reports survive cleanup errors. If the Windows control helper fails
-during cleanup, the supervisor attempts to stop only its owned process tree and
-still fails the run. Browser profile caches are excluded from CI artifact uploads;
+Failure reports survive cleanup errors. Windows forced-crash/error cleanup stops
+the entire owned process tree while the supervised parent is still alive,
+including WebView2 grandchildren, and retains the termination output. An exited
+parent PID is never targeted. Normal close and service shutdown are measured
+separately. Browser profile caches are excluded from CI artifact uploads;
 projects, recovery snapshots, solver artifacts and GUI evidence are retained.
 
 Candidate archive and manifest versions retain their complete suffix, while the
