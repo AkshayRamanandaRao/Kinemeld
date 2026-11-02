@@ -22,7 +22,7 @@ use tao::{
     dpi::LogicalSize,
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoopBuilder},
-    window::WindowBuilder,
+    window::{Window, WindowBuilder},
 };
 use wry::{NewWindowResponse, WebContext, WebViewBuilder};
 
@@ -104,8 +104,9 @@ fn data_directory(_workspace: &Path) -> Result<PathBuf, String> {
     Ok(data)
 }
 
-fn question(title: &str, description: &str) -> bool {
+fn question(window: &Window, title: &str, description: &str) -> bool {
     MessageDialog::new()
+        .set_parent(window)
         .set_level(MessageLevel::Warning)
         .set_title(title)
         .set_description(description)
@@ -263,8 +264,8 @@ fn run() -> Result<(), String> {
         if exiting && !matches!(&event, Event::LoopDestroyed) { return; }
         match event {
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
-                if busy || agent_busy || projects.is_opening() { MessageDialog::new().set_level(MessageLevel::Info).set_title("Work in progress").set_description("Wait for the current simulation, agent request or project open to finish before closing the application.").show(); }
-                else if !projects.dirty || question("Unsaved project", "Discard unsaved changes and close Kinemeld?") {
+                if busy || agent_busy || projects.is_opening() { MessageDialog::new().set_parent(&window).set_level(MessageLevel::Info).set_title("Work in progress").set_description("Wait for the current simulation, agent request or project open to finish before closing the application.").show(); }
+                else if !projects.dirty || question(&window, "Unsaved project", "Discard unsaved changes and close Kinemeld?") {
                     // A clean close leaves nothing to recover; an undecided earlier snapshot is kept.
                     if !recovery_pending { let _ = recovery.clear(); }
                     exiting = true;
@@ -301,7 +302,7 @@ fn run() -> Result<(), String> {
                     "open" => {
                         if busy { return Err("Wait for the active simulation before opening a project.".into()); }
                         projects.ensure_idle()?;
-                        if projects.dirty && !question("Unsaved project", "Discard unsaved changes and open another project?") { return Ok(json!({"cancelled":true})); }
+                        if projects.dirty && !question(&window, "Unsaved project", "Discard unsaved changes and open another project?") { return Ok(json!({"cancelled":true})); }
                         let Some(path) = FileDialog::new().add_filter("Kinemeld project", &["mbdyn-studio", "json"]).pick_file() else { return Ok(json!({"cancelled":true})); };
                         let candidate = ProjectSession::open(&path).map_err(|e| e.to_string())?;
                         let value = json!({"project":candidate.document(),"path":path});
@@ -311,7 +312,7 @@ fn run() -> Result<(), String> {
                     "new-project" => {
                         if busy { return Err("Wait for the active simulation before opening a project.".into()); }
                         projects.ensure_idle()?;
-                        if projects.dirty && !question("Unsaved project", "Discard unsaved changes and open an unsaved copy?") { return Ok(json!({"cancelled":true})); }
+                        if projects.dirty && !question(&window, "Unsaved project", "Discard unsaved changes and open an unsaved copy?") { return Ok(json!({"cancelled":true})); }
                         let document: ProjectDocument = serde_json::from_value(request.payload.get("project").cloned().ok_or("Missing project document.")?).map_err(|e| e.to_string())?;
                         let candidate = ProjectSession::new(document).map_err(|e| e.to_string())?;
                         let value = json!({"project":candidate.document()});
@@ -360,7 +361,7 @@ fn run() -> Result<(), String> {
                     "recovery-open" => {
                         if busy { return Err("Wait for the active simulation before recovering a project.".into()); }
                         projects.ensure_idle()?;
-                        if projects.dirty && !question("Unsaved project", "Discard unsaved changes and recover the autosaved project?") { return Ok(json!({"cancelled":true})); }
+                        if projects.dirty && !question(&window, "Unsaved project", "Discard unsaved changes and recover the autosaved project?") { return Ok(json!({"cancelled":true})); }
                         let snapshot = recovery.read().map_err(|e| e.to_string())?.ok_or("No autosaved project is waiting for recovery.")?;
                         // Recovered work opens untitled, so Save asks where to write it instead of
                         // overwriting a file that may have changed since.
