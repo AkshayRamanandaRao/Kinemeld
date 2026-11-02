@@ -386,7 +386,8 @@ def main():
                 if plan and plan["id"] != action_id:
                     action_id, action_since = plan["id"], time.monotonic()
                 if plan and (not result or result["id"] != action_id or not result.get("done")):
-                    assert time.monotonic() - action_since < 50, f"Native driver did not complete action {plan}; see {root}"
+                    # XCTest's remote snapshots and field readbacks can take over a minute per plan.
+                    assert time.monotonic() - action_since < (120 if mac_suite else 50), f"Native driver did not complete action {plan}; see {root}"
                 latest = load(root / "viewer-report.json") or latest
                 assert latest or time.monotonic() < deadline - 790, f"Viewer test initialization did not report within 110 seconds; see {root}"
                 marker = (len(latest["checks"]), latest["status"]) if latest else None
