@@ -80,7 +80,9 @@ final class NativeDialogTests: XCTestCase {
     private func fill(_ field: XCUIElement, text: String, directory: Bool = false) throws {
         try wait("native editable text field") { field.exists && field.isEnabled && field.isHittable }
         field.click()
-        field.typeKey("a", modifierFlags: [.command])
+        // The webview host has no Edit menu to route Command-A through.
+        field.typeKey(XCUIKeyboardKey.rightArrow, modifierFlags: [.command])
+        field.typeKey(XCUIKeyboardKey.leftArrow, modifierFlags: [.command, .shift])
         field.typeKey(XCUIKeyboardKey.delete, modifierFlags: [])
         try waitValue(field, text: "")
         field.typeText(text)
