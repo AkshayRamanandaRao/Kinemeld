@@ -16,10 +16,11 @@ establish the listed numerical and interface cases, not physical calibration.
   checks**, native numerical verifiers and project/robotics GUI workflows pass.
   Asset and Rust notice inventories remain current; no new runtime dependencies
   were added.
-- Current packaging and test-helper regression suite: **63 script checks pass**,
+- Current packaging and test-helper regression suite: **64 script checks pass**,
   including macOS bundle sealing, external-manifest coverage, signature rejection,
   a closing Linux accessibility node and Windows process-tree cleanup independent
-  of the control helper. An exited parent PID is never targeted.
+  of the control helper. An exited parent PID is never targeted. Armed Windows
+  actions wait for the actual dialog and acknowledge its observed dismissal.
   The earlier P3 count below is historical.
 - P4: [four engineering records](engineering-example-verification.md), 16 actual
   solver runs, CAD mass/COM/tensor assumptions and independent references.

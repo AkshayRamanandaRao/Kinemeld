@@ -147,6 +147,10 @@ while edit/control text retains bounded `WM_GETTEXT` and exact readback. Its
 Windows self-check reads a non-pumping fixture's caption from another process,
 keeps all 32 unresponsive controls marked unreadable, and enforces the shared
 inventory deadline.
+Windows plans poll for the actual owned dialog under the existing 50-second
+action bound. Arming a plan does not establish that the viewer has already
+opened its dialog. An action is acknowledged only after a real control action
+and observed dismissal (or the expected overwrite confirmation).
 
 Candidate archive and manifest versions retain their complete suffix, while the
 macOS bundle version keys use the numeric semantic core required by
