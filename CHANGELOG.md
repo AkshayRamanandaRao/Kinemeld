@@ -49,6 +49,8 @@ rules in [docs/project-format.md](docs/project-format.md).
   round trips, conflicts and crash recovery. Accepted close ignores queued events
   and shuts down the owned service; Windows and Linux fresh-runner checks pass,
   while macOS dialog qualification remains open.
+- Attach project confirmations to the desktop window so macOS uses an owned
+  alert instead of a separate system-notification dialog.
 - Refreshed both aircraft nose-gear MP4/GIF pairs with concise model titles and
   captions. Engineering assumptions and interpretation limits remain in the study
   guide. The workflow recorder now generates and checks its GIF alongside its MP4.

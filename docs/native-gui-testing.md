@@ -96,6 +96,9 @@ Xcode's sandboxed test runner receives write access only to the supervisor's
 marked temporary root through its test-only signing entitlement. The supervisor
 checks the generated runner's actual entitlement before launching the app. The
 application's signature and entitlements are unchanged.
+Project confirmations have the actual application window as their parent.
+This keeps macOS Yes/No prompts inside the application's native accessibility
+tree rather than the separate system notification service.
 
 Linux retains RFD's release-default xdg-desktop-portal backend. A private D-Bus
 session and Xvfb display run Openbox, xdg-desktop-portal and its GTK portal. GTK is
