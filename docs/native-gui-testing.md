@@ -140,6 +140,13 @@ including WebView2 grandchildren, and retains the termination output. An exited
 parent PID is never targeted. Normal close and service shutdown are measured
 separately. Browser profile caches are excluded from CI artifact uploads;
 projects, recovery snapshots, solver artifacts and GUI evidence are retained.
+The Win32 helper runs without Python site hooks. It reads cross-process window
+captions through `GetWindowTextW`, as documented by
+[Microsoft](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowtextw),
+while edit/control text retains bounded `WM_GETTEXT` and exact readback. Its
+Windows self-check reads a non-pumping fixture's caption from another process,
+keeps all 32 unresponsive controls marked unreadable, and enforces the shared
+inventory deadline.
 
 Candidate archive and manifest versions retain their complete suffix, while the
 macOS bundle version keys use the numeric semantic core required by
