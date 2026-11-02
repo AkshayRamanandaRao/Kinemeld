@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import struct
+import subprocess
 import sys
 import time
 import zlib
@@ -25,6 +26,7 @@ CALLBACK = C.WINFUNCTYPE(W.BOOL, W.HWND, W.LPARAM)
 U.EnumWindows.argtypes = [CALLBACK, W.LPARAM]
 U.EnumChildWindows.argtypes = [W.HWND, CALLBACK, W.LPARAM]
 U.GetWindowThreadProcessId.argtypes = [W.HWND, C.POINTER(W.DWORD)]
+U.GetWindowTextW.argtypes = [W.HWND, W.LPWSTR, C.c_int]
 U.IsWindowVisible.argtypes = U.IsWindowEnabled.argtypes = [W.HWND]
 U.GetDlgCtrlID.argtypes = [W.HWND]
 U.GetClassNameW.argtypes = [W.HWND, W.LPWSTR, C.c_int]
@@ -125,12 +127,17 @@ def phase(name, **details):
     print(json.dumps({"phase": name, "monotonic": time.monotonic(), **details}), file=sys.stderr, flush=True)
 
 
-def info(hwnd, deadline=None):
+def info(hwnd, deadline=None, caption=False):
     name, text = C.create_unicode_buffer(256), C.create_unicode_buffer(4096)
     U.GetClassNameW(hwnd, name, len(name))
     error = None
     remaining = 150 if deadline is None else min(150, int((deadline - time.monotonic()) * 1000))
-    if remaining <= 0:
+    if caption and pid(hwnd) != os.getpid():
+        # Cross-process captions are stored by Windows; child text still needs WM_GETTEXT.
+        C.set_last_error(0)
+        if not U.GetWindowTextW(hwnd, text, len(text)) and C.get_last_error():
+            error = str(C.WinError(C.get_last_error()))
+    elif remaining <= 0:
         error = "Inventory text-query deadline exhausted."
     else:
         try:
@@ -145,7 +152,7 @@ def info(hwnd, deadline=None):
 
 def windows(process, title=None, dialogs=False, deadline=None):
     deadline = time.monotonic() + 2 if deadline is None else deadline
-    return [item for item in (info(hwnd, deadline) for hwnd in handles() if pid(hwnd) == process and U.IsWindowVisible(hwnd))
+    return [item for item in (info(hwnd, deadline, caption=True) for hwnd in handles() if pid(hwnd) == process and U.IsWindowVisible(hwnd))
             if (title is None or (not item.get("textError") and re.search(title, item["text"])))
             and (not dialogs or item["class"] == "#32770")]
 
@@ -240,6 +247,9 @@ def check_inventory_deadline():
         started = time.monotonic()
         window = info(hwnd, started + 0.1)
         assert window.get("textError") and window["hwnd"] == hwnd and window["pid"] == os.getpid()
+        probe = "import json,runpy,sys;print(json.dumps(runpy.run_path(sys.argv[1])['info'](int(sys.argv[2]),caption=True)))"
+        caption = json.loads(subprocess.check_output([sys.executable, "-I", "-S", "-c", probe, str(Path(__file__).resolve()), str(hwnd)], text=True, timeout=3))
+        assert caption["text"] == "Owned stalled-query fixture" and caption["pid"] == os.getpid() and not caption.get("textError")
         items = children(window, os.getpid(), time.monotonic() + 0.3)
         elapsed = time.monotonic() - started
         assert len(items) == 32 and all(item.get("textError") for item in items)
