@@ -92,14 +92,14 @@ the tested artifact identity and workflows; it does not resolve the macOS
 SDK-derived binding warning, historical Y12 rights, or the optional private
 Python/OCP runtime's redistribution status.
 
-## Fresh packaged native GUI matrix (1 November 2026)
+## Fresh packaged native GUI matrix (1–2 November 2026)
 
-- [Windows fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41358774059/job/125004433956):
+- [Windows fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41456556476/job/125314592584):
   all **12 native-dialog cases and four packaged robotics cases pass**. No cases
   are skipped; no source-workspace override is used. Native exit, backend cleanup,
   recovery removal and unchanged fixture checks pass. The packaged numerical
   harness reports `source_injection: false` and unchanged resources.
-- [Linux fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41357058141/job/124999373366):
+- [Linux fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41362348668/job/125015222856):
   all **12 native-dialog cases and four packaged robotics cases pass**.
 - macOS signed packages pass all four packaged numerical cases with their own
   resources. The native-dialog matrix remains pending: the runner denied the
@@ -110,8 +110,12 @@ Earlier Windows runs retained two distinct failures: a recovery STEP conversion
 exceeded its existing 90-second limit, and a malformed-file Open helper stalled
 past its outer deadline. Both paths pass in the fresh run above. Their exact
 causes remain unclassified; helper failures now retain phase, elapsed-time and
-stack diagnostics. These earlier failures are not claimed to have a confirmed
-production fix.
+stack diagnostics. A later run identified filename-field text queries being
+starved by unrelated shell controls; the helper now reads filename/action
+controls first within the same bounded inventory budget. All twelve cases pass
+on the fresh runner above and in the rebuilt local review package. This fixes
+that observed test-driver ordering issue; earlier process/CAD stalls are not
+claimed to have a confirmed production cause.
 
 ## Configured Windows native GUI verification (1 November 2026)
 
