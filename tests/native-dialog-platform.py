@@ -302,14 +302,14 @@ def health(url):
         return False
 
 
-def terminate(process):
+def terminate(process, root):
     if process and sys.platform == "darwin":
         process.terminate_owned()
         return
     if process and process.poll() is None:
         if sys.platform == "win32":
             try:
-                WindowsControls(Path.cwd(), process.pid).terminate(process)
+                WindowsControls(root, process.pid).terminate(process)
             except Exception:
                 if process.poll() is None:
                     # A failed control helper must not leave the supervised app tree running.
@@ -406,7 +406,7 @@ def main():
                 if latest and latest.get("status") == goal:
                     if phase == "initial":
                         assert health(latest["url"]), "Owned backend not healthy before crash."
-                        terminate(app)  # Real abrupt exit, with the actual autosave retained.
+                        terminate(app, root)  # Real abrupt exit, with the actual autosave retained.
                         if mac_suite:
                             mac_suite.finish()
                         break
@@ -451,11 +451,11 @@ def main():
         raise
     finally:
         try:
-            terminate(app)
+            terminate(app, root)
             if mac_suite:
                 mac_suite.stop()
             for portal in portals:
-                terminate(portal)
+                terminate(portal, root)
         except Exception as cleanup_error:
             report["ok"] = False
             report["cleanupError"] = repr(cleanup_error)

@@ -16,7 +16,7 @@ class NativeControlTests(unittest.TestCase):
         with patch.object(module["sys"], "platform", "win32"), \
                 patch.object(module["WindowsControls"], "terminate", side_effect=RuntimeError("helper stalled")), \
                 patch("subprocess.run") as run, self.assertRaisesRegex(RuntimeError, "helper stalled"):
-            module["terminate"](process)
+            module["terminate"](process, Path("owned-evidence"))
         run.assert_called_once_with(["taskkill", "/PID", "1234", "/T", "/F"], capture_output=True, check=True, timeout=15)
         process.wait.assert_called_once_with(timeout=10)
 
