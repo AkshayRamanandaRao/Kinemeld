@@ -11,14 +11,15 @@ the target system.
 The review branch implements P4–P10 with bounded model contracts. These checks
 establish the listed numerical and interface cases, not physical calibration.
 
-- [Integrated Linux CI](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41350498026):
+- [Integrated Linux CI](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41362348670):
   **294 backend tests**, two platform-conditional skips; all **98 JavaScript unit
   checks**, native numerical verifiers and project/robotics GUI workflows pass.
   Asset and Rust notice inventories remain current; no new runtime dependencies
   were added.
-- Current packaging and test-helper regression suite: **61 script checks pass**,
+- Current packaging and test-helper regression suite: **62 script checks pass**,
   including macOS bundle sealing, external-manifest coverage, signature rejection,
-  and a closing Linux accessibility node. The earlier P3 count below is historical.
+  a closing Linux accessibility node and cleanup after a stalled Windows helper.
+  The earlier P3 count below is historical.
 - P4: [four engineering records](engineering-example-verification.md), 16 actual
   solver runs, CAD mass/COM/tensor assumptions and independent references.
 - P5: cones/tori, 13 frontend geometric checks, extraction checks on OCP 7.9 and 8,
@@ -48,6 +49,8 @@ establish the listed numerical and interface cases, not physical calibration.
   overlapping baseline requests coalesce and ordinary plot downloads remain active.
   Failed and overflowed responses cannot win. Rankings are
   session data; the configuration and exported table retain the setup/results.
+  The retained integration report measures the stalled candidate's actual abort
+  at 30.060 seconds, before the next candidate starts.
 - Existing spatial regression: all nine GUI scripts pass against the native solver.
   Existing and curved CAD GUI scripts pass without page errors. Reports and
   screenshots are retained under `verification/integrated-regression-8794/`.

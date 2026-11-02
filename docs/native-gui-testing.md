@@ -74,8 +74,11 @@ only emits its guarded identity marker; there is no injected AppKit input driver
 The test uses actual native text fields, field-value readback and enabled,
 hittable buttons. The macOS picker is identified by its native dialog structure
 and observed `OKButton`, `CancelButton` and folder-control identifiers; its title
-can be absent. Initial Open may be disabled until a file is selected. Go to Folder navigates to the existing parent for Save, and
-the native filename field supplies its basename. Overwrite refusal requires the
+can be absent. Initial Open may be disabled until a file is selected. Go to Folder
+is submitted with Return, navigates to the existing parent for Save, and the native
+filename field supplies its basename. Fields use native line-selection keys and
+must read back empty before replacement, then match the exact requested text.
+Overwrite refusal requires the
 actual Replace confirmation before pressing its Cancel button and retaining
 the Save panel. Missing native controls fail the case. The harness changes no
 system permission database, clipboard or panel configuration properties.
@@ -85,6 +88,10 @@ element trees, logs and `.xcresult` bundles are retained alongside the shared
 report. Both XCTest phase exits must succeed; the actual application exit is
 still measured separately through kqueue. XCTest is a test dependency supplied
 by Xcode and adds no shipped runtime or Cargo dependencies.
+The supervisor allows 120 seconds per macOS control plan for XCTest snapshots
+and remote readbacks; individual missing controls still fail after 20 seconds.
+The phase remains bounded to 15 minutes. Windows/Linux control plans retain
+their 50-second limit, and application operation deadlines are unchanged.
 Xcode's sandboxed test runner receives write access only to the supervisor's
 marked temporary root through its test-only signing entitlement. The supervisor
 checks the generated runner's actual entitlement before launching the app. The
@@ -123,6 +130,11 @@ as `native-gui-PLATFORM` workflow artifacts. The fixture in the package is check
 unchanged. A missing runner pass, timeout, failed case or missing native-control
 evidence is a qualification failure; adding the harness alone does not establish
 macOS/Linux native-dialog support.
+
+Failure reports survive cleanup errors. If the Windows control helper fails
+during cleanup, the supervisor attempts to stop only its owned process tree and
+still fails the run. Browser profile caches are excluded from CI artifact uploads;
+projects, recovery snapshots, solver artifacts and GUI evidence are retained.
 
 Candidate archive and manifest versions retain their complete suffix, while the
 macOS bundle version keys use the numeric semantic core required by

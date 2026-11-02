@@ -308,7 +308,14 @@ def terminate(process):
         return
     if process and process.poll() is None:
         if sys.platform == "win32":
-            WindowsControls(Path.cwd(), process.pid).terminate(process)
+            try:
+                WindowsControls(Path.cwd(), process.pid).terminate(process)
+            except Exception:
+                if process.poll() is None:
+                    # A failed control helper must not leave the supervised app tree running.
+                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, check=True, timeout=15)
+                    process.wait(timeout=10)
+                raise
             return
         os.killpg(process.pid, signal.SIGKILL)
         process.wait(timeout=10)
@@ -443,15 +450,21 @@ def main():
             report["failureViewer"] = latest
         raise
     finally:
-        terminate(app)
-        if mac_suite:
-            mac_suite.stop()
-        for portal in portals:
-            terminate(portal)
-        for stream in streams:
-            stream.close()
-        atomic(root / "report.json", report)
-        print(json.dumps({"ok": report["ok"], "checks": len(report["checks"]), "report": str(root / "report.json")}), flush=True)
+        try:
+            terminate(app)
+            if mac_suite:
+                mac_suite.stop()
+            for portal in portals:
+                terminate(portal)
+        except Exception as cleanup_error:
+            report["ok"] = False
+            report["cleanupError"] = repr(cleanup_error)
+            raise
+        finally:
+            for stream in streams:
+                stream.close()
+            atomic(root / "report.json", report)
+            print(json.dumps({"ok": report["ok"], "checks": len(report["checks"]), "report": str(root / "report.json")}), flush=True)
 
 
 if __name__ == "__main__":
