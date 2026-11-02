@@ -164,7 +164,10 @@ def wait_window(process, title, timeout, dialogs=True):
 
 def children(window, process, deadline=None):
     deadline = time.monotonic() + 2 if deadline is None else deadline
-    return [info(hwnd, deadline) for hwnd in handles(window["hwnd"]) if pid(hwnd) == process]
+    owned = [hwnd for hwnd in handles(window["hwnd"]) if pid(hwnd) == process]
+    # Read filenames and action buttons before unrelated shell controls spend the text budget.
+    owned.sort(key=lambda hwnd: U.GetDlgCtrlID(hwnd) not in (1001, 1148, 1, 2, 6, 7))
+    return [info(hwnd, deadline) for hwnd in owned]
 
 
 def choose(items, class_name, control_id=None, text=None):
@@ -217,8 +220,8 @@ def check_inventory_deadline():
             parent = U.CreateWindowExW(0, "STATIC", "Owned stalled-query fixture", 0, 0, 0, 2, 2, None, None, None, None)
             if not parent:
                 raise C.WinError(C.get_last_error())
-            for index in range(32):
-                if not U.CreateWindowExW(0, "EDIT", "stalled", 0x50000000, 0, 0, 1, 1, parent, index + 1001, None, None):
+            for control_id in [*range(1002, 1033), 1001]:
+                if not U.CreateWindowExW(0, "EDIT", "stalled", 0x50000000, 0, 0, 1, 1, parent, control_id, None, None):
                     raise C.WinError(C.get_last_error())
             ready.put(int(parent))
             stop.wait()  # Deliberately do not pump messages on this owned fixture thread.
@@ -240,6 +243,7 @@ def check_inventory_deadline():
         items = children(window, os.getpid(), time.monotonic() + 0.3)
         elapsed = time.monotonic() - started
         assert len(items) == 32 and all(item.get("textError") for item in items)
+        assert items[0]["id"] == 1001, "A late filename control must be queried before unrelated controls."
         assert elapsed < 2, f"Stalled inventory exceeded its aggregate deadline: {elapsed:g} s"
         unread = dict(items[0], visible=True, enabled=True)
         try:
