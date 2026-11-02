@@ -37,7 +37,7 @@ async function check(name, action) {
 }
 async function control(command, ...args) {
   let stdout;
-  try { ({ stdout } = await run(process.env.MBDYN_STUDIO_PYTHON, [helper, '--pid', String(app.pid), command, ...args], { timeout: 20000, maxBuffer: 2 * 1024 * 1024, encoding: 'utf8' })); }
+  try { ({ stdout } = await run(process.env.MBDYN_STUDIO_PYTHON, ['-I', '-S', helper, '--pid', String(app.pid), command, ...args], { timeout: 20000, maxBuffer: 2 * 1024 * 1024, encoding: 'utf8' })); }
   catch (error) {
     const detail = error.stdout?.trim() || error.message;
     report.nativeControls.push({ command, ok: false, error: detail });

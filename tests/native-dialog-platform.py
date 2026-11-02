@@ -213,7 +213,7 @@ class WindowsControls:
         helper = Path(__file__).with_name("native-dialog-controls.py")
         started = time.monotonic()
         try:
-            result = subprocess.run([os.environ.get("MBDYN_STUDIO_PYTHON", sys.executable), str(helper), "--pid", str(self.app_pid), command, *args], capture_output=True, text=True, timeout=25)
+            result = subprocess.run([os.environ.get("MBDYN_STUDIO_PYTHON", sys.executable), "-I", "-S", str(helper), "--pid", str(self.app_pid), command, *args], capture_output=True, text=True, timeout=25)
         except subprocess.TimeoutExpired as error:
             output = lambda value: value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value or ""
             evidence = {"command": command, "args": args, "elapsedSeconds": time.monotonic() - started,
