@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import shutil
 import runpy
+import re
 import signal
 import subprocess
 import sys
@@ -262,7 +263,11 @@ class WindowsControls:
             title = "^Open$" if kind == "open" or action.get("dialog") == "open" else "^Save As$"
             if kind == "button":
                 title = "Confirm Save As" if action["text"] == "refuse-overwrite" else "^Unsaved project$"
-            evidence = self.call("wait", "--title", title)
+            windows = self.call("list")["windows"]
+            matching = [item for item in windows if item["class"] == "#32770" and not item.get("textError") and re.search(title, item["text"])]
+            if not matching:
+                return  # The armed viewer may still be preparing its native request.
+            evidence = {"ok": True, "window": matching[0]}
             self.call("screenshot", "--title", title, "--out", str(self.root / f"native-{self.current}-{self.index}.png"))
             if kind in ("open", "save"):
                 evidence = self.call("file", "--title", title, "--path", str(Path(action["path"])))
