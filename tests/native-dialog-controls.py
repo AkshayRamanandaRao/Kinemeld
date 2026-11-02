@@ -82,6 +82,46 @@ def processes():
         K.CloseHandle(snapshot)
 
 
+def resource_snapshot(process):
+    class Memory(C.Structure):
+        _fields_ = [("size", W.DWORD), ("load", W.DWORD)] + [(name, C.c_uint64) for name in
+            ("total", "available", "commitLimit", "commitAvailable", "virtual", "virtualAvailable", "extended")]
+    class Counters(C.Structure):
+        _fields_ = [("size", W.DWORD), ("faults", W.DWORD)] + [(name, C.c_size_t) for name in
+            ("peakWorkingSet", "workingSet", "peakPagedPool", "pagedPool", "peakNonPagedPool", "nonPagedPool", "pagefile", "peakPagefile", "private")]
+    K.GlobalMemoryStatusEx.argtypes = [C.POINTER(Memory)]
+    K.K32GetProcessMemoryInfo.argtypes = [W.HANDLE, C.POINTER(Counters), W.DWORD]
+    K.GetProcessTimes.argtypes = [W.HANDLE] + [C.POINTER(C.c_uint64)] * 4
+    K.GetSystemTimes.argtypes = [C.POINTER(C.c_uint64)] * 3
+    memory = Memory(size=C.sizeof(Memory))
+    if not K.GlobalMemoryStatusEx(C.byref(memory)):
+        raise C.WinError(C.get_last_error())
+    idle, kernel, user = (C.c_uint64() for _ in range(3))
+    if not K.GetSystemTimes(C.byref(idle), C.byref(kernel), C.byref(user)):
+        raise C.WinError(C.get_last_error())
+    entries, owned = processes(), {process}
+    while True:
+        expanded = owned | {item["pid"] for item in entries if item["parentPid"] in owned}
+        if expanded == owned: break
+        owned = expanded
+    found = []
+    for item in entries:
+        if item["pid"] not in owned: continue
+        handle = K.OpenProcess(0x1000, False, item["pid"])
+        if not handle: continue  # A child can exit between the snapshot and read-only query.
+        try:
+            counter = Counters(size=C.sizeof(Counters))
+            created, exited, cpu_kernel, cpu_user = (C.c_uint64() for _ in range(4))
+            if K.K32GetProcessMemoryInfo(handle, C.byref(counter), C.sizeof(counter)) and K.GetProcessTimes(handle, C.byref(created), C.byref(exited), C.byref(cpu_kernel), C.byref(cpu_user)):
+                found.append({**item, "workingSetBytes": counter.workingSet, "privateBytes": counter.private,
+                              "cpuSeconds": (cpu_kernel.value + cpu_user.value) / 10_000_000})
+        finally:
+            K.CloseHandle(handle)
+    return {"monotonic": time.monotonic(), "logicalCpus": os.cpu_count(), "memoryLoadPercent": memory.load,
+            "totalPhysicalBytes": memory.total, "availablePhysicalBytes": memory.available,
+            "availableCommitBytes": memory.commitAvailable, "systemCpuTicks": {"idle": idle.value, "kernel": kernel.value, "user": user.value}, "processes": found}
+
+
 def terminate_child(parent_pid, child_pid):
     child = next((item for item in processes() if item["pid"] == child_pid), None)
     if child is None or child["parentPid"] != parent_pid or child_pid == parent_pid:
@@ -386,6 +426,9 @@ def main():
         else: raise AssertionError("A minimized caption strip must not qualify as an app screenshot.")
         assert C.sizeof(W.HWND) == C.sizeof(C.c_void_p)
         assert any(item["pid"] == os.getpid() for item in processes())
+        metrics = resource_snapshot(os.getpid())
+        assert 0 <= metrics["memoryLoadPercent"] <= 100 and 0 < metrics["availablePhysicalBytes"] <= metrics["totalPhysicalBytes"]
+        assert any(item["pid"] == os.getpid() and item["workingSetBytes"] > 0 and item["privateBytes"] > 0 for item in metrics["processes"])
         return {"ok": True, "pointerBits": C.sizeof(W.HWND) * 8, "inventoryDeadline": check_inventory_deadline(),
                 "windows": windows(args.pid or os.getpid())}
     if not args.pid or args.pid <= 0 or not args.command:
