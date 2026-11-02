@@ -220,7 +220,9 @@ Current development focuses on robotics multibody dynamics. It adds
 [constrained design search](docs/design-search.md). Cone/torus CAD picking,
 reviewed assistant workflows, engineering provenance and dependency notices are
 also implemented with numerical and GUI checks. The work remains unpublished;
-cross-platform native-dialog runner qualification is being completed.
+all twelve native project-dialog cases pass on Windows Server 2022, macOS 15
+and Ubuntu 24.04 runners. See the [qualification record](docs/verification.md)
+for exact scope and the Windows Server 2025 hosted-GUI limitation.
 
 See the [prioritized roadmap](docs/roadmap.md) for evidence and exact model limits,
 the [robotics follow-on candidates](docs/robotics-backlog.md) for proposed next

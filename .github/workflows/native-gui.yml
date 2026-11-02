@@ -35,13 +35,14 @@ jobs:
     timeout-minutes: 40
     strategy:
       fail-fast: false
+      # Server 2025 hosted GUI timing is unqualified; build/unit CI still uses windows-latest.
       matrix:
         include: >-
           ${{ fromJSON(
             inputs.platform == 'linux' && '[{"os":"ubuntu-24.04","platform":"linux","solver":"solver-linux"}]' ||
             inputs.platform == 'macos' && '[{"os":"macos-15","platform":"macos","solver":"solver-macos"}]' ||
-            inputs.platform == 'windows' && '[{"os":"windows-latest","platform":"windows","solver":"solver-windows"}]' ||
-            '[{"os":"ubuntu-24.04","platform":"linux","solver":"solver-linux"},{"os":"macos-15","platform":"macos","solver":"solver-macos"},{"os":"windows-latest","platform":"windows","solver":"solver-windows"}]'
+            inputs.platform == 'windows' && '[{"os":"windows-2022","platform":"windows","solver":"solver-windows"}]' ||
+            '[{"os":"ubuntu-24.04","platform":"linux","solver":"solver-linux"},{"os":"macos-15","platform":"macos","solver":"solver-macos"},{"os":"windows-2022","platform":"windows","solver":"solver-windows"}]'
           ) }}
     steps:
       - uses: actions/checkout@v4

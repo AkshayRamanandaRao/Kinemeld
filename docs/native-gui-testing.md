@@ -14,7 +14,7 @@ corresponding sources. The default is audit run `41336308183`; the packager chec
 the downloaded solver/source inventory before using it. This avoids a solver
 rebuild for every GUI iteration. It does not publish a release.
 
-The three jobs use Ubuntu 24.04, macOS 15 arm64 and Windows. All twelve cases must
+The three jobs use Ubuntu 24.04, macOS 15 arm64 and Windows Server 2022. All twelve cases must
 pass without skips before a platform is qualified:
 
 1. Real embedded viewer, native bridge and owned solver service start.
@@ -151,6 +151,11 @@ Windows plans poll for the actual owned dialog under the existing 50-second
 action bound. Arming a plan does not establish that the viewer has already
 opened its dialog. An action is acknowledged only after a real control action
 and observed dismissal (or the expected overwrite confirmation).
+Windows resource records retain system memory and owned-process CPU/private
+memory without inspecting unrelated application content. The GUI job pins the
+2022 image after repeated timing failures on Server 2025; see the
+[comparison and qualification record](verification.md#fresh-packaged-native-gui-matrix-2-november-2026).
+The ordinary desktop build/unit job continues to use `windows-latest`.
 
 Candidate archive and manifest versions retain their complete suffix, while the
 macOS bundle version keys use the numeric semantic core required by

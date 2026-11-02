@@ -11,7 +11,7 @@ the target system.
 The review branch implements P4–P10 with bounded model contracts. These checks
 establish the listed numerical and interface cases, not physical calibration.
 
-- [Integrated Linux CI](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41362348670):
+- [Integrated Linux CI](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41459624796):
   **294 backend tests**, two platform-conditional skips; all **98 JavaScript unit
   checks**, native numerical verifiers and project/robotics GUI workflows pass.
   Asset and Rust notice inventories remain current; no new runtime dependencies
@@ -94,9 +94,9 @@ the tested artifact identity and workflows; it does not resolve the macOS
 SDK-derived binding warning, historical Y12 rights, or the optional private
 Python/OCP runtime's redistribution status.
 
-## Fresh packaged native GUI matrix (1–2 November 2026)
+## Fresh packaged native GUI matrix (2 November 2026)
 
-- [Windows fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41456556476/job/125314592584):
+- [Windows Server 2022 fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41472448506/job/125369286084):
   all **12 native-dialog cases and four packaged robotics cases pass**. No cases
   are skipped; no source-workspace override is used. Native exit, backend cleanup,
   recovery removal and unchanged fixture checks pass. The packaged numerical
@@ -108,12 +108,14 @@ Python/OCP runtime's redistribution status.
   an unchanged fixture. The current Windows release-profile Rust checks pass
   **33 tests**; one subprocess fixture is intentionally ignored as a direct test
   and exercised through its startup-test parents.
-- [Linux fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41362348668/job/125015222856):
+- [Linux fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41459624604/job/125325036254):
   all **12 native-dialog cases and four packaged robotics cases pass**.
-- macOS signed packages pass all four packaged numerical cases with their own
-  resources. The native-dialog matrix remains pending: the runner denied the
-  app's remote accessibility queries, and in-app synthetic keyboard input did not
-  complete Open. These results do not demonstrate a production picker failure.
+- [macOS 15 fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41459624604/job/125325035756):
+  all **12 native-dialog cases and four packaged robotics cases pass**. Both
+  XCUITest phases exit zero against their exact supervised application PIDs;
+  the application itself exits zero and its backend stops. The bundle's signature
+  and own resources are checked. The harness operates on the owned confirmation
+  sheet and actual buttons, with no skipped cases or source override.
 
 Earlier Windows runs retained two distinct failures: a recovery STEP conversion
 exceeded its existing 90-second limit, and a malformed-file Open helper stalled
@@ -125,6 +127,22 @@ controls first within the same bounded inventory budget. All twelve cases pass
 on the fresh runner above and in the rebuilt local review package. This fixes
 that observed test-driver ordering issue; earlier process/CAD stalls are not
 claimed to have a confirmed production cause.
+
+The GUI job now pins Windows Server 2022. Server 2025 (`windows-latest`) repeatedly
+stalled in different GUI/control stages, including a recovery conversion reaching
+the existing 90-second bound. The [instrumented comparison](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41471695439)
+recorded at most 25% memory load and at least 11.9 GiB free physical RAM; a WebView2
+child averaged roughly three CPU cores during the initial phase. The same native
+matrix passes on Server 2022. These are
+observations of runner sensitivity; causal attribution remains open. Server 2025
+GUI qualification remains open, while its build/unit checks continue. No GUI
+cases or application timeouts were relaxed for the pinned image.
+
+A [same-runner CAD comparison](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41462706260)
+converts the exact retained STEP twice on OCP 8.0.1.1.0 and twice on 7.9.3.1.1:
+all four runs finish in 2.3–2.9 seconds with eleven parts and the same mesh size.
+The STEP SHA-256 is `b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575`.
+The dependency range and 90-second conversion limit remain unchanged.
 
 ## Configured Windows native GUI verification (1 November 2026)
 
@@ -162,8 +180,8 @@ the tested `frontend/app.js` SHA-256 is
 `8c939fc7389da07948227ba43a14fbb036a965bb4ae28a6b737d395f92ee8f5b`.
 This is a configured Windows machine using its installed Python/CAD runtime and
 local WSL MBDyn 1.7.3. The QA archive bundles no Python, CAD runtime or solver.
-Clean-machine GUI installation and macOS/Linux native dialogs remain unverified;
-this is not a distribution or dependency-license qualification.
+This configured-run record predates the fresh-runner matrix above and is separate
+from distribution and dependency-license qualification.
 
 ## Asynchronous edit preservation (1 November 2026)
 

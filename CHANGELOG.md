@@ -47,15 +47,20 @@ rules in [docs/project-format.md](docs/project-format.md).
   the current document and its recovery origin.
 - Added automated desktop GUI suites for real native dialogs, full project
   round trips, conflicts and crash recovery. Accepted close ignores queued events
-  and shuts down the owned service; Windows and Linux fresh-runner checks pass,
-  while macOS dialog qualification remains open.
+  and shuts down the owned service; all twelve cases pass on fresh Windows Server
+  2022, macOS 15 and Ubuntu 24.04 runners. Windows Server 2025 remains covered by
+  build/unit checks; its hosted GUI timing remains unqualified.
 - Attach project confirmations to the desktop window so macOS uses an owned
   alert instead of a separate system-notification dialog.
+- Keep native GUI controls bounded and PID-scoped: read cached Windows captions,
+  prioritize filename/action controls, wait for actual dialog appearance and
+  dismissal, and stop the complete owned process tree during forced-crash tests.
 - Refreshed both aircraft nose-gear MP4/GIF pairs with concise model titles and
   captions. Engineering assumptions and interpretation limits remain in the study
   guide. The workflow recorder now generates and checks its GIF alongside its MP4.
-- Prioritize the remaining roadmap around robotics multibody dynamics; proceed
-  across the authorized items and keep aerodynamics outside the active scope.
+- Focus the roadmap on robotics multibody dynamics, document completed bounded
+  workflows and keep follow-on proposals separate. Aerodynamics stays outside
+  the active scope.
 
 ## 1.2.1 — Documentation, help text and first launch
 
