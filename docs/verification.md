@@ -99,6 +99,13 @@ Python/OCP runtime's redistribution status.
   are skipped; no source-workspace override is used. Native exit, backend cleanup,
   recovery removal and unchanged fixture checks pass. The packaged numerical
   harness reports `source_injection: false` and unchanged resources.
+- The unpublished local Windows `1.2.1-roadmap.4` review archive passes all 425
+  manifest file hashes, notice/source checks and all twelve native GUI cases
+  after window-owned confirmations were added. Its report records no workspace
+  override or skipped cases, exit zero, backend shutdown, recovery removal and
+  an unchanged fixture. The current Windows release-profile Rust checks pass
+  **33 tests**; one subprocess fixture is intentionally ignored as a direct test
+  and exercised through its startup-test parents.
 - [Linux fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41362348668/job/125015222856):
   all **12 native-dialog cases and four packaged robotics cases pass**.
 - macOS signed packages pass all four packaged numerical cases with their own
