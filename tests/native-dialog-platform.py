@@ -373,7 +373,7 @@ def main():
             action_id, action_since, progress, close_since = None, time.monotonic(), None, None
             resource_since = 0
             while time.monotonic() < deadline:
-                if resource_reader and time.monotonic() - resource_since > 5:
+                if resource_reader and app.poll() is None and time.monotonic() - resource_since > 5:
                     try:
                         metrics = {"phase": phase, **resource_reader(app.pid)}
                     except Exception as error:
