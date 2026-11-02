@@ -5,10 +5,21 @@ import runpy
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 class NativeControlTests(unittest.TestCase):
+    def test_failed_windows_cleanup_stops_only_owned_tree_and_keeps_failure(self):
+        module = runpy.run_path(str(Path(__file__).resolve().parents[1] / "tests" / "native-dialog-platform.py"))
+        process = Mock(pid=1234)
+        process.poll.return_value = None
+        with patch.object(module["sys"], "platform", "win32"), \
+                patch.object(module["WindowsControls"], "terminate", side_effect=RuntimeError("helper stalled")), \
+                patch("subprocess.run") as run, self.assertRaisesRegex(RuntimeError, "helper stalled"):
+            module["terminate"](process)
+        run.assert_called_once_with(["taskkill", "/PID", "1234", "/T", "/F"], capture_output=True, check=True, timeout=15)
+        process.wait.assert_called_once_with(timeout=10)
+
     def test_xctest_write_scope_requires_marked_matching_data_root(self):
         suite = runpy.run_path(str(Path(__file__).resolve().parents[1] / "tests" / "native-dialog-xctest.py"))["MacXCTest"]
         with tempfile.TemporaryDirectory(prefix="native-platform-") as directory:
