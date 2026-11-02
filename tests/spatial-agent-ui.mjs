@@ -23,7 +23,7 @@ try {
  const undo=async()=>{await page.locator('#agentClose').click();await page.locator('#undoButton').click();await page.locator('#agentButton').click();await page.waitForFunction(()=>!document.querySelector('#agentSend').disabled);};
  const review=await propose('Create a rotational spring on hinge, set arm mass to 2 kg and gravity X to 1. Do not run.');
  assert.equal(Number(await mass()),1);assert.equal(await page.locator('[data-entity="rotary-torsion"]').count(),0);assert.equal(runs.length,0);
- const chatCount=chats.length;await page.locator('#agentInput').fill('Explain the current mechanism.');await page.locator('#agentSend').click();await page.waitForFunction(()=>document.querySelector('#agentMessages')?.textContent.includes('Apply or discard the pending spatial proposal'));assert.equal(chats.length,chatCount);
+ const chatCount=chats.length;await page.locator('#agentInput').fill('Explain the current mechanism.');await page.locator('#agentSend').click();await page.waitForFunction(()=>document.querySelector('#agentMessages')?.textContent.includes('Apply or discard the pending proposal'));assert.equal(chats.length,chatCount);
  await review.getByText('Compare current and proposed model').click();const snapshots=await review.locator('pre').textContent();
  const parts=snapshots.split('\n\nPROPOSED MODEL\n');assert.equal(parts.length,2);const before=JSON.parse(parts[0].replace(/^CURRENT MODEL\n/,'')),after=JSON.parse(parts[1]);
  assert.equal(before.bodies[0].mass,1);assert.equal(after.bodies[0].mass,2);assert.equal(after.parameters.gravity.x,1);assert.equal(after.rotationalElements[0].id,'torsion');

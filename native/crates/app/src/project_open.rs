@@ -1,4 +1,5 @@
 use mbdyn_studio_core::ProjectSession;
+use std::path::PathBuf;
 
 struct PreviousProject {
     session: Option<ProjectSession>,
@@ -12,6 +13,8 @@ struct PreviousProject {
 pub(crate) struct ProjectOpenState {
     pub(crate) session: Option<ProjectSession>,
     pub(crate) dirty: bool,
+    pub(crate) recovered_from: Option<PathBuf>,
+    pub(crate) pending_recovered_from: Option<PathBuf>,
     pending: Option<ProjectSession>,
     previous: Option<PreviousProject>,
     next_token: u64,
@@ -37,11 +40,13 @@ impl ProjectOpenState {
     pub(crate) fn set_pending(&mut self, candidate: ProjectSession) -> Result<(), &'static str> {
         self.ensure_idle()?;
         self.pending = Some(candidate);
+        self.pending_recovered_from = None;
         Ok(())
     }
 
     pub(crate) fn discard_pending(&mut self) {
         self.pending = None;
+        self.pending_recovered_from = None;
     }
 
     pub(crate) fn accept(&mut self) -> Result<String, &'static str> {
@@ -62,6 +67,7 @@ impl ProjectOpenState {
         if let Some(previous) = self.previous.as_ref() {
             if previous.token != token { return Err("Project transaction does not match the accepted open."); }
             self.previous = None;
+            self.recovered_from = self.pending_recovered_from.take();
             self.last_finalized = Some(token.to_owned());
             return Ok(());
         }
@@ -88,6 +94,7 @@ impl ProjectOpenState {
         let previous = self.previous.take().ok_or("No opened project is awaiting rollback.")?;
         self.session = previous.session;
         self.dirty = previous.dirty || previous.edited;
+        self.pending_recovered_from = None;
         Ok(())
     }
 }
@@ -165,6 +172,58 @@ mod tests {
         assert_eq!(fs::read(&path).unwrap(),b"externally changed");
         assert!(state.dirty);
         fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn new_project_stays_pathless_and_rollback_restores_the_previous_file() {
+        use mbdyn_studio_core::SaveMode;
+        use std::{fs, time::{SystemTime, UNIX_EPOCH}};
+        let suffix=SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let directory=std::env::temp_dir().join(format!("mbdyn-new-{}-{suffix}",std::process::id()));
+        fs::create_dir(&directory).unwrap();
+        let path=directory.join("original.mbdyn-studio");
+        let mut original=session("old");
+        original.save_as(&path,SaveMode::CreateNew).unwrap();
+        let bytes=fs::read(&path).unwrap();
+        let mut state=ProjectOpenState { session:Some(original), ..Default::default() };
+        state.set_pending(session("new")).unwrap();
+        let token=state.accept().unwrap();
+        assert!(state.session.as_ref().unwrap().path().is_none());
+        state.rollback(&token).unwrap();
+        assert_eq!(state.session.as_ref().unwrap().path(),Some(fs::canonicalize(&path).unwrap().as_path()));
+        state.set_pending(session("new")).unwrap();
+        let token=state.accept().unwrap();
+        state.finalize(&token).unwrap();
+        assert!(state.session.as_ref().unwrap().path().is_none());
+        assert!(state.session.as_mut().unwrap().save().is_err());
+        assert!(state.dirty);
+        assert_eq!(fs::read(&path).unwrap(),bytes);
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn recovery_origin_changes_only_when_its_project_is_finalized() {
+        let old=PathBuf::from("old.mbdyn-studio");
+        let recovered=PathBuf::from("recovered.mbdyn-studio");
+        let mut state=ProjectOpenState { session:Some(session("old")), recovered_from:Some(old.clone()), ..Default::default() };
+        state.set_pending(session("discarded")).unwrap();
+        state.pending_recovered_from=Some(recovered.clone());
+        state.discard_pending();
+        assert_eq!(state.recovered_from,Some(old.clone()));
+        state.set_pending(session("rolled back")).unwrap();
+        let token=state.accept().unwrap();
+        state.rollback(&token).unwrap();
+        assert_eq!(state.recovered_from,Some(old));
+        state.set_pending(session("recovered")).unwrap();
+        state.pending_recovered_from=Some(recovered.clone());
+        let token=state.accept().unwrap();
+        state.finalize(&token).unwrap();
+        state.finalize(&token).unwrap();
+        assert_eq!(state.recovered_from,Some(recovered));
+        state.set_pending(session("new")).unwrap();
+        let token=state.accept().unwrap();
+        state.finalize(&token).unwrap();
+        assert!(state.recovered_from.is_none());
     }
 
     #[test]

@@ -4,6 +4,7 @@ import csv
 import math
 import re
 import reference_frames
+import rotary_control
 
 KIND = "spatial-assembly"
 MAX_BODIES = 16
@@ -250,10 +251,10 @@ def element_csv_values_per_row(model):
     """Count the scalar element and reaction columns repeated on each body row."""
     joints=model['joints'];rotary=model.get('rotationalElements',[]);drives=model.get('jointTorques',[])
     linear=model.get('jointForces',[]);forces=model.get('forces',[]);loads=model.get('loads',[]);contacts=model.get('contacts',[])
-    return (6*len(joints)+7*len(contacts)+4*sum(bool(friction(c)) for c in contacts)+4*sum(j['type']=='cylindrical' for j in joints)+4*sum(driven(j) for j in joints)+2*any(driven(j) for j in joints)
+    return (6*len(joints)+7*len(contacts)+4*sum(bool(j.get('friction')) for j in joints)+4*sum(bool(friction(c)) for c in contacts)+4*sum(j['type']=='cylindrical' for j in joints)+4*sum(driven(j) for j in joints)+2*any(driven(j) for j in joints)
             +10*len(loads)+4*len(forces)+6*sum(j['type']=='prismatic' for j in joints)
             +4*sum(force.get('type')=='oleo-strut' for force in forces)
-            +3*len(rotary)+2*len(drives)+2*len(linear)+2*bool(loads)+3*bool(rotary or forces)
+            +3*len(rotary)+2*len(drives)+8*len(rotary_control.servos(model))+2*len(linear)+2*bool(loads)+3*bool(rotary or forces)
             +2*bool(drives)+2*bool(linear))
 
 
@@ -303,6 +304,7 @@ def validate(model):
     for i,joint in enumerate(joints):
         p=f'joints.{i}';keys={'id','type','a','b','anchorA','anchorB'}
         if isinstance(joint,dict) and 'motion' in joint:keys.add('motion')
+        if isinstance(joint,dict) and 'friction' in joint:keys.add('friction')
         if isinstance(joint,dict) and joint.get('type') in ('revolute','cylindrical','universal'):keys|={'axisA','axisB'}
         if isinstance(joint,dict) and joint.get('type')=='prismatic':keys|={'axisA'}
         if not obj(joint,keys,p):continue
@@ -311,6 +313,9 @@ def validate(model):
         for key in ('a','b'):
             if not (key=='a' and joint.get(key)=='ground'):ident(joint.get(key),p+'.'+key)
         for key in ('anchorA','anchorB'):nums(joint.get(key),{k:(-1000,1000) for k in ('x','y','z')},p+'.'+key)
+        if 'friction' in joint:
+            nums(joint['friction'],{'coefficient':(1e-6,2),'radius':(1e-6,1000),'preload':(1e-6,1e9)},p+'.friction')
+            if joint.get('type')!='revolute' or 'motion' in joint:issue(p+'.friction','A discrete Coulomb brake requires a free revolute hinge; remove prescribed motion first.')
         if joint.get('type') in ('revolute','prismatic','cylindrical','universal'):
             for key in (('axisA','axisB') if joint['type'] in ('revolute','cylindrical','universal') else ('axisA',)):
                 before=len(issues);nums(joint.get(key),{k:(-1,1) for k in ('x','y','z')},p+'.'+key)
@@ -345,11 +350,18 @@ def validate(model):
     for i,contact in enumerate(contacts):
         path=f'contacts.{i}'
         optional_contact={key for key in ('damping','friction','slipVelocity') if isinstance(contact,dict) and key in contact}
-        if not obj(contact,{'id','body','center','radius','planePoint','planeNormal','stiffness'}|optional_contact,path):continue
+        pair=isinstance(contact,dict) and contact.get('type')=='sphere-sphere'
+        geometry={'type','otherBody','otherCenter','otherRadius'} if pair else {'planePoint','planeNormal'}|({'type'} if isinstance(contact,dict) and 'type' in contact else set())
+        if not obj(contact,{'id','body','center','radius','stiffness'}|geometry|optional_contact,path):continue
+        if contact.get('type','sphere-plane') not in ('sphere-plane','sphere-sphere'):issue(path+'.type','Choose sphere-plane or sphere-sphere contact.')
         ident(contact.get('id'),path+'.id');ident(contact.get('body'),path+'.body')
-        for key in ('center','planePoint'):nums(contact.get(key),{k:(-1000,1000) for k in ('x','y','z')},path+'.'+key)
-        before=len(issues);nums(contact.get('planeNormal'),{k:(-1,1) for k in ('x','y','z')},path+'.planeNormal')
-        if len(issues)==before and abs(norm(xyz(contact['planeNormal']))-1)>1e-7:issue(path+'.planeNormal','Plane normal must be a unit vector.')
+        for key in ('center','otherCenter' if pair else 'planePoint'):nums(contact.get(key),{k:(-1000,1000) for k in ('x','y','z')},path+'.'+key)
+        if pair:
+            ident(contact.get('otherBody'),path+'.otherBody');nums({'otherRadius':contact.get('otherRadius')},{'otherRadius':(1e-6,1000)},path)
+            if 'friction' in contact or 'slipVelocity' in contact:issue(path+'.friction','Sphere-sphere contact currently supports normal force and damping only.')
+        else:
+            before=len(issues);nums(contact.get('planeNormal'),{k:(-1,1) for k in ('x','y','z')},path+'.planeNormal')
+            if len(issues)==before and abs(norm(xyz(contact['planeNormal']))-1)>1e-7:issue(path+'.planeNormal','Plane normal must be a unit vector.')
         nums({k:contact.get(k) for k in ('radius','stiffness')},{'radius':(1e-6,1000),'stiffness':(1e-6,1e9)},path)
         if 'damping' in contact:nums({'damping':contact['damping']},{'damping':(0,1e9)},path)
         if 'friction' in contact:nums({'friction':contact['friction']},{'friction':(0,2)},path)
@@ -357,6 +369,13 @@ def validate(model):
     for group,values,fields in (('rotationalElements',rotary,{'stiffness':(0,1e9),'damping':(0,1e9),'restAngleDeg':(-179.999,179.999)}),('jointTorques',drives,{'amplitude':(-1e9,1e9),'frequencyHz':(.001,1000),'offset':(-1e9,1e9)}),('jointForces',linear_drives,{'amplitude':(-1e9,1e9),'frequencyHz':(.001,1000),'offset':(-1e9,1e9)})):
         for i,value in enumerate(values):
             path=f'{group}.{i}'
+            if group=='jointTorques' and isinstance(value,dict) and value.get('type')=='servo':
+                fields={'kp':(1e-6,1e6),'kd':(0,1e6),'targetAngleDeg':(-170,170),'rampTime':(.001,1000),'torqueLimit':(1e-6,1e6)}
+                if obj(value,{'id','joint','type'}|set(fields),path):
+                    ident(value.get('id'),path+'.id');ident(value.get('joint'),path+'.joint')
+                    nums({key:value.get(key) for key in fields},fields,path)
+                continue
+            if group=='jointTorques':fields={'amplitude':(-1e9,1e9),'frequencyHz':(.001,1000),'offset':(-1e9,1e9)}
             if not obj(value,{'id','joint'}|set(fields),path):continue
             ident(value.get('id'),path+'.id');ident(value.get('joint'),path+'.joint')
             nums({key:value.get(key) for key in fields},fields,path)
@@ -391,15 +410,21 @@ def validate(model):
         if load['amplitude'] and model['simulation']['step']*load['frequencyHz']>.05:issue(f'loads.{i}.frequencyHz','Use at least 20 integration steps per actuation cycle.')
     for i,contact in enumerate(contacts):
         if contact['body'] not in lookup:issue(f'contacts.{i}.body','Reference a declared dynamic body.')
+        if contact.get('type')=='sphere-sphere':
+            if contact['otherBody'] not in lookup:issue(f'contacts.{i}.otherBody','Reference a declared dynamic body.')
+            elif contact['otherBody']==contact['body']:issue(f'contacts.{i}.otherBody','Contact must connect two different bodies.')
     if issues:return {"valid":False,"issues":issues,"summary":summary}
     contact_rates={};contact_damping_rates={}
     for contact in contacts:
-        body=lookup[contact['body']];lever=norm(sub(xyz(contact['center']),xyz(body.get('centerOfMass',dict.fromkeys(('x','y','z'),0.)))))
-        bound=minimum_inertia_bound(body['inertia']) if lever else 1.
-        contribution=math.inf if bound<=0 else contact['stiffness']*(1/body['mass']+lever**2/bound)
-        contact_rates[body['id']]=contact_rates.get(body['id'],0.)+contribution
-        damping_contribution=math.inf if bound<=0 else contact.get('damping',0.)*(1/body['mass']+lever**2/bound)
-        contact_damping_rates[body['id']]=contact_damping_rates.get(body['id'],0.)+damping_contribution
+        pair=contact.get('type')=='sphere-sphere';compliance=0.;ids=[]
+        for body_key,center_key in [('body','center')]+([('otherBody','otherCenter')] if pair else []):
+            body=lookup[contact[body_key]];ids.append(body['id']);lever=norm(sub(xyz(contact[center_key]),xyz(body.get('centerOfMass',dict.fromkeys(('x','y','z'),0.)))))
+            bound=minimum_inertia_bound(body['inertia']) if lever else 1.
+            compliance+=math.inf if bound<=0 else 1/body['mass']+lever**2/bound
+        for body_id in ids:
+            contact_rates[body_id]=contact_rates.get(body_id,0.)+contact['stiffness']*compliance
+            contact_damping_rates[body_id]=contact_damping_rates.get(body_id,0.)+contact.get('damping',0.)*compliance
+        if pair and norm(sub(anchor(lookup[contact['otherBody']],contact['otherCenter']),anchor(lookup[contact['body']],contact['center'])))<1e-6:issue('contacts','Sphere centers must initially be at least 1e-6 m apart; the normal is undefined at coincident centers.')
     for body_id,squared_rate in contact_rates.items():
         rate=math.sqrt(squared_rate)+contact_damping_rates[body_id]
         if model['simulation']['step']*rate>.2:issue('simulation.step',f"Resolve combined contacts on body {body_id} with a smaller time step (at most {0.2/rate:.6g} s by a conservative estimate).")
@@ -435,6 +460,9 @@ def validate(model):
             message=(f"Universal axes must be perpendicular; angular error is {state['angularError']:.6g} rad." if joint['type']=='universal' else f"Joint frame directions differ by {state['angularError']:.6g} rad (weld requires equal initial orientations).")
             issue(f'joints.{i}.axisB' if joint['type'] in ('revolute','cylindrical','universal') else f'joints.{i}.b',message)
         if state['angularVelocityError']>1e-7:issue(f'joints.{i}.b',f"Joint-constrained angular velocities differ by {state['angularVelocityError']:.6g} rad/s.")
+        if joint.get('friction'):
+            axis=mul(body_rotation(a),xyz(joint['axisA']))
+            if abs(sum(x*y for x,y in zip(axis,sub(angular(b),angular(a)))))>1e-7:issue(f'joints.{i}.friction','A braked hinge must initially be at rest. Begin held and ramp the applied effort to initiate sliding.')
         if joint.get('motion') and joint['type']=='prismatic':
             if abs(state['velocity'])>1e-7:issue(f'joints.{i}.motion','Prescribed cosine motion starts at zero relative axial speed; adjust initial velocities.')
             if model['simulation']['step']*joint['motion']['frequencyHz']>.05:issue('simulation.step','Use at least 20 steps per prescribed motion cycle.')
@@ -464,7 +492,22 @@ def validate(model):
                     effective=1/sum(1/minimum_inertia_bound(body['inertia']) for body in involved)
                     rate=max(math.sqrt(value['stiffness']/effective),value['damping']/effective)
                     if model['simulation']['step']*rate>.2:issue('simulation.step',f"Resolve rotational element {value['id']} with a smaller step (at most {0.2/rate:.6g} s by the conservative inertia estimate).")
-            if group=='jointTorques' and model['simulation']['step']*value['frequencyHz']>.05:issue(f'{group}.{i}.frequencyHz','Use at least 20 integration steps per actuation cycle.')
+            if group=='jointTorques' and value.get('type')=='servo':
+                if not joint or joint['type']!='revolute' or joint.get('motion'):issue(f'{group}.{i}.joint','A controlled actuator requires an existing free revolute joint without prescribed motion.')
+                elif joint['b'] in lookup and (joint['a']=='ground' or joint['a'] in lookup):
+                    a,b=lookup.get(joint['a']),lookup[joint['b']]
+                    axis=mul(body_rotation(a),xyz(joint['axisA']))
+                    if abs(sum(x*y for x,y in zip(axis,sub(angular(b),angular(a)))))>1e-7:issue(f'{group}.{i}.joint','Start a controlled hinge at rest about its axis.')
+                    involved=[b]+([a] if a else [])
+                    effective=1/sum(1/minimum_inertia_bound(body['inertia']) for body in involved)
+                    rate=max(math.sqrt(value['kp']/effective),value['kd']/effective)
+                    if model['simulation']['step']*rate>.1:issue('simulation.step',f"Resolve sampled servo {value['id']} with a step at most {0.1/rate:.6g} s by the conservative inertia estimate.")
+                if value['rampTime']<20*model['simulation']['step']:issue(f'{group}.{i}.rampTime','Use a smooth target ramp of at least 20 time steps.')
+                if value['rampTime']>model['simulation']['duration']:issue(f'{group}.{i}.rampTime','The target ramp must finish within the simulation duration.')
+            elif group=='jointTorques' and model['simulation']['step']*value['frequencyHz']>.05:issue(f'{group}.{i}.frequencyHz','Use at least 20 integration steps per actuation cycle.')
+    controlled=rotary_control.servos(model)
+    if len(controlled)>8:issue('jointTorques','Limit a local controlled run to eight servo actuators.')
+    if len({value['joint'] for value in controlled})!=len(controlled):issue('jointTorques','Only one servo controller may command a joint.')
     for i,value in enumerate(linear_drives):
         joint=joint_lookup.get(value['joint'])
         if not joint or joint['type'] not in ('prismatic','cylindrical'):issue(f'jointForces.{i}.joint','Reference an existing prismatic or cylindrical joint.')
@@ -498,22 +541,33 @@ def basis(axis):
     return t,cross(axis,t),axis
 
 
-def deck(model):
+def deck(model, control_ports=None):
+    controlled=rotary_control.servos(model)
+    if controlled and control_ports is None:
+        raise ValueError('Controlled actuators require Run simulation with the managed local peer; standalone deck export is unavailable.')
+    if controlled and (len(control_ports)!=2 or any(type(port) is not int or not 0<port<65536 for port in control_ports)):
+        raise ValueError('The managed controller must supply two valid local ports.')
     check=validate(model)
     if not check['valid']:raise ValueError('Spatial assembly validation failed: '+'; '.join(x['field']+': '+x['message'] for x in check['issues']))
     f=lambda x:format(float(x),'.15g')
     vec=lambda obj:','.join(f(obj[k]) for k in ('x','y','z'))
     bodies,joints=model['bodies'],model['joints'];rotary,drives,forces,loads=model.get('rotationalElements',[]),model.get('jointTorques',[]),model.get('forces',[]),model.get('loads',[]);linear_drives=model.get('jointForces',[]);contacts=model.get('contacts',[]);joint_lookup={j['id']:j for j in joints};labels={body['id']:i+1 for i,body in enumerate(bodies)};lookup={b['id']:b for b in bodies};sim=model['simulation'];g=xyz(model['parameters']['gravity']);gn=norm(g)
-    contact_functions=''.join(f'scalar function: "contact_{i}", multilinear, -1,{f(-c["stiffness"])},0,0,1,0;\n' for i,c in enumerate(contacts))
+    contact_functions=''.join(f'scalar function: "contact_{i}", multilinear, -1,{f(-c["stiffness"]*(c["radius"]+c["otherRadius"] if c.get("type")=="sphere-sphere" else 1))},0,0,1,0;\n' for i,c in enumerate(contacts))
     damped_contacts=sum(c.get('damping',0)>0 for c in contacts);friction_labels=friction_force_labels(model);friction_chains={}
     if damped_contacts:
         contact_functions+='scalar function: "contact_zero", multilinear, -1,0,1,0;\n'
-        contact_functions+=''.join(f'scalar function: "contact_damping_{i}", multilinear, -1,{f(-c["damping"])},0,0,1,0;\n' for i,c in enumerate(contacts) if c.get('damping',0)>0)
-    text=f'''# Kinemeld spatial rigid bodies; SI units.\nbegin: data;\n problem: initial value;\nend: data;\nbegin: initial value;\n initial time: 0;\n final time: {f(sim['duration'])};\n time step: {f(sim['step'])};\n max iterations: 40;\n tolerance: 1.e-9;\n derivatives tolerance: 1.e-8;\n derivatives max iterations: 100;\n derivatives coefficient: 1.e-3, auto;\nend: initial value;\n{contact_functions}begin: control data;\n max iterations: 40;\n {'skip initial joint assembly;' if rotary or forces or contacts else ''}\n structural nodes: {len(bodies)+1};\n rigid bodies: {len(bodies)};\n joints: {len(joints)+1+len(rotary)+len(forces)+len(contacts)+damped_contacts+sum(j['type']=='prismatic' and 'motion' not in j for j in joints)};\n {f"forces: {sum(1+int(joint_lookup[d['joint']]['a']!='ground') for d in drives)+len(linear_drives)+sum(int(any(load['force'].values()))+int(any(load['torque'].values())) for load in loads)+2*len(friction_labels)};" if drives or linear_drives or loads or friction_labels else ''}\n {'gravity;' if gn else ''}\n output precision: 12;\nend: control data;\nbegin: nodes;\n structural: 0, static, null, eye, null, null, output, no;\n'''
+        contact_functions+=''.join(f'scalar function: "contact_damping_{i}", multilinear, -1,{f(-c["damping"]*(c["radius"]+c["otherRadius"] if c.get("type")=="sphere-sphere" else 1))},0,0,1,0;\n' for i,c in enumerate(contacts) if c.get('damping',0)>0)
+    contact_functions+=''.join(f'scalar function: "brake_{i}", const, {f(j["friction"]["coefficient"])};\n' for i,j in enumerate(joints) if j.get('friction'))
+    text=f'''# Kinemeld spatial rigid bodies; SI units.\nbegin: data;\n problem: initial value;\nend: data;\nbegin: initial value;\n initial time: 0;\n final time: {f(sim['duration'])};\n time step: {f(sim['step'])};\n max iterations: 40;\n tolerance: 1.e-9;\n derivatives tolerance: 1.e-8;\n derivatives max iterations: 100;\n derivatives coefficient: 1.e-3, auto;\nend: initial value;\n{contact_functions}begin: control data;\n max iterations: 40;\n {'skip initial joint assembly;' if rotary or forces or contacts or any(j.get('friction') for j in joints) else ''}\n structural nodes: {len(bodies)+1};\n rigid bodies: {len(bodies)};\n joints: {len(joints)+1+len(rotary)+len(forces)+len(contacts)+damped_contacts+sum(j['type']=='prismatic' and 'motion' not in j for j in joints)};\n {f"forces: {sum(1+int(joint_lookup[d['joint']]['a']!='ground') for d in drives)+len(linear_drives)+sum(int(any(load['force'].values()))+int(any(load['torque'].values())) for load in loads)+2*len(friction_labels)};" if drives or linear_drives or loads or friction_labels else ''}\n {'gravity;' if gn else ''}\n output precision: 12;\nend: control data;\nbegin: nodes;\n structural: 0, static, null, eye, null, null, output, no;\n'''
     for b in bodies:
         p,v=b['pose'],b['velocity'];r=body_rotation(b);orient=orientation_spec(r)
         text+=f" structural: {labels[b['id']]}, dynamic, {vec(p)}, {orient}, {f(v['vx'])},{f(v['vy'])},{f(v['vz'])}, {f(v['wx'])},{f(v['wy'])},{f(v['wz'])};\n"
-    text+='end: nodes;\nbegin: elements;\n'
+    text+='end: nodes;\n'
+    if controlled:
+        text=text.replace(' output precision: 12;', ' file drivers: 1;\n output elements: 1;\n output precision: 12;')
+        text='# Controlled actuator deck: requires its managed local peer; retained ports are specific to this completed run.\n'+text
+        text+=f'begin: drivers;\n file: 9001, stream, name, "CTRL", create, no, port, {control_ports[0]}, host, "127.0.0.1", blocking, input every, 1, receive first, no, timeout, 5, {len(controlled)}, initial values, '+','.join('0' for _ in controlled)+';\nend: drivers;\n'
+    text+='begin: elements;\n'
     for b in bodies:
         i=b['inertia'];label=labels[b['id']]
         if any(i.get(key,0.) for key in ('xy','xz','yz')):
@@ -535,7 +589,8 @@ def deck(model):
             world_axis=mul(body_rotation(lookup.get(j['a'])),xyz(j['axisA']));tangent,_,_=basis(world_axis)
             ra,rb=body_rotation(lookup.get(j['a'])),body_rotation(lookup[j['b']]);ta=mul(transpose(ra),tangent);tb=mul(transpose(rb),tangent)
             orientA='1,'+','.join(map(f,ta))+',3,'+vec(j['axisA']);orientB='1,'+','.join(map(f,tb))+',3,'+vec(j['axisB'])
-            text+=f" joint: {index}, revolute hinge, {a}, position, reference, node, {vec(j['anchorA'])}, orientation, reference, node, {orientA}, {b}, position, reference, node, {vec(j['anchorB'])}, orientation, reference, node, {orientB};\n"
+            brake=j.get('friction');suffix=f', friction, {f(brake["radius"])}, preload, {f(brake["preload"])}, discrete coulomb, "brake_{index-2}", simple' if brake else ''
+            text+=f" joint: {index}, revolute hinge, {a}, position, reference, node, {vec(j['anchorA'])}, orientation, reference, node, {orientA}, {b}, position, reference, node, {vec(j['anchorB'])}, orientation, reference, node, {orientB}{suffix};\n"
         elif j['type']=='universal':
             ra,rb=body_rotation(lookup.get(j['a'])),body_rotation(lookup[j['b']]);ua=mul(ra,xyz(j['axisA']));ub=mul(rb,xyz(j['axisB']))
             transverse=cross(ub,ua);magnitude=norm(transverse);transverse=[v/magnitude for v in transverse]
@@ -572,6 +627,16 @@ def deck(model):
         else:law=f"linear viscoelastic, {f(force['stiffness']*length)}, {f(force['damping']*length)}"
         text+=f" joint: {index}, rod, {a}, position, reference, node, {vec(force['anchorA'])}, {b}, position, reference, node, {vec(force['anchorB'])}, {f(length)}, {law};\n"
     for i,contact in enumerate(contacts):
+        if contact.get('type')=='sphere-sphere':
+            length=contact['radius']+contact['otherRadius'];args=f"rod, {labels[contact['body']]}, position, reference, node, {vec(contact['center'])}, {labels[contact['otherBody']]}, position, reference, node, {vec(contact['otherCenter'])}, {f(length)}, "
+            law=f'scalar function elastic, "contact_{i}"'
+            if contact.get('damping',0)>0:
+                sensor=extra_label;extra_label+=1
+                text+=f' joint: {sensor}, {args}linear elastic, 0, output, no;\n'
+                # The rod uses strain and strain rate; the scalar functions above include its reference length.
+                law=f'array, 2, {law}, bistop, initial status, inactive, element, {sensor}, joint, string, "L", string, "Var<{f(length)}", element, {sensor}, joint, string, "L", string, "Var>={f(length)}", nlsf viscoelastic, 0, "contact_zero", 0, "contact_damping_{i}"'
+            text+=f' joint: {extra_label}, {args}{law};\n';extra_label+=1
+            continue
         axis=xyz(contact['planeNormal']);t,second,_=basis(axis);orient=orientation_spec([[t[i],second[i],axis[i]] for i in range(3)])
         plane=[p+contact['radius']*n for p,n in zip(xyz(contact['planePoint']),axis)]
         args=f"deformable displacement joint, 0, position, reference, node, {','.join(f(x) for x in plane)}, orientation, reference, node, {orient}, {labels[contact['body']]}, position, reference, node, {vec(contact['center'])}, "
@@ -613,7 +678,8 @@ def deck(model):
         for side,sign in (('b',1),('a',-1)):
             if j[side]=='ground':continue
             axis=xyz(j['axisB'] if side=='b' else j['axisA'])
-            text+=f" couple: {label}, follower, {labels[j[side]]}, {','.join(f(v) for v in axis)}, sine, 0, {f(2*math.pi*drive['frequencyHz'])}, {f(sign*drive['amplitude'])}, forever, {f(sign*drive['offset'])};\n"
+            caller=f"file, 9001, {controlled.index(drive)+1}, amplitude, {sign}" if drive.get('type')=='servo' else f"sine, 0, {f(2*math.pi*drive['frequencyHz'])}, {f(sign*drive['amplitude'])}, forever, {f(sign*drive['offset'])}"
+            text+=f" couple: {label}, follower, {labels[j[side]]}, {','.join(f(v) for v in axis)}, {caller};\n"
             label+=1
     for drive in linear_drives:
         j=joint_lookup[drive['joint']];a=0 if j['a']=='ground' else labels[j['a']];b=labels[j['b']]
@@ -628,6 +694,10 @@ def deck(model):
             text+=f" couple: {label}, {kind}, {body}, {vec(load['torque'])}, {drive};\n";label+=1
     text+=friction_text
     if gn:text+=f" gravity: uniform, {','.join(f(v/gn) for v in g)}, const, {f(gn)};\n"
+    if controlled:
+        joint_labels={joint['id']:index for index,joint in enumerate(joints,2)}
+        feedback=['drive, time']+[f'drive, element, {joint_labels[drive["joint"]]}, joint, string, "{key}", direct' for drive in controlled for key in ('rz','wz')]
+        text+=f'stream output: 9002, stream name, "FEED", create, no, port, {control_ports[1]}, host, "127.0.0.1", blocking, send first, abort if broken, output every, 1, values, {len(feedback)}, '+', '.join(feedback)+';\n'
     return text+'end: elements;\n'
 
 
@@ -635,20 +705,22 @@ def parse_joint_reactions(directory,model,samples):
     """Read complete native joint frames and normalize constraint wrenches on body B."""
     joints=model['joints']
     rotary,forces,contacts=model.get('rotationalElements',[]),model.get('forces',[]),model.get('contacts',[])
-    if not joints and not any(force.get('type')=='oleo-strut' for force in forces):return
+    if not joints and not any(force.get('type')=='oleo-strut' for force in forces) and not any(c.get('type')=='sphere-sphere' for c in contacts):return
     extra=len(joints)+2+len(rotary)+len(forces)
     order=[1];records={};native_types={};oleo_labels={len(joints)+2+len(rotary)+i:force['id'] for i,force in enumerate(forces) if force.get('type')=='oleo-strut'}
     native_types.update({label:'rod' for label in oleo_labels})
     for label,joint in enumerate(joints,2):
         kind=joint['type'];free_slider=kind=='prismatic' and 'motion' not in joint
         total=driven(joint)
-        order.append(label);records[label]=(joint['id'],'force' if free_slider else 'both',-1 if kind in ('prismatic','cylindrical','weld') or total else 1,13 if free_slider else 16 if kind in ('spherical','universal') else 19 if kind=='revolute' and not total else 25)
+        order.append(label);records[label]=(joint['id'],'force' if free_slider else 'both',-1 if kind in ('prismatic','cylindrical','weld') or total else 1,13 if free_slider else 16 if kind in ('spherical','universal') else (21 if joint.get('friction') else 19) if kind=='revolute' and not total else 25)
         native_types[label]='totaljoint' if total else {'spherical':'sphericalhinge','revolute':'revolutehinge','universal':'cardanohinge','prismatic':'inline' if free_slider else 'totaljoint','cylindrical':'totaljoint','weld':'totaljoint'}[kind]
         if free_slider:
             order.append(extra);records[extra]=(joint['id'],'moment',1,13);native_types[extra]='prismatic';extra+=1
     order.extend(range(len(joints)+2,len(joints)+2+len(rotary)+len(forces)))
+    contact_labels={}
     for contact in contacts:
         if contact.get('damping',0)>0:extra+=1  # zero-output gap sensor
+        if contact.get('type')=='sphere-sphere':contact_labels[extra]=contact['id'];native_types[extra]='rod'
         order.append(extra);extra+=1
     path=directory/'result.jnt'
     if not path.is_file():raise ValueError('Missing native joint output result.jnt; joint reactions cannot be verified.')
@@ -666,7 +738,7 @@ def parse_joint_reactions(directory,model,samples):
                 if label in found:raise ValueError('Duplicate native joint metadata.')
                 found[label]=observed
     if found!=native_types:raise ValueError('Native joint types do not match the generated model; reaction interpretation is unavailable.')
-    index=0;frame={};oleo_frame={}
+    index=0;frame={};oleo_frame={};brake_frame=[];contact_frame={}
     with path.open(encoding='utf-8') as stream:
         for line in stream:
             fields=line.split()
@@ -684,6 +756,13 @@ def parse_joint_reactions(directory,model,samples):
                 reaction=frame.setdefault(joint_id,{'id':joint_id})
                 if part in ('both','force'):reaction['force']=dict(zip(('x','y','z'),(sign*x for x in values[6:9])))
                 if part in ('both','moment'):reaction['moment']=dict(zip(('x','y','z'),(sign*x for x in values[9:12])))
+                if width==21:brake_frame.append({'id':joint_id,'torque':values[18],'speed':values[17]})
+            if label in contact_labels:
+                if len(fields)!=18:raise ValueError(f'Unexpected native sphere contact record width for {contact_labels[label]}.')
+                try:values=[float(x) for x in fields[1:]]
+                except ValueError as exc:raise ValueError('Invalid native sphere contact output.') from exc
+                if not all(math.isfinite(x) for x in values):raise ValueError('Non-finite native sphere contact output.')
+                contact_frame[contact_labels[label]]={'force':-values[0],'forceOnBody':dict(zip(('x','y','z'),values[6:9]))}
             if label in oleo_labels:
                 if len(fields)!=22:raise ValueError(f"Unexpected native oleo record width for {oleo_labels[label]}.")
                 try:values=[float(x) for x in fields[1:]]
@@ -697,7 +776,9 @@ def parse_joint_reactions(directory,model,samples):
                 sample=samples[index//len(order)-1]
                 if joints:sample['jointReactions']=[frame[j['id']] for j in joints]
                 if oleo_labels:sample['_nativeOleo']=oleo_frame
-                frame={};oleo_frame={}
+                if brake_frame:sample['jointFrictionStates']=brake_frame
+                if contact_labels:sample['_nativeContacts']=contact_frame
+                frame={};oleo_frame={};brake_frame=[];contact_frame={}
     if index!=len(samples)*len(order):raise ValueError('Incomplete native joint output; reaction frames do not match node frames.')
 
 
@@ -734,6 +815,7 @@ def parse_output(directory,model):
         raise ValueError('Actual native output exceeds the body-step or 1,600,000 scalar-value limit; shorten the duration, increase the step, or reduce bodies, joints or elements.')
     parse_joint_reactions(directory,model,native)
     parse_friction(directory,model,native)
+    rotary_control.read_trace(directory,model,native)
     initial={body['id']:body for body in model['bodies']};joints={j['id']:j for j in model['joints']}
     rotary,drives,forces,loads=model.get('rotationalElements',[]),model.get('jointTorques',[]),model.get('forces',[]),model.get('loads',[])
     linear_drives=model.get('jointForces',[]);contacts=model.get('contacts',[])
@@ -755,6 +837,7 @@ def parse_output(directory,model):
     previous_angles={};cylinder_angles={};previous_time=None;previous_damping=previous_power=previous_load_power=previous_linear_power=0.;dissipated=work=load_work=linear_work=0.
     contact_previous_time=None;contact_previous_power={};contact_dissipated={};friction_previous_power={};friction_dissipated={}
     drive_previous_time=None;drive_previous_power=0.;drive_work=0.
+    brake_previous_time=None;brake_previous_power={};brake_dissipated={}
     for sample in native:
         observed={}
         for body,node in zip(model['bodies'],sample['nodes']):
@@ -810,7 +893,7 @@ def parse_output(directory,model):
         drive_states=[];drive_power=0.
         for drive in drives:
             joint=joints[drive['joint']];a,b=observed.get(joint['a']),observed[joint['b']];axis=mul(body_rotation(a),xyz(joint['axisA']))
-            omega=sum(x*y for x,y in zip(axis,sub(angular(b),angular(a))));torque=drive['offset']+drive['amplitude']*math.sin(2*math.pi*drive['frequencyHz']*sample['time']);power=torque*omega
+            omega=sum(x*y for x,y in zip(axis,sub(angular(b),angular(a))));torque=next(state['torque'] for state in sample['servoStates'] if state['id']==drive['id']) if drive.get('type')=='servo' else drive['offset']+drive['amplitude']*math.sin(2*math.pi*drive['frequencyHz']*sample['time']);power=torque*omega
             drive_states.append({'id':drive['id'],'torque':torque,'power':power});drive_power+=power
         linear_states=[];linear_power=0.
         for drive in linear_drives:
@@ -834,11 +917,20 @@ def parse_output(directory,model):
         if contacts:
             sample['contactStates']=[]
             for contact in contacts:
-                body=observed[contact['body']];normal=xyz(contact['planeNormal']);center=anchor(body,contact['center']);gap=sum(n*(x-p) for n,x,p in zip(normal,center,xyz(contact['planePoint'])))-contact['radius'];penetration=max(0.,-gap);speed=sum(n*v for n,v in zip(normal,anchor_velocity(body,contact['center'])))
+                body=observed[contact['body']];center=anchor(body,contact['center'])
+                if contact.get('type')=='sphere-sphere':
+                    other=observed[contact['otherBody']];delta=sub(center,anchor(other,contact['otherCenter']));distance=norm(delta)
+                    if distance<1e-9:raise ValueError('Sphere centers became coincident; contact normal is undefined. Reduce the step, increase stiffness or change the initial state.')
+                    normal=[v/distance for v in delta];gap=distance-contact['radius']-contact['otherRadius'];speed=sum(n*v for n,v in zip(normal,sub(anchor_velocity(body,contact['center']),anchor_velocity(other,contact['otherCenter']))))
+                else:
+                    normal=xyz(contact['planeNormal']);gap=sum(n*(x-p) for n,x,p in zip(normal,center,xyz(contact['planePoint'])))-contact['radius'];speed=sum(n*v for n,v in zip(normal,anchor_velocity(body,contact['center'])))
+                penetration=max(0.,-gap)
                 damping=contact.get('damping',0.)*max(0.,-speed) if gap<0 else 0.;effort=contact['stiffness']*penetration+damping;contact_power=damping*max(0.,-speed)
                 if contact_previous_time is not None:contact_dissipated[contact['id']]=contact_dissipated.get(contact['id'],0.)+(sample['time']-contact_previous_time)*(contact_power+contact_previous_power[contact['id']])/2
                 contact_previous_power[contact['id']]=contact_power
                 state={'id':contact['id'],'gap':gap,'penetration':penetration,'force':effort,'power':effort*speed,'energy':.5*contact['stiffness']*penetration**2,'dampingPower':contact_power,'dissipatedEnergy':contact_dissipated.get(contact['id'],0.)}
+                if contact.get('type')=='sphere-sphere':
+                    state.update(sample['_nativeContacts'][contact['id']]);state['forceOnOther']={axis:-value for axis,value in state['forceOnBody'].items()}
                 if friction(contact):
                     # Slip of the contact point in the plane; the friction force is MBDyn's own (result.frc).
                     point=[v+contact['radius']*t for v,t in zip(anchor_velocity(body,contact['center']),cross(normal,angular(body)))]
@@ -850,6 +942,13 @@ def parse_output(directory,model):
                 sample['contactStates'].append(state)
             contact_previous_time=sample['time']
             sample.pop('_friction',None)
+            sample.pop('_nativeContacts',None)
+        for state in sample.get('jointFrictionStates',[]):
+            power=-state['torque']*state['speed']
+            if power < -1e-8*max(1.,abs(state['torque'])):raise ValueError(f"Native discrete Coulomb brake {state['id']} produces energy at t={sample['time']:.9g} s ({power:.9g} W dissipated). Begin held at rest below its holding torque, then ramp the applied effort; abrupt above-threshold initialization is unsupported by MBDyn 1.7.3. Raw native files are retained for diagnosis.")
+            if brake_previous_time is not None:brake_dissipated[state['id']]=brake_dissipated.get(state['id'],0.)+(sample['time']-brake_previous_time)*(power+brake_previous_power[state['id']])/2
+            state.update(power=power,dissipatedEnergy=brake_dissipated.get(state['id'],0.));brake_previous_power[state['id']]=power
+        brake_previous_time=sample['time']
         if forces:sample['forces']=force_states
         if rotary:sample['rotationalStates']=rotary_states
         if rotary or forces:sample.update(elasticEnergy=elastic,dampingPower=damping_power,dissipatedEnergy=dissipated)
@@ -864,7 +963,7 @@ def metrics(model,samples):
             'maxConstraintError':max(s['positionError'] for s in samples),'maxJointVelocityError':max(s['velocityError'] for s in samples),
             'maxJointAngularError':max(s['angularError'] for s in samples),'maxJointAngularVelocityError':max(s['angularVelocityError'] for s in samples),
             'constraintErrorUnit':'m','angularConstraintErrorUnit':'rad',
-            'validationScope':'3D rigid body motion, joint residuals and optional fixed-plane spherical penalty contact with regularised Coulomb friction; no general surface contact, true stiction, flexible bodies or certification.'}
+            'validationScope':'3D rigid body motion and joint residuals; optional discrete Coulomb revolute brakes, sphere-plane contact with regularised friction, and normal sphere-sphere penalty contact. No arbitrary surface contact, flexible bodies or certification.'}
     if model.get('rotationalElements') or model.get('forces'):result.update(finalElasticEnergy=samples[-1]['elasticEnergy'],dissipatedEnergy=samples[-1]['dissipatedEnergy'],energyUnit='J')
     if model.get('jointTorques'):result.update(actuationWork=samples[-1]['actuationWork'],energyUnit='J')
     if 'rotaryDriveWork' in samples[-1]:result.update(rotaryDriveWork=samples[-1]['rotaryDriveWork'],peakRotaryDriveTorque=max(abs(d['torque']) for s in samples for d in s['rotaryDrives']),energyUnit='J')
@@ -872,6 +971,8 @@ def metrics(model,samples):
     if model.get('loads'):result.update(appliedWork=samples[-1]['appliedWork'],energyUnit='J')
     if model.get('contacts'):result.update(maxContactForce=max(c['force'] for sample in samples for c in sample['contactStates']),maxPenetration=max(c['penetration'] for sample in samples for c in sample['contactStates']),contactDissipatedEnergy=sum(c.get('dissipatedEnergy',0.) for c in samples[-1]['contactStates']))
     if any(friction(c) for c in model.get('contacts',[])):result.update(maxFrictionForce=max(c.get('frictionForce',0.) for sample in samples for c in sample['contactStates']),frictionDissipatedEnergy=sum(c.get('frictionEnergy',0.) for c in samples[-1]['contactStates']))
+    if samples[-1].get('jointFrictionStates'):result.update(jointFrictionDissipatedEnergy=sum(s['dissipatedEnergy'] for s in samples[-1]['jointFrictionStates']),peakJointFrictionTorque=max(abs(s['torque']) for sample in samples for s in sample['jointFrictionStates']))
+    if samples[-1].get('servoStates'):result.update(peakServoTrackingError=max(abs(state['error']) for sample in samples for state in sample['servoStates']),finalServoTrackingError=max(abs(state['error']) for state in samples[-1]['servoStates']),servoSaturatedStepCount=sum(state['saturated'] for sample in samples for state in sample['servoStates']))
     return result
 
 
@@ -880,6 +981,10 @@ def write_csv(path,samples):
     rotary=[v['id'] for v in samples[0].get('rotationalStates',[])];drives=[v['id'] for v in samples[0].get('actuationStates',[])];sliders=[v['id'] for v in samples[0].get('sliders',[])];forces=[v['id'] for v in samples[0].get('forces',[])];loads=[v['id'] for v in samples[0].get('loadStates',[])];cylinders=[v['id'] for v in samples[0].get('cylinders',[])]
     linear_drives=[v['id'] for v in samples[0].get('jointForceStates',[])];contacts=[v['id'] for v in samples[0].get('contactStates',[])]
     reactions=[v['id'] for v in samples[0].get('jointReactions',[])];rotary_drives=[v['id'] for v in samples[0].get('rotaryDrives',[])]
+    brakes=[v['id'] for v in samples[0].get('jointFrictionStates',[])]
+    servos=[v['id'] for v in samples[0].get('servoStates',[])]
+    for name in servos:fields += [f'servo:{name}:{field}' for field in ('angle_rad','speed_rad_s','desiredAngle_rad','desiredSpeed_rad_s','error_rad','torque_Nm','saturated','power_W')]
+    for name in brakes:fields += [f'jointFriction:{name}:torque_Nm',f'jointFriction:{name}:speed_rad_s',f'jointFriction:{name}:power_W',f'jointFriction:{name}:dissipatedEnergy_J']
     for name in rotary_drives:fields += [f'rotaryDrive:{name}:angle_rad',f'rotaryDrive:{name}:speed_rad_s',f'rotaryDrive:{name}:torque_Nm',f'rotaryDrive:{name}:power_W']
     if rotary_drives:fields += ['rotaryDrivePower_W','rotaryDriveWork_J']
     for name in reactions:fields += [f'jointReaction:{name}:{kind}_{axis}_{unit}' for kind,unit in (('force','N'),('moment','Nm')) for axis in ('x','y','z')]
@@ -903,6 +1008,10 @@ def write_csv(path,samples):
         writer=csv.DictWriter(stream,fieldnames=fields);writer.writeheader()
         for sample in samples:
             values={}
+            for state in sample.get('servoStates',[]):
+                for key,unit in (('angle','angle_rad'),('speed','speed_rad_s'),('desiredAngle','desiredAngle_rad'),('desiredSpeed','desiredSpeed_rad_s'),('error','error_rad'),('torque','torque_Nm'),('saturated','saturated'),('power','power_W')):values[f"servo:{state['id']}:{unit}"]=int(state[key]) if key=='saturated' else state[key]
+            for state in sample.get('jointFrictionStates',[]):
+                for key,unit in (('torque','torque_Nm'),('speed','speed_rad_s'),('power','power_W'),('dissipatedEnergy','dissipatedEnergy_J')):values[f"jointFriction:{state['id']}:{unit}"]=state[key]
             for reaction in sample.get('jointReactions',[]):
                 for kind,unit in (('force','N'),('moment','Nm')):
                     for axis in ('x','y','z'):values[f"jointReaction:{reaction['id']}:{kind}_{axis}_{unit}"]=reaction[kind][axis]
@@ -969,6 +1078,14 @@ def examples():
           'contacts':[{'id':'floor','body':'ball','center':vec(0,0,0),'radius':.1,'planePoint':vec(0,0,0),'planeNormal':vec(0,0,1),'stiffness':1000.}]}
     free_body=body('payload',0,0,1);free_body['inertia']={'xx':.1,'yy':.12,'zz':.15,'xy':.01,'xz':.005,'yz':-.008};free_body['velocity'].update(vx=.2,vy=-.1,wx=.8,wy=.5,wz=1.1)
     free={'kind':KIND,'name':'3D free-falling body','parameters':{'gravity':vec(0,0,-9.81)},'simulation':{'duration':.5,'step':.001},'bodies':[free_body],'joints':[]}
+    rotor=body('rotor',0,0,0)
+    brake={'kind':KIND,'name':'Robot joint brake','parameters':{'gravity':vec(0,0,0)},'simulation':{'duration':.4,'step':.001},'bodies':[rotor],
+           'joints':[{'id':'hinge','type':'revolute','a':'ground','b':'rotor','anchorA':vec(0,0,0),'anchorB':vec(0,0,0),'axisA':vec(0,0,1),'axisB':vec(0,0,1),'friction':{'coefficient':.5,'radius':.1,'preload':20.}}],
+           'jointTorques':[{'id':'motor','joint':'hinge','amplitude':1.5,'offset':0.,'frequencyHz':1.}]}
+    bumper_a=body('a',-.15,0,0);bumper_a['velocity']['vx']=1.
+    bumper_b=body('b',.15,0,0);bumper_b['mass']=2.;bumper_b['velocity']['vx']=-.5
+    bumpers={'kind':KIND,'name':'Robot bumper collision','parameters':{'gravity':vec(0,0,0)},'simulation':{'duration':.25,'step':.0005},'bodies':[bumper_a,bumper_b],'joints':[],
+             'contacts':[{'id':'bumper','type':'sphere-sphere','body':'a','otherBody':'b','center':vec(0,0,0),'otherCenter':vec(0,0,0),'radius':.1,'otherRadius':.1,'stiffness':1000.,'damping':8.}]}
     return [{'id':'spatial-spherical','title':sphere['name'],'description':'A rigid body on a 3D spherical joint under gravity.','model':sphere},
             {'id':'spatial-revolute','title':hinge['name'],'description':'A rigid body on a spatial revolute axis under gravity.','model':hinge},
             {'id':'spatial-prismatic','title':slider['name'],'description':'A rigid body slides along an oblique guide under gravity.','model':slider},
@@ -978,6 +1095,8 @@ def examples():
             {'id':'spatial-closed-loop','title':loop['name'],'description':'Two rigid bodies form a closed loop; the oblique axle spins between spherical joints.','model':loop},
             {'id':'spatial-full-inertia','title':full_inertia['name'],'description':'A spherical pendulum with a non-diagonal body-frame inertia tensor.','model':full_inertia},
             {'id':'spatial-sphere-contact','title':drop['name'],'description':'A guided sphere rebounds from a fixed plane with frictionless elastic contact.','model':drop},
+            {'id':'spatial-joint-brake','title':brake['name'],'description':'A native Coulomb brake holds a robot joint until a rising motor torque exceeds its 1 N·m holding threshold.','model':brake},
+            {'id':'spatial-sphere-pair','title':bumpers['name'],'description':'Two moving spherical bumpers collide with equal opposite forces and compression-only damping.','model':bumpers},
             {'id':'spatial-free','title':free['name'],'description':'A free rigid body translates under gravity and rotates without joint constraints.','model':free}]
 
 

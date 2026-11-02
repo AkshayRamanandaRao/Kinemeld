@@ -1,0 +1,585 @@
+{
+  "format": "kinemeld-engineering-example/1",
+  "study": "nose-gear",
+  "project": "examples/open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio",
+  "modelSha256": "817d2d15333cf7babc31b17a582a6b7bd3ae1035cbadd5c2851d9ae35639c950",
+  "generator": "examples/open-aircraft-nose-kinematics/generate.py",
+  "generatorSha256Lf": "96c3449903c81aff7de682fd258864f4c262408987282d564709f46dd6577b1b",
+  "geometryProvenance": "MIT aircraft nose-gear CAD at 12f44cb9e721a665b34b62239590404a3a504636; source units mm, model units m",
+  "upstream": "https://github.com/aryan-pandharipande/aircraft-nose-landing-gear-design/tree/12f44cb9e721a665b34b62239590404a3a504636",
+  "units": {
+    "length": "m",
+    "mass": "kg",
+    "time": "s",
+    "angles": "degrees in saved poses; radians in reference equations"
+  },
+  "assets": [
+    {
+      "name": "source-assembly.step",
+      "sha256": "b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575",
+      "sourcePath": "examples/open-aircraft-nose-gear/source-assembly.step"
+    }
+  ],
+  "bindings": {
+    "0:part-3": {
+      "body": "strut",
+      "pose": {
+        "x": 1.3624089479151387,
+        "y": 0.1404889931316861,
+        "z": 1.2925813645270097,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "0:part-1": {
+      "body": "slider",
+      "pose": {
+        "x": 1.3624089479151387,
+        "y": 0.1404889931316861,
+        "z": 1.0263863684055106,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "0:part-2": {
+      "body": "slider",
+      "pose": {
+        "x": 1.3624089479151387,
+        "y": 0.1404889931316861,
+        "z": 1.0263863684055106,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "0:part-5": {
+      "body": "slider",
+      "pose": {
+        "x": 1.3624089479151387,
+        "y": 0.1404889931316861,
+        "z": 1.0263863684055106,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "0:part-4": {
+      "body": "upper_link",
+      "pose": {
+        "x": 1.3624089479151387,
+        "y": 0.07048899315916311,
+        "z": 1.2925813645270097,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "0:part-7": {
+      "body": "upper_link",
+      "pose": {
+        "x": 1.3624089479151387,
+        "y": 0.07048899315916311,
+        "z": 1.2925813645270097,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "0:part-6": {
+      "body": "lower_link",
+      "pose": {
+        "x": 1.3624089479151387,
+        "y": 0.08384848650201411,
+        "z": 1.0763863684055106,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "0:part-8": {
+      "body": "lower_link",
+      "pose": {
+        "x": 1.3624089479151387,
+        "y": 0.08384848650201411,
+        "z": 1.0763863684055106,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "0:part-9": {
+      "body": "lower_link",
+      "pose": {
+        "x": 1.3624089479151387,
+        "y": 0.08384848650201411,
+        "z": 1.0763863684055106,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "0:part-10": {
+      "body": "left_wheel",
+      "pose": {
+        "x": 1.1557422813998688,
+        "y": 0.1404889931316861,
+        "z": 1.0263863684055106,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "0:part-11": {
+      "body": "right_wheel",
+      "pose": {
+        "x": 1.5690756147332017,
+        "y": 0.1404889931316861,
+        "z": 1.0263863684055106,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    }
+  },
+  "hardpoints": [
+    {
+      "joint": "mount",
+      "type": "weld",
+      "end": "A",
+      "body": "ground",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.6161949961214991
+      },
+      "worldM": [
+        0.0,
+        0.0,
+        0.6161949961214991
+      ],
+      "axisLocal": null,
+      "basis": "Assumed fixed airframe mounting; not a recovered source mate."
+    },
+    {
+      "joint": "mount",
+      "type": "weld",
+      "end": "B",
+      "body": "strut",
+      "localM": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "worldM": [
+        0.0,
+        0.0,
+        0.6161949961214991
+      ],
+      "axisLocal": null,
+      "basis": "Assumed fixed airframe mounting; not a recovered source mate."
+    },
+    {
+      "joint": "oleo",
+      "type": "prismatic",
+      "end": "A",
+      "body": "strut",
+      "localM": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "worldM": [
+        0.0,
+        0.0,
+        0.6161949961214991
+      ],
+      "axisLocal": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "basis": "Inferred common telescoping Z axis; prescribed 10 mm cosine stroke."
+    },
+    {
+      "joint": "oleo",
+      "type": "prismatic",
+      "end": "B",
+      "body": "slider",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.2661949961214991
+      },
+      "worldM": [
+        0.0,
+        0.0,
+        0.6161949961214991
+      ],
+      "axisLocal": null,
+      "basis": "Inferred common telescoping Z axis; prescribed 10 mm cosine stroke."
+    },
+    {
+      "joint": "upper_pin",
+      "type": "revolute",
+      "end": "A",
+      "body": "strut",
+      "localM": {
+        "x": 0.0,
+        "y": -0.069999999972523,
+        "z": 0.0
+      },
+      "worldM": [
+        0.0,
+        -0.069999999972523,
+        0.6161949961214991
+      ],
+      "axisLocal": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "basis": "Selected coincident X-parallel radius 7.5 mm cylinder lines on source occurrences 3 and 4; physical pin behavior still assumed."
+    },
+    {
+      "joint": "upper_pin",
+      "type": "revolute",
+      "end": "B",
+      "body": "upper_link",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "worldM": [
+        0.0,
+        -0.069999999972523,
+        0.6161949961214991
+      ],
+      "axisLocal": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "basis": "Selected coincident X-parallel radius 7.5 mm cylinder lines on source occurrences 3 and 4; physical pin behavior still assumed."
+    },
+    {
+      "joint": "scissor_pin",
+      "type": "spherical",
+      "end": "A",
+      "body": "upper_link",
+      "localM": {
+        "x": 0.0,
+        "y": -0.112979883870304,
+        "z": -0.13364335132142502
+      },
+      "worldM": [
+        0.0,
+        -0.18297988384282698,
+        0.48255164480007406
+      ],
+      "axisLocal": null,
+      "basis": "Selected radius 7.5 mm cylinder lines on occurrences 4 and 6; spherical joint is a mathematical substitution."
+    },
+    {
+      "joint": "scissor_pin",
+      "type": "spherical",
+      "end": "B",
+      "body": "lower_link",
+      "localM": {
+        "x": 0.0,
+        "y": -0.126339377213155,
+        "z": 0.08255164480007404
+      },
+      "worldM": [
+        0.0,
+        -0.18297988384282698,
+        0.48255164480007406
+      ],
+      "axisLocal": null,
+      "basis": "Selected radius 7.5 mm cylinder lines on occurrences 4 and 6; spherical joint is a mathematical substitution."
+    },
+    {
+      "joint": "lower_pin",
+      "type": "universal",
+      "end": "A",
+      "body": "slider",
+      "localM": {
+        "x": 0.0,
+        "y": -0.056640506629672,
+        "z": 0.050000000000000044
+      },
+      "worldM": [
+        0.0,
+        -0.056640506629672,
+        0.4
+      ],
+      "axisLocal": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "basis": "Selected radius 7.5 mm cylinder lines on occurrences 5 and 6; universal joint is a mathematical substitution."
+    },
+    {
+      "joint": "lower_pin",
+      "type": "universal",
+      "end": "B",
+      "body": "lower_link",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "worldM": [
+        0.0,
+        -0.056640506629672,
+        0.4
+      ],
+      "axisLocal": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "basis": "Selected radius 7.5 mm cylinder lines on occurrences 5 and 6; universal joint is a mathematical substitution."
+    },
+    {
+      "joint": "left_bearing",
+      "type": "revolute",
+      "end": "A",
+      "body": "slider",
+      "localM": {
+        "x": -0.20666666651526988,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "worldM": [
+        -0.20666666651526988,
+        0.0,
+        0.35
+      ],
+      "axisLocal": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "basis": "Inferred common source axle direction; bearing properties and fits not supplied."
+    },
+    {
+      "joint": "left_bearing",
+      "type": "revolute",
+      "end": "B",
+      "body": "left_wheel",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "worldM": [
+        -0.20666666651526988,
+        0.0,
+        0.35
+      ],
+      "axisLocal": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "basis": "Inferred common source axle direction; bearing properties and fits not supplied."
+    },
+    {
+      "joint": "right_bearing",
+      "type": "revolute",
+      "end": "A",
+      "body": "slider",
+      "localM": {
+        "x": 0.206666666818063,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "worldM": [
+        0.206666666818063,
+        0.0,
+        0.35
+      ],
+      "axisLocal": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "basis": "Inferred common source axle direction; bearing properties and fits not supplied."
+    },
+    {
+      "joint": "right_bearing",
+      "type": "revolute",
+      "end": "B",
+      "body": "right_wheel",
+      "localM": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "worldM": [
+        0.206666666818063,
+        0.0,
+        0.35
+      ],
+      "axisLocal": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "basis": "Inferred common source axle direction; bearing properties and fits not supplied."
+    }
+  ],
+  "densityAssumptions": [
+    {
+      "binding": "0:part-3",
+      "body": "strut",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "0:part-1",
+      "body": "slider",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "0:part-2",
+      "body": "slider",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "0:part-5",
+      "body": "slider",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "0:part-4",
+      "body": "upper_link",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "0:part-7",
+      "body": "upper_link",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "0:part-6",
+      "body": "lower_link",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "0:part-8",
+      "body": "lower_link",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "0:part-9",
+      "body": "lower_link",
+      "densityKgM3": 2700.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "0:part-10",
+      "body": "left_wheel",
+      "densityKgM3": 1100.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "0:part-11",
+      "body": "right_wheel",
+      "densityKgM3": 1100.0,
+      "status": "uniform-density assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    }
+  ],
+  "gravityM_s2": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
+  "initialVelocities": {
+    "strut": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "slider": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "upper_link": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "lower_link": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "left_wheel": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "right_wheel": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": 0.0,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    }
+  },
+  "forceLaws": [],
+  "contacts": [],
+  "jointMotions": {
+    "oleo": {
+      "amplitude": 0.005,
+      "frequencyHz": 1
+    }
+  },
+  "interpretationLimits": [
+    "Prescribed zero-gravity kinematics only; not a drop, actuator, bearing or aircraft-load model.",
+    "Middle spherical and lower universal torque-link joints replace physical pin freedoms.",
+    "Original CAD overlaps remain; this record does not establish moving clearance.",
+    "Uniform densities, rigid body groupings, mount and motion are illustrative."
+  ],
+  "hardwareValidation": "not-performed"
+}

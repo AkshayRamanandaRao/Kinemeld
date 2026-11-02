@@ -92,3 +92,21 @@ test('case colours are distinct, ordered and valid hex', () => {
   assert.equal(caseColors(2)[0], '#2a78d6');
   assert.equal(caseColors(2)[1], '#e8902a');
 });
+
+
+test('robot drive and brake inputs have editor units and paired centers stay geometric', () => {
+  const model = structuredClone(spatial);
+  model.joints[0].friction = { coefficient: .3, radius: .1, preload: 20 };
+  model.joints[0].motion = { speedDegPerS: 30, rampTime: .2 };
+  model.contacts[0].otherCenter = { x: 1, y: 2, z: 3 };
+  model.jointTorques[0] = { id: 'drive', joint: 'hub', type: 'servo', kp: 8, kd: 1, targetAngleDeg: 30, rampTime: .4, torqueLimit: 2 };
+  const parameters = studyParameters(model);
+  assert(!parameters.some(item => pathKey(item.path).includes('otherCenter')));
+  for (const [path, unit] of [['friction.coefficient', ''], ['friction.radius', 'm'], ['friction.preload', 'N'], ['motion.rampTime', 's']]) {
+    const input = parameters.find(item => pathKey(item.path) === `joints/hub/${path.replaceAll('.', '/')}`);
+    assert(input, path);
+    assert.equal(input.unit, unit);
+  }
+  for (const [key, unit] of [['kp', 'N·m/rad'], ['kd', 'N·m·s/rad'], ['targetAngleDeg', '°'], ['rampTime', 's'], ['torqueLimit', 'N·m']])
+    assert.equal(parameters.find(item => pathKey(item.path) === `jointTorques/drive/${key}`).unit, unit);
+});

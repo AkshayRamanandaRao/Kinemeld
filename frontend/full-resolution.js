@@ -2,6 +2,7 @@
 
 // Displayed-sample channel keys map onto the column names written by the backend CSV writers.
 const ELEMENT_COLUMNS = {
+  servo: { angle: "angle_rad", speed: "speed_rad_s", desiredAngle: "desiredAngle_rad", desiredSpeed: "desiredSpeed_rad_s", error: "error_rad", torque: "torque_Nm", saturated: "saturated", power: "power_W" },
   force: { length: "length_m", extension: "extension_m", rate: "rate_m_s", force: "tension_N" },
   oleo: { gasPressure: "gasPressure_Pa", gasForce: "gasForce_N", hydraulicForce: "hydraulicForce_N", stopForce: "stopForce_N" },
   slider: { position: "position_m", velocity: "velocity_m_s" },
@@ -11,9 +12,11 @@ const ELEMENT_COLUMNS = {
   contact: { gap: "gap_m", penetration: "penetration_m", force: "force_N", power: "power_W", energy: "energy_J", dampingPower: "dampingPower_W", dissipatedEnergy: "dissipatedEnergy_J", frictionForce: "frictionForce_N", slip: "slip_m_s", frictionPower: "frictionPower_W", frictionEnergy: "frictionEnergy_J" },
   "joint-force": { force: "force_N", power: "power_W" },
   drive: { angle: "angle_rad", speed: "speed_rad_s", torque: "torque_Nm", power: "power_W" },
+  brake: { torque: "torque_Nm", speed: "speed_rad_s", power: "power_W", dissipatedEnergy: "dissipatedEnergy_J" },
 };
-const ELEMENT_PREFIX = { force: "force", oleo: "force", slider: "slider", cylinder: "cylindrical", rotary: "rotational", torque: "actuation", contact: "contact", "joint-force": "jointForce", drive: "rotaryDrive" };
+const ELEMENT_PREFIX = { servo: "servo", force: "force", oleo: "force", slider: "slider", cylinder: "cylindrical", rotary: "rotational", torque: "actuation", contact: "contact", "joint-force": "jointForce", drive: "rotaryDrive", brake: "jointFriction" };
 const SYSTEM_COLUMNS = {
+  tipDeflection: "tipDeflection_m", tipVelocity: "tipVelocity_m_s", tipSlope: "tipSlope_rad", appliedForce: "appliedForce_N", rootForce: "rootForce_N", rootMoment: "rootMoment_Nm",
   loadPower: "loadPower_W", appliedWork: "appliedWork_J", actuationPower: "actuationPower_W", actuationWork: "actuationWork_J",
   jointForcePower: "jointForcePower_W", jointForceWork: "jointForceWork_J", elasticEnergy: "elasticEnergy_J", dampingPower: "dampingPower_W", dissipatedEnergy: "dissipatedEnergy_J",
   rotaryDrivePower: "rotaryDrivePower_W", rotaryDriveWork: "rotaryDriveWork_J",
@@ -49,7 +52,7 @@ export function parseSolverCsv(text) {
   const header = lines[0].split(",");
   const index = Object.fromEntries(header.map((name, i) => [name, i]));
   if (index.time === undefined) throw new Error("The solver CSV has no time column.");
-  const times = [], global = {}, nodes = {};
+  const times = [], global = Object.create(null), nodes = Object.create(null);
   let lastTime = null;
   for (let row = 1; row < lines.length; row++) {
     const cells = lines[row].split(",");
@@ -59,13 +62,13 @@ export function parseSolverCsv(text) {
       times.push(time);
       lastTime = time;
       for (const [name, i] of Object.entries(index)) {
-        if (name === "time" || name === "id" || name === "label" || NODE_FIELDS.has(name)) continue;
+        if (name === "time" || name === "id" || name === "label" || (index.id !== undefined && NODE_FIELDS.has(name))) continue;
         (global[name] ||= []).push(cells[i] === "" ? NaN : Number(cells[i]));
       }
     }
     if (index.id !== undefined) {
       const id = cells[index.id];
-      const columns = (nodes[id] ||= {});
+      const columns = (nodes[id] ||= Object.create(null));
       for (const field of NODE_FIELDS) {
         if (index[field] !== undefined) (columns[field] ||= []).push(Number(cells[index[field]]));
       }
@@ -77,7 +80,7 @@ export function parseSolverCsv(text) {
 /** Values of a channel at every solver step, or null when the CSV does not contain it. */
 export function fullSeries(data, key, bodyAngularVelocity) {
   const target = columnFor(key);
-  if (!target) return null;
+  if (!target) return Object.hasOwn(data.global, key) ? data.global[key] : null;
   if (target.node !== undefined) {
     const columns = data.nodes[target.node];
     if (!columns) return null;

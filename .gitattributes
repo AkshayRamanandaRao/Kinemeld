@@ -3,3 +3,4 @@
 *.mbdyn-studio -text
 examples/open-source/** -text
 *.sh text eol=lf
+notices/** -text

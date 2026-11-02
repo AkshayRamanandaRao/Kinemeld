@@ -12,7 +12,7 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import socket
 import subprocess
@@ -23,6 +23,12 @@ import time
 import urllib.error
 import urllib.request
 import zipfile
+
+from check_asset_notices import verify as verify_assets, unique_keys
+from collect_rust_notices import check_bundle as verify_rust
+from prepare_solver_sources import verify as verify_solver, verify_license_texts, child
+
+MACOS_APP_ROOT = "Kinemeld.app/Contents/Resources/app"
 
 
 def ok(message):
@@ -42,15 +48,29 @@ def sha256(path):
 
 
 def unpack(archive, target):
+    def safe_name(name):
+        relative = PurePosixPath(name)
+        if not name or "\\" in name or ":" in name or relative.is_absolute() or ".." in relative.parts:
+            fail(f"unsafe archive path: {name}")
+        return relative.as_posix()
+
     if archive.name.endswith(".tar.gz"):
         with tarfile.open(archive) as tar:
-            if hasattr(tarfile, "data_filter"):
-                tar.extractall(target, filter="data")
-            else:
-                tar.extractall(target)
+            names = set()
+            for member in tar.getmembers():
+                name = safe_name(member.name)
+                if name in names or not (member.isfile() or member.isdir()):
+                    fail(f"duplicate or non-regular archive entry: {member.name}")
+                names.add(name)
+            tar.extractall(target, filter="data")
         return
     with zipfile.ZipFile(archive) as bundle:
+        names = set()
         for info in bundle.infolist():
+            name = safe_name(info.filename)
+            if name in names or (info.external_attr >> 16) & 0o170000 == 0o120000:
+                fail(f"duplicate or linked archive entry: {info.filename}")
+            names.add(name)
             path = Path(bundle.extract(info, target))
             # zipfile drops Unix modes; restore them as an unzip tool would.
             mode = (info.external_attr >> 16) & 0o777
@@ -68,17 +88,56 @@ def verify_files(archive, target, version):
     manifests = list(target.rglob("package-manifest.json"))
     if len(manifests) != 1:
         fail(f"expected one package-manifest.json, found {len(manifests)}")
-    root = manifests[0].parent
-    manifest = json.loads(manifests[0].read_text(encoding="utf-8"))
+    manifest = json.loads(manifests[0].read_text(encoding="utf-8"), object_pairs_hook=unique_keys)
+    if manifest.get("format") != "kinemeld-desktop-package/2":
+        fail("package lacks the current dependency/source inventory; rebuild it with the audited packager")
     if version and manifest.get("version") != version:
         fail(f"manifest version {manifest.get('version')} is not {version}")
+    root = manifests[0].parent
+    if "appRoot" in manifest:
+        if manifest["platform"] != "macos" or manifest["appRoot"] != MACOS_APP_ROOT or root != target:
+            fail("package appRoot must name the fixed macOS bundle from an archive-root manifest")
+        root = target / MACOS_APP_ROOT
+        signed_files = {"Kinemeld.app/Contents/MacOS/kinemeld", "Kinemeld.app/Contents/_CodeSignature/CodeResources"}
+        if not signed_files <= set(manifest["archiveFiles"]) or any(not (target / name).is_file() for name in signed_files):
+            fail("macOS signed host or bundle resource signature is missing from the inventory")
+    elif manifest["platform"] == "macos" and root != target / MACOS_APP_ROOT:
+        fail("legacy macOS manifest is not inside the fixed application resource folder")
     for relative, digest in manifest["files"].items():
-        path = root / relative
+        path = child(root, relative)
         if not path.is_file():
             fail(f"{relative} is listed in the manifest but missing")
         if sha256(path) != digest:
             fail(f"{relative} does not match its manifest hash")
     ok(f"{len(manifest['files'])} files match the manifest of {manifest['application']} {manifest['version']} ({manifest['platform']})")
+    actual = {p.relative_to(target).as_posix() for p in target.rglob("*") if p.is_file() and p != manifests[0]}
+    if actual != set(manifest["archiveFiles"]):
+        fail("archive contains unlisted files or omits inventoried files")
+    for relative, expected_digest in manifest["archiveFiles"].items():
+        if sha256(child(target, relative)) != expected_digest:
+            fail(f"archive file does not match its manifest: {relative}")
+    if manifest.get("appRoot") and sys.platform == "darwin":
+        subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(target / "Kinemeld.app")], check=True)
+        ok("macOS application bundle signature and sealed resources verified")
+    verify_assets(root)
+    verify_license_texts(root / "notices/solver")
+    verify_rust(root / "notices/rust", target=manifest["rustTarget"])
+    if manifest["bundledSolver"]:
+        record = manifest.get("solverSources") or {}
+        name = record.get("file", "")
+        if not name or Path(name).name != name or "\\" in name:
+            fail("solver corresponding-source companion is missing or has an unsafe filename")
+        sources_archive = child(archive.parent, name)
+        if not sources_archive.is_file() or sha256(sources_archive) != record.get("sha256"):
+            fail(f"missing or changed solver corresponding-source companion: {name}")
+        sources_target = target.parent / "sources"
+        unpack(sources_archive, sources_target)
+        metadata = verify_solver(root / "solver", sources_target / "solver-sources")
+        if metadata["platform"] != manifest["platform"]:
+            fail("solver source inventory belongs to a different platform")
+    elif manifest.get("solverSources") or (root / "solver").exists():
+        fail("solver payload disagrees with the package manifest")
+    ok("asset and Rust notices, full archive inventory and solver corresponding source verified offline")
     return root, manifest
 
 
@@ -227,12 +286,16 @@ def main():
     parser.add_argument("--expect-solver", action="store_true", help="fail unless MBDyn is bundled")
     parser.add_argument("--native-smoke", action="store_true", help="also run the desktop executable's self-check")
     parser.add_argument("--keep", action="store_true", help="keep the unpacked folder for inspection")
+    parser.add_argument("--files-only", action="store_true", help="verify notices/source/inventory without executing a different platform's binaries")
     args = parser.parse_args()
     work = Path(tempfile.mkdtemp(prefix="kinemeld-package-check-"))
     try:
         root, manifest = verify_files(args.archive.resolve(), work / "unpacked", args.version)
         if args.expect_solver and not manifest["bundledSolver"]:
             fail("MBDyn is not bundled in this package")
+        if args.files_only:
+            print(f"PASS  {args.archive.name} (files, notices and sources only)", flush=True)
+            return
         (work / "data").mkdir()
         with (work / "service.log").open("w", encoding="utf-8") as log:
             check_service(root, manifest, work / "data", log)

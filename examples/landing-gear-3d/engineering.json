@@ -1,0 +1,185 @@
+{
+  "format": "kinemeld-engineering-example/1",
+  "study": "landing-drop",
+  "project": "examples/landing-gear-3d/landing-gear-drop.mbdyn-studio",
+  "modelSha256": "f6a9fe9cb12417aaea42c3376987ae657e31fe0020645d6c26cf0d8bb2c8c3b4",
+  "generator": "examples/landing-gear-3d/generate.py",
+  "generatorSha256Lf": "7aea8eb9c33500c1977a3309cd1f431932fb1f42258b53b36fded273209c98fa",
+  "geometryProvenance": "Original parametric cylinders; no external aircraft drawing or measured hardware",
+  "upstream": null,
+  "units": {
+    "length": "m",
+    "mass": "kg",
+    "time": "s",
+    "angles": "degrees in saved poses; radians in reference equations"
+  },
+  "assets": [
+    {
+      "name": "strut.step",
+      "sha256": "d054a865c766ddd3c0a593aefd081f7843b9d49b8c78e93a0c5b04c75bc99291",
+      "sourcePath": "examples/landing-gear-3d/strut.step"
+    },
+    {
+      "name": "wheel.step",
+      "sha256": "887430749d40bb162d1cc1c85324800f32aef6c2ab588a8850c7cf2b9a125528",
+      "sourcePath": "examples/landing-gear-3d/wheel.step"
+    }
+  ],
+  "bindings": {
+    "0:part-1": {
+      "body": "upper",
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.0,
+        "rx": 0.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    },
+    "1:part-1": {
+      "body": "wheel",
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.35,
+        "rx": 90.0,
+        "ry": 0.0,
+        "rz": 0.0
+      }
+    }
+  },
+  "hardpoints": [
+    {
+      "joint": "oleo",
+      "type": "prismatic",
+      "end": "A",
+      "body": "upper",
+      "localM": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "worldM": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "axisLocal": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "basis": "Authored coaxial vertical guide; two separated body origins are permitted along the prismatic axis."
+    },
+    {
+      "joint": "oleo",
+      "type": "prismatic",
+      "end": "B",
+      "body": "wheel",
+      "localM": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "worldM": [
+        0.0,
+        0.0,
+        0.35
+      ],
+      "axisLocal": null,
+      "basis": "Authored coaxial vertical guide; two separated body origins are permitted along the prismatic axis."
+    }
+  ],
+  "densityAssumptions": [
+    {
+      "binding": "0:part-1",
+      "body": "upper",
+      "densityKgM3": 3572.501528437606,
+      "status": "mass-normalizing assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    },
+    {
+      "binding": "1:part-1",
+      "body": "wheel",
+      "densityKgM3": 707.3553026306458,
+      "status": "mass-normalizing assumption",
+      "basis": "Explicit generator input; no measured material certificate or hardware calibration."
+    }
+  ],
+  "gravityM_s2": {
+    "x": 0,
+    "y": 0,
+    "z": -9.81
+  },
+  "initialVelocities": {
+    "upper": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": -1.5,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    },
+    "wheel": {
+      "vx": 0.0,
+      "vy": 0.0,
+      "vz": -1.5,
+      "wx": 0.0,
+      "wy": 0.0,
+      "wz": 0.0
+    }
+  },
+  "forceLaws": [
+    {
+      "id": "strut",
+      "type": "linear-spring-damper",
+      "a": "wheel",
+      "b": "upper",
+      "anchorA": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "anchorB": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "stiffness": 12000.0,
+      "damping": 900.0,
+      "restLength": 0.65
+    }
+  ],
+  "contacts": [
+    {
+      "id": "tire",
+      "body": "wheel",
+      "center": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "radius": 0.15,
+      "planePoint": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "planeNormal": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "stiffness": 250000.0
+    }
+  ],
+  "jointMotions": {},
+  "interpretationLimits": [
+    "Original two-mass vertical teaching drop; not the sourced nose-gear assembly or a certified aircraft.",
+    "Density is chosen to obtain prescribed masses, not taken from a material certificate.",
+    "Linear strut and elastic sphere-plane tire law; no hydraulic calibration, wheel spin, tire footprint or structure.",
+    "No hard stroke stop; geometric solid intersections are not collision constraints."
+  ],
+  "hardwareValidation": "not-performed"
+}

@@ -21,7 +21,7 @@ original CAD files with their attachments, so a project opens identically on ano
 | `schemaVersion` | no | `1`; files without it are read as version 1. |
 | `model` | yes | The physical model. `kind` and `name` are always present; the rest depends on the kind (`spatial-assembly`, `planar-assembly`, the parametric templates, or a pinned upstream example). Units are SI, angles in degrees. |
 | `result` | no | The result shown when the project was saved: its source (`MBDyn` or `Reference preview`), run ID, up to 2,001 displayed samples, and for MBDyn runs the full solver CSV (`csvText`). |
-| `view` | no | Selection, plot quantity, frame, camera and target, trail and symbol settings, and the parameter study set-up (`study`: input path, values, response). |
+| `view` | no | Selection, plot quantity, frame, camera and target, trail and symbol settings, the parameter study set-up (`study`: input path, values, response), and the bounded design-search draft (`designSearch`). |
 | `assets` | no | `step`: the original STEP files (bytes, SHA-256, name) and their attachments to bodies with the pose at attachment and an occurrence identity; `reference`: an older visual STL reference. |
 
 On open, Kinemeld validates the model with the same checks as **Validate model**, checks
@@ -48,6 +48,13 @@ From 1.0 on:
   together with a converter from version 1.
 - Additions so far: 1.1 added the optional contact fields `friction` (Coulomb coefficient,
   default 0) and `slipVelocity` (m/s, default 0.05).
+- Current development adds optional free-revolute `joint.friction`, sphere-pair
+  contact, `jointTorques` entries with `type: "servo"`, the `flexible-link` template
+  and `view.designSearch`. Omission preserves the earlier rigid-model behavior.
+  A saved servo result includes recorded controller metadata and full CSV fields;
+  separate native logs/controller traces remain in that machine's run store.
+  Design rankings are session data; the project retains their configuration and
+  the exported design table retains the evaluated results.
 - Compatibility runs forward in time: a project that uses a model feature added in a later
   release opens in that release or newer. An older release refuses it with *Unsupported
   field* rather than solve it without the feature.

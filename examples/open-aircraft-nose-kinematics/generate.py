@@ -19,7 +19,7 @@ def main():
  data=SOURCE.read_bytes()
  if hashlib.sha256(data).hexdigest()!=SHA:raise ValueError('Source STEP hash mismatch')
  model=json.loads((HERE/'inferred-model-template.json').read_text(encoding='utf8'))
- model['name']='Aircraft gear · KINEMATIC ONLY · loads invalid · source overlaps'
+ model['name']='Aircraft nose-gear kinematics'
  model['simulation']={'duration':.5,'step':.001}
  witnesses={f'0:part-{i}':{'scheme':'step-nauo-id-path/1','path':[f'NAUO{i}']} for i in range(1,12)}
  asset={'name':SOURCE.name,'sha256':SHA,'byteLength':len(data),'data':base64.b64encode(data).decode('ascii')}

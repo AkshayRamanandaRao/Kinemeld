@@ -25,6 +25,31 @@ const acceleration = {
 };
 
 export const industry = {
+  "flexible-link": {
+    category: "ROBOTICS · FLEXIBLE LINK", title: "FLEXIBLE ROBOT LINK",
+    description: "A clamped uniform link bends and vibrates under a smoothly applied tip force.",
+    badge: "Native beam elements · flexible nodes",
+    assumptions: "Illustrative uniform beam, clamped at its root, with explicit section stiffness and nodal mass/rotary inertia. Small tip deflections; no plasticity, CAD section inference, rigid-link coupling or hardware calibration. Displayed nodes follow native MBDyn output at actual scale.",
+    fields: [
+      ["length", "Link length", "m", .05, .05], ["linearDensity", "Mass per length", "kg/m", .001, .1],
+      ["axialStiffness", "Axial stiffness EA", "N", 1, 1000], ["shearStiffness", "Shear stiffness GA", "N", 1, 1000],
+      ["bendingStiffness", "Bending stiffness EI", "N·m²", .001, 1], ["torsionalStiffness", "Torsional stiffness GJ", "N·m²", .001, 1],
+      ["rotaryInertia", "Rotary inertia per length", "kg·m", 1e-10, .00001], ["dampingTime", "Stiffness damping time", "s", 0, .001],
+      ["tipLoad", "Tip load Z", "N", -1e6, .1], ["rampTime", "Load ramp time", "s", .001, .01], ["nodes", "Mesh nodes (3, 5 or 9)", "", 3, 2],
+    ],
+    bodies: [["ground", "ground", "Root support", "Fixed"], ["body", "cube", "Flexible link", "Native nodes"]],
+    connections: [["joint", "joint", "Root clamp", "6 constraints"], ["beam", "wave", "Beam mesh", "Flexible"]],
+    excitation: [["load", "force", "Ramped tip load", "Z"]],
+    topology: [["Root support", "Clamped"], ["Beam mesh", "Native beam3 elements"], ["Tip", "Ramped transverse load"]],
+    signals: [
+      { title: "Tip deflection (native)", unit: "m", channels: [["tipDeflection", "Deflection"]] },
+      { title: "Tip velocity (native)", unit: "m/s", channels: [["tipVelocity", "Velocity"]] },
+      { title: "Tip slope (native)", unit: "rad", channels: [["tipSlope", "Slope"]] },
+      { title: "Applied tip load", unit: "N", channels: [["appliedForce", "Load"]] },
+      { title: "Root force (native)", unit: "N", channels: [["rootForce", "Force Z"]] },
+      { title: "Root moment (native)", unit: "N·m", channels: [["rootMoment", "Moment Y"]] },
+    ], tutorial: "robot-flexible-link.md",
+  },
   "gear-deployment": {
     category: "SPACEPLANE · LINKAGE DEPLOYMENT",
     title: "SHUTTLE-STYLE GEAR DEPLOYMENT",
@@ -224,6 +249,8 @@ export function signalsFor(kind) {
 }
 
 export const industryCsvUnits = {
+  tipDeflection: "tipDeflection_m", tipVelocity: "tipVelocity_m_s", tipSlope: "tipSlope_rad",
+  appliedForce: "appliedForce_N", rootForce: "rootForce_N", rootMoment: "rootMoment_Nm",
   bx: "brace_B_x_m",
   bz: "brace_B_z_m",
   cx: "brace_C_x_m",

@@ -1,0 +1,24 @@
+{
+  "component": "Microsoft WebView2 SDK loader",
+  "version": "1.0.3800.47",
+  "license": "BSD-3-Clause",
+  "sourceUrl": "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.3800.47/microsoft.web.webview2.1.0.3800.47.nupkg",
+  "nugetSha256": "56c9f26bdd07916a2d1949fb58a5c7e434dfa1173577dca879206050c4e718db",
+  "scope": "The Windows target statically links x64/WebView2LoaderStatic.lib from webview2-com-sys; the WebView2 browser runtime is an externally installed prerequisite. Other architecture loader bytes are checked to account for the full crate payload.",
+  "noticeFiles": {
+    "upstream/Microsoft.Web.WebView2-1.0.3800.47-LICENSE.txt": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
+    "upstream/Microsoft.Web.WebView2-1.0.3800.47-Microsoft.Web.WebView2.nuspec": "31e49576d10d4a5abf4318850e6d3fde457800e6228610a5854a4251af56b5ff",
+    "upstream/Microsoft.Web.WebView2-1.0.3800.47-NOTICE.txt": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+  },
+  "embeddedPayloads": {
+    "arm64/WebView2Loader.dll": "a0de1844933a10c898f833771a85f0ab9a0e3c745d4715f63d2d9730f9416025",
+    "arm64/WebView2Loader.dll.lib": "d70271daa44507865ca0696cd1c1ede5e58e694eec74cb2d06e17dbbe205e9a2",
+    "arm64/WebView2LoaderStatic.lib": "4a1ca4b518337c508aa0d778b220c6e59558fce21f4fd0d79a6ea944dd9d5208",
+    "x64/WebView2Loader.dll": "86545b66cdb0603bc26b626fb9ad610cb6e71f28d468f5ea66df23b03dda96d5",
+    "x64/WebView2Loader.dll.lib": "bfc8ccaaa056be95243a5b66a827e5849d2bb39676fca4dcc2053796d8e15c6d",
+    "x64/WebView2LoaderStatic.lib": "89c6b872783b8f6c3cedbff618adb42082d455c615453ae10cfc753f1e8f25d8",
+    "x86/WebView2Loader.dll": "161dc6673084a31f64670ace8e61cb0e1b55af815b6c7c8217a0cdd8503454e2",
+    "x86/WebView2Loader.dll.lib": "a3ec0ee539d58fe72391f2e89cb814f96fab721c6d8d30953d152ea95dffad49",
+    "x86/WebView2LoaderStatic.lib": "0513f7e61304321f2d91e1851475be07e091042aa3640597e660608f72521e6c"
+  }
+}

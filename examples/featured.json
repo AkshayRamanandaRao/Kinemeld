@@ -59,7 +59,7 @@
       "project": "open-aircraft-nose-kinematics/nose-gear-kinematics.mbdyn-studio",
       "next": "Run it, then watch the scissor fold and plot Slider position for the oleo joint.",
       "overlay": {
-        "name": "Aircraft nose gear: 80 mm shock-strut stroke · KINEMATIC ONLY · loads invalid · source overlaps",
+        "name": "Aircraft nose gear: 80 mm shock-strut stroke",
         "simulation": {
           "duration": 2.0,
           "step": 0.002

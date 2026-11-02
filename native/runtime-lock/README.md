@@ -8,7 +8,14 @@ The desktop selects Python in this order: the explicit `MBDYN_STUDIO_PYTHON` val
 
 The pinned OCP wheel contains OpenCascade and additional native components. The wheel's Apache metadata is not a complete license statement for those components. Before any redistribution, inventory every included binary and its own sources, licenses and notices, including OpenCascade's LGPL and exception, VTK's bundled libraries, FreeImage and the exact Microsoft Visual C++ runtime; review source/notice and replacement requirements. MBDyn and its example decks have separate GPL obligations. The validator can check that supplied notices exist and match hashes; it cannot determine whether they are accurate or sufficient, or infer legal permission.
 
-## Supply a staged runtime and source artifacts
+## Supply a staged runtime and acquisition artifacts
+
+The lock's historical `sourceArtifacts` field identifies the downloaded embedded-Python ZIP
+and binary wheels used to construct the runtime. These are **acquisition artifacts**, not
+the corresponding source code of Python, OCP, OpenCascade or the native libraries in those
+wheels. Hash and payload checks do not satisfy their source or license obligations. This
+private test path remains `redistributionStatus: not-established`; it is excluded from
+the standard public release packages audited in P3.
 
 1. Obtain the exact 14 wheel files and `python-3.12.10-embed-amd64.zip` through reviewed sources and put them in `C:\staging\artifacts`. The wheel SHA-256 values must match the committed lock; the Python archive is pinned to the SHA-256 published in its [Python.org SPDX SBOM](https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip.spdx.json). These digest checks identify the artifact but do not independently verify the publisher signature or its security. Retain the original archive and wheels separately from the runtime.
 2. On Windows x64 with CPython 3.12.10 and existing pip 26.0.1, create a new isolated runtime from the downloaded artifacts. The command verifies every locked SHA-256, uses offline pip with `--no-index --no-deps --target`, and does not change system Python or PATH. Create the destination parent first; the `python` destination itself must not exist. The generated manifest has empty notice mappings and cannot pass redistribution staging until they are reviewed.
@@ -50,7 +57,7 @@ The pinned OCP wheel contains OpenCascade and additional native components. The 
    pwsh -NoProfile -File native/package-windows.ps1 -PrivateRuntimeDirectory C:\staging\app\runtime\python -PrivateRuntimeArtifacts C:\staging\artifacts
    ```
 
-   The verifier rejects missing or changed files, unlisted files, reparse points, unsafe paths, mismatched wheel/source-artifact hashes, missing component/native notice mappings and an incompatible `._pth`. For a private runtime the packaging step additionally runs the archive-to-payload comparison, then rechecks every runtime hash against the verified snapshot while writing the ZIP. Its manifest records matched and unproven file counts; unproven generated metadata and notices still require review. It creates `MBDynStudio-Windows-private-runtime-test.zip` and marks its runtime redistribution status `not-established`. The artifact directory is checked but not included in the ZIP; preserve it independently for provenance and any corresponding-source obligations.
+   The verifier rejects missing or changed files, unlisted files, reparse points, unsafe paths, mismatched wheel/acquisition-artifact hashes, missing component/native notice mappings and an incompatible `._pth`. For a private runtime the packaging step additionally runs the archive-to-payload comparison, then rechecks every runtime hash against the verified snapshot while writing the ZIP. Its manifest records matched and unproven file counts; unproven generated metadata and notices still require review. It creates `MBDynStudio-Windows-private-runtime-test.zip` and marks its runtime redistribution status `not-established`. The artifact directory is checked but not included in the ZIP; preserve it independently for provenance. Actual corresponding sources and native notices still need separate acquisition and review.
 
 ## Worked isolated runtime check
 

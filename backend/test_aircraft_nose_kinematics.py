@@ -13,9 +13,9 @@ GROUPS={'strut':[3],'slider':[1,2,5],'upper_link':[4,7],'lower_link':[6,8,9],'le
 class NoseGearKinematicsTest(unittest.TestCase):
  @classmethod
  def setUpClass(cls):cls.project=json.loads(PROJECT.read_text(encoding='utf8'))
- def test_source_bytes_poses_and_unambiguous_warning(self):
+ def test_source_bytes_poses_and_display_name(self):
   p=self.project;model=p['model'];asset=p['assets']['step'];data=SOURCE.read_bytes();self.assertEqual(hashlib.sha256(data).hexdigest(),SHA);self.assertEqual(base64.b64decode(asset['files'][0]['data'],validate=True),data)
-  self.assertIn('KINEMATIC ONLY',model['name']);self.assertIn('loads invalid',model['name']);self.assertIn('source overlaps',model['name']);self.assertEqual(model['parameters']['gravity'],dict.fromkeys('xyz',0));self.assertTrue(spatial.validate(model)['valid'])
+  self.assertEqual(model['name'],'Aircraft nose-gear kinematics');self.assertNotRegex(model['name'],r'KINEMATIC ONLY|loads invalid|source overlaps');self.assertEqual(model['parameters']['gravity'],dict.fromkeys('xyz',0));self.assertTrue(spatial.validate(model)['valid'])
   for body in model['bodies']:
    for i in GROUPS[body['id']]:
     binding=asset['bindings'][f'0:part-{i}'];self.assertEqual(binding['body'],body['id'])

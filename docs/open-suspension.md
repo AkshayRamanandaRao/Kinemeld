@@ -41,3 +41,12 @@ With MBDyn 1.7.3, 0.5 ms and 0.25 ms runs give a maximum wheel-center position d
 From the source checkout, `python -B backend/test_open_suspension.py` checks embedded original CAD bytes, initial joint positions and pairwise initial metal-part solid intersections; `python -B backend/verify_open_suspension.py` runs both installed-MBDyn timesteps. `node tests/open-suspension-ui.mjs` exercises STEP import, an actual solver run and project save/reopen against a running application. The verifier generates `verification/open-suspension.json`; the local report is not included in the public checkout. Browser tests are included in the source archive, not the local Windows package.
 
 To upgrade this into an engineering model, obtain the original assembly coordinate system, physically compatible joints and verified hardpoints, a steering tie rod and rack, full sprung and unsprung masses, spring/preload/damper curves, bushing stiffness and damping, tire/road data and measured K&C or instrumented test results. Check initial and dynamic component interference before using the geometry for packaging. See the [suspension engineering workflow](suspension-engineering-workflow.md) for correlation and the distinction between kinematics and compliance.
+
+The [engineering input record](../examples/open-suspension/engineering.json)
+pins the five CAD sources, generator, inferred hardpoints and body mappings,
+material-density assumptions and loading. The [engineering verifier](engineering-example-verification.md)
+reintegrates all four masses/tensors, adds a third timestep and a 20% stiffer-spring
+case, and independently checks the upper-arm circle/upright closure conditioned
+on the solved lower-arm coordinate. Consecutive matched-time position differences
+shrink from approximately 0.0955 to 0.0251 µm; this numerical refinement remains
+separate from measured K&C or physical joint-fit validation.

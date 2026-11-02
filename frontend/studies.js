@@ -18,12 +18,18 @@ const COLLECTIONS = {
 };
 // Geometry, orientation and vectors are left out: changing one component alone rarely means
 // anything physically, and anchors must stay consistent between the two ends of a joint.
-const SKIP = /^(anchor|axis|center$|center\.|centerOfMass|planePoint|planeNormal|point\.|force\.|torque\.|inertia|pose\.r|translation|rotation)/;
+const SKIP = /^(anchor|axis|center$|center\.|otherCenter|centerOfMass|planePoint|planeNormal|point\.|force\.|torque\.|inertia|pose\.r|translation|rotation)/;
 const NAMES = {
   mass: ["mass", "kg"],
+  kp: ["position gain", "N·m/rad"],
+  kd: ["velocity gain", "N·m·s/rad"],
+  targetAngleDeg: ["target angle", "°"],
+  rampTime: ["target ramp time", "s"],
+  torqueLimit: ["torque limit", "N·m"],
   stiffness: ["stiffness", "N/m"],
   damping: ["damping", "N·s/m"],
   restLength: ["free length", "m"],
+  restAngleDeg: ["rest angle", "°"],
   minLength: ["minimum length", "m"],
   maxLength: ["maximum length", "m"],
   pressure: ["gas pre-charge pressure", "Pa"],
@@ -40,6 +46,9 @@ const NAMES = {
   radius: ["radius", "m"],
   friction: ["friction coefficient", ""],
   slipVelocity: ["friction slip velocity", "m/s"],
+  "friction.coefficient": ["bearing friction coefficient", ""],
+  "friction.radius": ["bearing friction radius", "m"],
+  "friction.preload": ["bearing friction preload", "N"],
   amplitude: ["amplitude", ""],
   offset: ["offset", ""],
   frequencyHz: ["frequency", "Hz"],

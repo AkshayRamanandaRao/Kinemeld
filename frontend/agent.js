@@ -7,7 +7,7 @@ export function explicitRunRequest(text) {
 }
 
 /** UI for a local model connection; all changes pass the existing validator and history. */
-export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkModel, applyModel, run, isBusy, nativeDesktop}) {
+export function setupAgent({getModel, getSignature, getBindings=()=>({}), getRunId=()=>null, checkModel, checkStudy, applyModel, applyProposal, run, runStudy, isBusy, nativeDesktop}) {
   const panel = $("agentPanel"), messages = $("agentMessages"), modelSelect = $("agentModel");
   const history = [];
   let pending = false, reviewOutstanding = false;
@@ -40,7 +40,7 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
       const next = new Map((after[collection] || []).map((entry) => [entry.id, entry]));
       for (const [id, entry] of next) {
         if (!old.has(id)) {
-          const detail = collection === "joints" ? `${entry.type} joint ${entry.a} ↔ ${entry.b}` : collection === "contacts" ? `sphere-plane contact on ${entry.body}, radius ${number(entry.radius)} m${entry.friction > 0 ? `, friction ${number(entry.friction)}` : ""}` : collection === "forces" ? `${entry.type === "oleo-strut" ? "oleo strut" : "spring-damper"} ${entry.a} ↔ ${entry.b}` : "";
+          const detail = collection === "joints" ? `${entry.type} joint ${entry.a} ↔ ${entry.b}` : collection === "contacts" ? `${entry.type === "sphere-sphere" ? `sphere-sphere contact ${entry.body} ↔ ${entry.otherBody}` : `sphere-plane contact on ${entry.body}`}, radius ${number(entry.radius)} m${entry.friction > 0 ? `, friction ${number(entry.friction)}` : ""}` : collection === "forces" ? `${entry.type === "oleo-strut" ? "oleo strut" : "spring-damper"} ${entry.a} ↔ ${entry.b}` : "";
           lines.push(`Added ${label.toLowerCase()} ${id}${detail ? `: ${detail}` : ""}`);
           continue;
         }
@@ -50,6 +50,8 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
       }
       for (const id of old.keys()) if (!next.has(id)) lines.push(`Removed ${label.toLowerCase()} ${id}`);
     }
+    if (JSON.stringify(before.frameLinks || []) !== JSON.stringify(after.frameLinks || []))
+      lines.push(`Joint-frame links: ${(after.frameLinks || []).map(link => `${link.joint}.${link.side} ← ${link.frame}.${link.axis}`).join(", ") || "none"}`);
     return lines;
   }
   /** One line per assistant edit, in engineering terms rather than field names. */
@@ -58,7 +60,7 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
     const fields = (group) => Object.entries(values[group] || {}).map(([key, value]) => `${key} ${value}`).join(", ");
     if (edit.operation === "copy") return `Copied body ${edit.sourceId} as ${edit.id}`;
     if (edit.collection === "joints" && edit.operation === "add") return `Added ${values.type || ""} joint ${edit.id}: ${values.a} ↔ ${values.b}`.replace("  ", " ");
-    if (edit.collection === "contacts" && edit.operation === "add") return `Added sphere-plane contact ${edit.id} on ${values.body}${values.radius ? `, radius ${values.radius} m` : ""}`;
+    if (edit.collection === "contacts" && edit.operation === "add") return `Added ${values.type === "sphere-sphere" ? `sphere-sphere contact ${edit.id}: ${values.body} ↔ ${values.otherBody}` : `sphere-plane contact ${edit.id} on ${values.body}`}${values.radius ? `, radius ${values.radius} m` : ""}`;
     if (edit.collection === "forces" && edit.operation === "add") return `Added ${values.type === "oleo-strut" ? "oleo strut" : "spring-damper"} ${edit.id}: ${values.a} ↔ ${values.b}`;
     if (edit.collection === "bodies" && edit.operation === "update") {
       const parts = [values.pose && `pose ${fields("pose")}`, values.velocity && `velocity ${fields("velocity")}`, values.mass !== undefined && `mass ${values.mass} kg`].filter(Boolean);
@@ -66,13 +68,14 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
     }
     return `${verb} ${edit.collection.replace(/s$/, "")} ${edit.id} (${Object.keys(values).join(", ")})`;
   }
-  function reviewSpatial({before, original, proposed, bindings, descriptions, runAfter}) {
+  function reviewProposal({before, original, proposed, study, studyDetails, bindings, descriptions, runAfter, runStudyAfter}) {
     reviewOutstanding = true;
     const item=message("Review the complete model before applying. Validation checks consistency; it cannot determine whether the agent interpreted your request correctly.");
     item.classList.add("agent-review");
     // The actual differences between the current and proposed models, so any change the request
     // did not ask for stands out; the complete model comparison stays one click away.
     const changes=modelChanges(original,proposed);
+    if(study) changes.push(`Parameter study: ${studyDetails.label}${studyDetails.unit ? ` (${studyDetails.unit})` : ""}; values ${study.values.join(", ")}; current baseline ${studyDetails.baseline}. No baseline model value is changed.`);
     if(changes.length){const list=document.createElement("ul");list.className="agent-changes";for(const text of changes){const li=document.createElement("li");li.textContent=text;list.append(li);}item.append(list);}
     const details=document.createElement("details"), summary=document.createElement("summary"), pre=document.createElement("pre");
     summary.textContent="Compare current and proposed model";pre.textContent=`CURRENT MODEL\n${JSON.stringify(original,null,2)}\n\nPROPOSED MODEL\n${JSON.stringify(proposed,null,2)}`;
@@ -81,7 +84,7 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
     const detached=Object.entries(bindings).filter(([,binding])=>!allowed.has(binding.body) || ((proposed.kind === "spatial-assembly") !== (Object.hasOwn(binding.pose || {},"rx") && Object.hasOwn(binding.pose || {},"rz"))));
     if(detached.length){const warning=document.createElement("p");warning.textContent=`Applying will detach STEP parts: ${detached.map(([part,binding])=>`${part} from ${binding.body}`).join(", ")}.`;item.append(warning);}
     const controls=document.createElement("div"), apply=document.createElement("button"), reject=document.createElement("button");
-    controls.className="agent-review-actions";apply.type=reject.type="button";apply.className="primary";reject.className="secondary";apply.textContent=runAfter ? "Apply and run" : "Apply proposal";reject.textContent="Discard proposal";controls.append(apply,reject);item.append(controls);
+    controls.className="agent-review-actions";apply.type=reject.type="button";apply.className="primary";reject.className="secondary";apply.textContent=runStudyAfter ? "Apply and run study" : runAfter ? "Apply and run" : "Apply proposal";reject.textContent="Discard proposal";controls.append(apply,reject);item.append(controls);
     reject.onclick=()=>{reviewOutstanding=false;apply.disabled=reject.disabled=true;message("Proposal discarded. The current model was not changed.");};
     apply.onclick=async()=>{
       if(getSignature()!==before || JSON.stringify(getBindings())!==JSON.stringify(bindings) || isBusy()){message("The model, STEP attachments or another operation changed since this proposal. Ask the agent again.","error");reviewOutstanding=false;apply.disabled=reject.disabled=true;return;}
@@ -90,8 +93,11 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
       try {
         const validation=await checkModel(proposed);
         if(!validation.valid)throw Error((validation.issues || []).map(issue=>issue.message).join(" ") || "The proposal is no longer valid.");
+        if(study)await checkStudy(study,proposed);
         if(getSignature()!==before || JSON.stringify(getBindings())!==JSON.stringify(bindings) || isBusy())throw Error("The model, STEP attachments or another operation changed during validation. Ask the agent again.");
-        applyModel(proposed);applied=true;message(`${descriptions.join(" · ") || "Updated the model"}. Use Undo to restore the previous model.`);
+        applyProposal(proposed,study);applied=true;message(`${descriptions.join(" · ") || "Updated the model"}. Use Undo to restore the previous model.`);
+        if(study && !runStudyAfter)message("Study setup applied. Use Run study when ready; no solver has run.");
+        if(runStudyAfter){message("Running the reviewed parameter study as requested.");await runStudy();}
         if(runAfter){message("Running the reviewed model as requested.");await run(false);}
       } catch(error){message(`${applied ? "The model was applied, but the run could not finish" : "The proposal could not be applied"}: ${error.message}`,"error");}
       finally {reviewOutstanding=false;}
@@ -135,7 +141,7 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
     event.preventDefault();
     const text = $("agentInput").value.trim();
     if (!text || pending || !modelSelect.value) return;
-    if (reviewOutstanding) {message("Apply or discard the pending spatial proposal before sending another request.","error");return;}
+    if (reviewOutstanding) {message("Apply or discard the pending proposal before sending another request.","error");return;}
     if (text.length > 4000) {message("The request exceeds 4,000 characters.","error");return;}
     const before = getSignature();
     const model = structuredClone(getModel());
@@ -145,17 +151,19 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
     pending = true; $("agentSend").disabled = true; $("agentStatus").textContent = "Thinking locally…";
     nativeDesktop?.notify("agent-busy");
     try {
-      const response = await request("chat", {message:text,model,chatModel:modelSelect.value,history:prior});
+      const response = await request("chat", {message:text,model,chatModel:modelSelect.value,history:prior,currentRunId:getRunId()});
       const answer = typeof response.answer === "string" ? response.answer : "The model returned no explanation.";
-      const spatialProposal=Boolean(response.proposedModel && (model.kind === "spatial-assembly" || response.proposedModel.kind === "spatial-assembly"));
+      const spatialProposal=Boolean(response.proposedStudy || response.proposedModel && (model.kind === "spatial-assembly" || response.proposedModel.kind === "spatial-assembly" || (response.actions || []).some(action => action.type === "set_model_name")));
       message(`${spatialProposal ? "Agent explanation (unverified; proposal not yet applied)" : "Agent explanation (unverified; check the model and run status)"}:\n${answer}`);
       history.push({role:"user",content:text},{role:"assistant",content:answer});
       let ready = getSignature() === before && JSON.stringify(getBindings()) === JSON.stringify(bindings) && !isBusy();
       let reviewPending = false;
-      if (response.proposedModel) {
+      if (response.proposedModel || response.proposedStudy) {
         if (!ready) message("The model, STEP attachments or another operation changed while the agent was working. No proposed changes were applied.","error");
         else {
-          const validation = await checkModel(response.proposedModel);
+          const proposed=response.proposedModel || model;
+          const validation = await checkModel(proposed);
+          const studyDetails=validation.valid && response.proposedStudy ? await checkStudy(response.proposedStudy,proposed) : null;
           ready = validation.valid && getSignature() === before && JSON.stringify(getBindings()) === JSON.stringify(bindings) && !isBusy();
           if (!ready) message(`The proposed changes were not applied. ${(validation.issues || []).map(issue=>issue.message).join(" ")}`,"error");
           else {
@@ -163,13 +171,17 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
               if (action.type === "load_example") return `Loaded example ${action.id}`;
               if (action.type === "set_parameters") return `Set parameters: ${Object.keys(action.values || {}).join(", ")}`;
               if (action.type === "set_simulation") return `Set study: ${Object.keys(action.values || {}).join(", ")}`;
+              if (action.type === "set_model_name") return `Set model name: ${action.name}`;
+              if (action.type === "set_parameter_study") return `Prepared parameter study ${action.input} with ${action.values.length} supplied values`;
+              if (action.type === "link_joint_frames") return `Linked joint frames: ${(action.links || []).map(link => `${link.joint}.${link.side} ← ${link.frame}.${link.axis}`).join(", ")}`;
               if (action.type === "set_spatial_gravity") return `Set gravity (m/s²): ${Object.entries(action.values || {}).map(([key,value])=>`${key}=${value}`).join(", ")}`;
               if (action.type === "edit_spatial_assembly") return (action.edits || []).map(describeEdit).join(" · ");
               return "Updated supported model";
             });
-            if (model.kind === "spatial-assembly" || response.proposedModel.kind === "spatial-assembly") {
-              const runAfter=response.runRequested && response.requiresUserRun === false && explicitRunRequest(text);
-              reviewSpatial({before,original:model,proposed:structuredClone(response.proposedModel),bindings,descriptions,runAfter});
+            if (spatialProposal) {
+              const runAfter=!response.proposedStudy && response.runRequested && response.requiresUserRun === false && explicitRunRequest(text);
+              const runStudyAfter=Boolean(response.proposedStudy && response.studyRunRequested && explicitRunRequest(text) && /\b(?:stud(?:y|ies)|sweep|cases)\b/i.test(text.replace(/```[\s\S]*?```|`[^`]*`|"[^"]*"|'[^']*'/g, "")));
+              reviewProposal({before,original:model,proposed:structuredClone(proposed),study:response.proposedStudy,studyDetails,bindings,descriptions,runAfter,runStudyAfter});
               reviewPending=true;
             } else {
               applyModel(response.proposedModel);
@@ -178,13 +190,18 @@ export function setupAgent({getModel, getSignature, getBindings=()=>({}), checkM
           }
         }
       }
-      if (!reviewPending && response.runRequested && response.requiresUserRun === false && explicitRunRequest(text) && ready) {
+      if (!reviewPending && !response.proposedStudy && response.runRequested && response.requiresUserRun === false && explicitRunRequest(text) && ready) {
         message("Running the validated model as requested.");
         await run(false);
       } else if (response.runRequested && !explicitRunRequest(text)) {
         message("The agent requested a run, but your message did not explicitly ask to run it. Use Run simulation when ready.");
       }
       for (const tool of response.toolResults || []) if (tool.ok === false) message(`${tool.name}: ${tool.error || "Action could not be completed."}`,"error");
+      for(const tool of response.toolResults || [])if(tool.name === "current_result_summary" && tool.ok !== false){
+        const data=tool.result || {};
+        if(data.available){const item=message(`Recorded MBDyn summary for run ${data.runId}${ready ? "" : " (the current project context changed)"}.`),details=document.createElement("details"),summary=document.createElement("summary"),pre=document.createElement("pre");summary.textContent="Inspect recorded numeric metrics and units";pre.textContent=JSON.stringify({metrics:data.metrics,units:data.units,scope:data.scope},null,2);details.append(summary,pre);item.append(details);}
+        else message(data.detail || "No matching recorded solver summary is available.");
+      }
       $("agentStatus").textContent = "Local model service ready.";
     } catch (error) {
       message(error.message,"error");

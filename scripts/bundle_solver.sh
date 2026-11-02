@@ -5,8 +5,10 @@ set -euo pipefail
 binary="$1"; out="$2"
 root="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 rm -rf "$out"; mkdir -p "$out/bin" "$out/lib"
+: > "$out/BUILD-ORIGINS.tsv"
 exe=""; case "$(uname -s)" in CYGWIN*) exe=".exe" ;; esac
 cp "$binary" "$out/bin/mbdyn$exe"; chmod 755 "$out/bin/mbdyn$exe"
+printf 'bin/mbdyn%s\t%s\n' "$exe" "$(cd "$(dirname "$binary")" && pwd -P)/$(basename "$binary")" >> "$out/BUILD-ORIGINS.tsv"
 strip -S "$out/bin/mbdyn$exe" 2>/dev/null || true
 case "$(uname -s)" in
   CYGWIN*)
@@ -16,6 +18,7 @@ case "$(uname -s)" in
     cygwin_bin="$(cygpath -w /usr/bin)"
     cygcheck "$(cygpath -w "$out/bin/mbdyn.exe")" | tr -d '\r' | sed 's/^ *//' | grep -iF "$cygwin_bin\\" | sort -u | while read -r dll; do
       cp "$(cygpath -u "$dll")" "$out/bin/"
+      printf 'bin/%s\t%s\n' "$(basename "$(cygpath -u "$dll")")" "$(cygpath -u "$dll")" >> "$out/BUILD-ORIGINS.tsv"
     done
     chmod 755 "$out"/bin/*.dll
     ls "$out/bin"/*.dll >/dev/null 2>&1 || { echo "cygcheck found no Cygwin DLLs for mbdyn.exe." >&2; exit 1; }
@@ -31,7 +34,10 @@ case "$(uname -s)" in
     # (Fortran runtime, LAPACK/BLAS or any other library the build machine provided) is bundled.
     system='^(linux-vdso|ld-linux|libc|libm|libmvec|libpthread|libdl|librt|libstdc\+\+|libgcc_s)\.'
     ldd "$binary" | awk '/=> \// {print $1, $3}' | while read -r name path; do
-      if ! grep -Eq "$system" <<<"$name"; then cp -L "$path" "$out/lib/$name"; chmod 644 "$out/lib/$name"; fi
+      if ! grep -Eq "$system" <<<"$name"; then
+        cp -L "$path" "$out/lib/$name"; chmod 644 "$out/lib/$name"
+        printf 'lib/%s\t%s\n' "$name" "$(readlink -f "$path")" >> "$out/BUILD-ORIGINS.tsv"
+      fi
     done
     patchelf --set-rpath '$ORIGIN/../lib' "$out/bin/mbdyn"
     # A RUNPATH is not inherited, so each bundled library finds its own dependencies beside it.
@@ -69,7 +75,11 @@ case "$(uname -s)" in
         source="$(resolve "$image" "$reference")"
         [ -n "$source" ] || continue
         name="$(basename "$source")"
-        if [ ! -f "$out/lib/$name" ]; then cp -L "$source" "$out/lib/$name"; chmod 644 "$out/lib/$name"; copy_deps "$out/lib/$name"; fi
+        if [ ! -f "$out/lib/$name" ]; then
+          cp -L "$source" "$out/lib/$name"; chmod 644 "$out/lib/$name"
+          printf 'lib/%s\t%s\n' "$name" "$source" >> "$out/BUILD-ORIGINS.tsv"
+          copy_deps "$out/lib/$name"
+        fi
         if [ "$image" = "$out/bin/mbdyn" ]; then target="@loader_path/../lib/$name"; else target="@loader_path/$name"; fi
         # A library's first entry is its own install name, which -change leaves alone.
         [ "$reference" = "$target" ] || install_name_tool -change "$reference" "$target" "$image" 2>/dev/null || true
@@ -90,16 +100,6 @@ case "$(uname -s)" in
 esac
 cp "$root/backend/MBDyn-GPL-2.0.txt" "$out/COPYING"
 bundled="$(cd "$out/lib" && ls | tr '\n' ' ')$(cd "$out/bin" && ls | grep -i '\.dll$' | tr '\n' ' ' || true)"
-cat > "$out/SOURCE.txt" <<NOTE
-This folder contains an unmodified build of MBDyn 1.7.3, licensed GPL-2.0-only (see COPYING).
-Corresponding source: https://raw.githubusercontent.com/mmorandi/MBDyn-web/main/userfiles/downloads/mbdyn-1.7.3.tar.gz
-SHA-256 3cf05cd1cb14c1af3d987aac119b6ecf0d835bc1aee06bc4cf7cc5a245c1f36d. The same archive is attached to each Kinemeld release.
-Built with: backend/build_solver.sh from the Kinemeld repository.
-Runtime libraries copied from the build machine into lib/: ${bundled:-none}.
-They are the GCC runtime (GPL-3.0 with the GCC Runtime Library Exception); on Windows also the
-Cygwin runtime (LGPL-3.0-or-later) and GNU libiconv and libintl (LGPL-2.1-or-later), whose
-Cygwin packages are listed in CYGWIN-PACKAGES.txt with sources at https://cygwin.com; and,
-when the build machine provided them, LAPACK and BLAS (BSD-3-Clause); see THIRD_PARTY_NOTICES.md.
-NOTE
+printf '%s\n' 'UNVERIFIED: run collect_solver_sources.py before distributing this solver.' > "$out/SOURCE.txt"
 echo "Bundled libraries: ${bundled:-none}"
 "$out/bin/mbdyn$exe" -v 2>&1 | head -3 || true

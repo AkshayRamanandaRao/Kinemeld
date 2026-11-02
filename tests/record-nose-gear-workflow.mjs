@@ -389,22 +389,27 @@ try {
   await page.locator('#signalSelect').selectOption({ label: 'Joint reaction force on B · world X / Y / Z' });
   await page.locator('#jointSelect').selectOption('joint2');
   const axial = result.samples.map((sample) => sample.jointReactions.find((item) => item.id === 'joint2').force.z);
-  await caption('3 · POST-PROCESSING', `The slide’s reaction is the force the strut must deliver to move the axle, wheels and links: ${Math.min(...axial).toFixed(0)} to ${Math.max(...axial).toFixed(0)} N along the strut. CSV export keeps every solver step.`);
+  await caption('3 · POST-PROCESSING · KINEMATIC ILLUSTRATION', `Plot the idealised slide reaction: ${Math.min(...axial).toFixed(0)} to ${Math.max(...axial).toFixed(0)} N along the strut. CSV export keeps every solver step.`);
   await page.waitForTimeout(400);
   await shot(3.6);
-  await caption('KINEMATIC ILLUSTRATION', 'The source CAD overlaps in places and the scissor uses spherical and universal joints to avoid redundant constraints: kinematics only, not certified loads.');
-  await shot(3.2);
   assert.deepEqual(errors, []);
 
   // ---- Encode --------------------------------------------------------------------------
-  const list = frames.map(({ path, seconds }) => `file '${path}'\nduration ${seconds.toFixed(4)}`).join('\n') + `\nfile '${frames.at(-1).path}'\n`;
+  const list = frames.map(({ path, seconds }) => `file '${path.replaceAll('\\', '/')}'\nduration ${seconds.toFixed(4)}`).join('\n') + `\nfile '${frames.at(-1).path.replaceAll('\\', '/')}'\n`;
   await writeFile(join(folder, 'frames.txt'), list);
   await mkdir(output, { recursive: true });
-  const mp4 = join(output, 'workflow-nose-gear.mp4');
+  const mp4 = join(output, 'workflow-nose-gear.mp4'), gif = join(output, 'workflow-nose-gear.gif');
   execFileSync(ffmpeg, ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', join(folder, 'frames.txt'), '-vf', 'fps=30,scale=1280:-2:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-movflags', '+faststart', mp4]);
+  execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-i', mp4, '-filter_complex',
+    'fps=8,scale=800:-2:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=192[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle',
+    '-loop', '0', gif], { stdio: 'inherit' });
   execFileSync(ffmpeg, ['-y', '-loglevel', 'error', '-i', poster, '-vf', 'scale=1280:-2:flags=lanczos', join(output, 'workflow-nose-gear.png')]);
+  for (const file of [mp4, gif]) {
+    assert((await stat(file)).size > 1000, `Empty recording: ${file}`);
+    execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-i', file, '-f', 'null', '-'], { stdio: 'inherit' });
+  }
   const seconds = frames.reduce((sum, item) => sum + item.seconds, 0);
-  console.log(`workflow-nose-gear: ${frames.length} frames, ${seconds.toFixed(1)} s; MP4 ${(await stat(mp4)).size} bytes; stroke ${(stroke * 1000).toFixed(1)} mm; torque link ${swing.toFixed(2)}°; run ${result.runId}`);
+  console.log(`workflow-nose-gear: ${frames.length} frames, ${seconds.toFixed(1)} s; MP4 ${(await stat(mp4)).size} bytes; GIF ${(await stat(gif)).size} bytes; stroke ${(stroke * 1000).toFixed(1)} mm; torque link ${swing.toFixed(2)}°; run ${result.runId}`);
 } finally {
   await browser.close();
   await rm(folder, { recursive: true, force: true });

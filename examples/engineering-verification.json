@@ -1,0 +1,424 @@
+{
+  "format": "kinemeld-engineering-verification/1",
+  "verifierSha256Lf": "73e295b07841ff612b021e9446eb63a2b0e6cdadaf23d5946da3de0c91adedcf",
+  "solver": {
+    "version": "1.7.3",
+    "mode": "native",
+    "executableSha256": "fd3ed2af69ac6d5a4996cfb937c979cc7da1484dc820f657a17c2fe526aefca7",
+    "artifact": "https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41335453340 (solver-windows)"
+  },
+  "studies": [
+    {
+      "ok": true,
+      "study": "nose-gear",
+      "engineeringRecord": "examples/open-aircraft-nose-kinematics/engineering.json",
+      "modelSha256": "817d2d15333cf7babc31b17a582a6b7bd3ae1035cbadd5c2851d9ae35639c950",
+      "cadMassChecks": [
+        {
+          "body": "strut",
+          "massKg": 2.657202833320854,
+          "massErrorKg": 0.0,
+          "centerErrorM": 0.0,
+          "maxInertiaErrorKgM2": 0.0
+        },
+        {
+          "body": "slider",
+          "massKg": 4.457601929809354,
+          "massErrorKg": 0.0,
+          "centerErrorM": 8.413383830053005e-17,
+          "maxInertiaErrorKgM2": 1.3877787807814457e-17
+        },
+        {
+          "body": "upper_link",
+          "massKg": 0.4822183928331404,
+          "massErrorKg": 0.0,
+          "centerErrorM": 1.1066448972134115e-16,
+          "maxInertiaErrorKgM2": 0.0
+        },
+        {
+          "body": "lower_link",
+          "massKg": 0.4187657912586796,
+          "massErrorKg": 0.0,
+          "centerErrorM": 1.0530952311325552e-16,
+          "maxInertiaErrorKgM2": 1.0842021724855044e-19
+        },
+        {
+          "body": "left_wheel",
+          "massKg": 5.261191245803282,
+          "massErrorKg": 0.0,
+          "centerErrorM": 0.0,
+          "maxInertiaErrorKgM2": 0.0
+        },
+        {
+          "body": "right_wheel",
+          "massKg": 5.261191245803282,
+          "massErrorKg": 0.0,
+          "centerErrorM": 0.0,
+          "maxInertiaErrorKgM2": 0.0
+        }
+      ],
+      "levels": [
+        {
+          "runId": "0d0cfee03a6d4bb99134899f67ab0f18",
+          "modelSha256": "817d2d15333cf7babc31b17a582a6b7bd3ae1035cbadd5c2851d9ae35639c950",
+          "deckSha256": "1d8998f694a4677c7bc780175c8a6aaf057b79570909eb34222a256ed315a217",
+          "stepS": 0.001,
+          "samples": 501,
+          "solverSamples": 501,
+          "solverFinalTimeS": 0.5,
+          "comparisonFinalTimeS": 0.5,
+          "maxConstraintResidualM": 5.281398143234664e-14,
+          "maxIndependentKinematicErrorM": 5.083100281834396e-14
+        },
+        {
+          "runId": "841919f8be2740f1a984e54f24b97b2a",
+          "modelSha256": "105f11918dffa1af9316eb088bb450279cce3f38c1ab3355bab1f95146a3dd53",
+          "deckSha256": "f9a2db22a464bef6f722db22f1bb9d29bb33423651e1ed09ee5d4031f3091878",
+          "stepS": 0.0005,
+          "samples": 1001,
+          "solverSamples": 1001,
+          "solverFinalTimeS": 0.5,
+          "comparisonFinalTimeS": 0.5,
+          "maxConstraintResidualM": 1.0010669320482907e-13,
+          "maxIndependentKinematicErrorM": 5.0782728716614045e-14
+        },
+        {
+          "runId": "ce72f3074cdd4429aca3cd3ddc2f2f71",
+          "modelSha256": "9ebd900a391f22e26ac2b7f21ffacd8cfe86647b7ab0977ecb66c945c387a206",
+          "deckSha256": "b288d28f111eb45093667ffac1b43a15fc329051d29e0ba966da55ac33f4c601",
+          "stepS": 0.00025,
+          "samples": 2001,
+          "solverSamples": 2002,
+          "solverFinalTimeS": 0.50025,
+          "comparisonFinalTimeS": 0.5,
+          "maxConstraintResidualM": 9.99401932236253e-14,
+          "maxIndependentKinematicErrorM": 5.1111892496180644e-14
+        }
+      ],
+      "matchedTimePositionDifferencesM": [
+        1.000310945187266e-13,
+        1.000310945187266e-13
+      ],
+      "variant": {
+        "change": "Prescribed stroke amplitude halved",
+        "runId": "f185f141d60143d7a5dfe3447439f770",
+        "modelSha256": "466d38274593a2ac172cfd6bc51ff889b7b6a6c3d768b917deb543a3c75d9689",
+        "deckSha256": "1cdcec03db79492e5734cfe9b6bff56c545c4e47edd131091958e944e34ea0be",
+        "stepS": 0.001,
+        "samples": 501,
+        "solverSamples": 501,
+        "solverFinalTimeS": 0.5,
+        "comparisonFinalTimeS": 0.5,
+        "maxConstraintResidualM": 5.135412326872515e-14,
+        "maxIndependentKinematicErrorM": 5.0448360766619516e-14
+      },
+      "interpretation": [
+        "Prescribed zero-gravity kinematics only; not a drop, actuator, bearing or aircraft-load model.",
+        "Middle spherical and lower universal torque-link joints replace physical pin freedoms.",
+        "Original CAD overlaps remain; this record does not establish moving clearance.",
+        "Uniform densities, rigid body groupings, mount and motion are illustrative."
+      ],
+      "hardwareValidation": "not-performed"
+    },
+    {
+      "ok": true,
+      "study": "suspension",
+      "engineeringRecord": "examples/open-suspension/engineering.json",
+      "modelSha256": "9a8d4470bcf938e5ffaa9d9eb871d0c3ba944458a5fd4323d8c989df4a44bbfc",
+      "cadMassChecks": [
+        {
+          "body": "upper",
+          "massKg": 0.6212597529335041,
+          "massErrorKg": 0.0,
+          "centerErrorM": 1.0842021724855044e-19,
+          "maxInertiaErrorKgM2": 0.0
+        },
+        {
+          "body": "lower",
+          "massKg": 0.6558092792071819,
+          "massErrorKg": 0.0,
+          "centerErrorM": 0.0,
+          "maxInertiaErrorKgM2": 0.0
+        },
+        {
+          "body": "knuckle",
+          "massKg": 2.234519026113021,
+          "massErrorKg": 0.0,
+          "centerErrorM": 0.0,
+          "maxInertiaErrorKgM2": 0.0
+        },
+        {
+          "body": "wheel",
+          "massKg": 3.6005883863782424,
+          "massErrorKg": 0.0,
+          "centerErrorM": 0.0,
+          "maxInertiaErrorKgM2": 0.0
+        }
+      ],
+      "levels": [
+        {
+          "runId": "e0eb5511a0484792a2c6055bd867aa0e",
+          "modelSha256": "9a8d4470bcf938e5ffaa9d9eb871d0c3ba944458a5fd4323d8c989df4a44bbfc",
+          "deckSha256": "3a09c58140da04eab8c9487bbca6e3b7eb66ba36701de917f8b610d572b4804f",
+          "stepS": 0.0005,
+          "samples": 301,
+          "solverSamples": 301,
+          "solverFinalTimeS": 0.15,
+          "comparisonFinalTimeS": 0.15,
+          "maxConstraintResidualM": 6.559727896692327e-14,
+          "maxIndependentKinematicErrorM": 5.428318387798586e-14
+        },
+        {
+          "runId": "0c8175b331444a35b96e908ac671f0dd",
+          "modelSha256": "09a6991607bef2c032495c74515c446f3840d6afb766bc2edd2c42acd4cd2b9b",
+          "deckSha256": "fc96db58b5e1d98aa05beb378a8eb6e51b5553e09313166ff6866f60b898e837",
+          "stepS": 0.00025,
+          "samples": 601,
+          "solverSamples": 601,
+          "solverFinalTimeS": 0.15,
+          "comparisonFinalTimeS": 0.15,
+          "maxConstraintResidualM": 6.603807557181579e-14,
+          "maxIndependentKinematicErrorM": 5.6515898791796625e-14
+        },
+        {
+          "runId": "34486d3257274b70bf2517dcaab65ca5",
+          "modelSha256": "a3a38dc68bfa4473b358a6683c17d063f13be63dd0d9b5acf1ffa8264fb6100b",
+          "deckSha256": "6b381d6e05ae01f6826c4bc95ae67791e4d4622299bcda96d0cc31dad4eff614",
+          "stepS": 0.000125,
+          "samples": 1201,
+          "solverSamples": 1202,
+          "solverFinalTimeS": 0.150125,
+          "comparisonFinalTimeS": 0.15,
+          "maxConstraintResidualM": 6.739806621704147e-14,
+          "maxIndependentKinematicErrorM": 5.595224288600174e-14
+        }
+      ],
+      "matchedTimePositionDifferencesM": [
+        9.54642100092773e-08,
+        2.5048460000620665e-08
+      ],
+      "variant": {
+        "change": "Illustrative spring stiffness increased 20 percent",
+        "runId": "c30ac2e20e9147528bda88b61721e291",
+        "modelSha256": "aa2dbaad6e8d906bf0e86a03f8ee2de0a6cca7c16006caee517838d1eacd89b6",
+        "deckSha256": "e2e3713a419b56290720d63bbfc1dea20458641283904d0349784be2268ceda6",
+        "stepS": 0.0005,
+        "samples": 301,
+        "solverSamples": 301,
+        "solverFinalTimeS": 0.15,
+        "comparisonFinalTimeS": 0.15,
+        "maxConstraintResidualM": 6.723962343262115e-14,
+        "maxIndependentKinematicErrorM": 5.518382964182606e-14
+      },
+      "interpretation": [
+        "Inferred linkage with 40 mm virtual outboard-joint extensions, not the original assembled vehicle.",
+        "No tie rod, tire/road contact, compliant bushings, preload or measured K&C data.",
+        "Kinematic reference conditions on the solved lower-arm coordinate; it does not independently predict the dynamic trajectory.",
+        "Uniform densities and spring/damper data are illustrative."
+      ],
+      "hardwareValidation": "not-performed"
+    },
+    {
+      "ok": true,
+      "study": "landing-drop",
+      "engineeringRecord": "examples/landing-gear-3d/engineering.json",
+      "modelSha256": "f6a9fe9cb12417aaea42c3376987ae657e31fe0020645d6c26cf0d8bb2c8c3b4",
+      "cadMassChecks": [
+        {
+          "body": "upper",
+          "massKg": 100.00000000000003,
+          "massErrorKg": 0.0,
+          "centerErrorM": 0.0,
+          "maxInertiaErrorKgM2": 0.0
+        },
+        {
+          "body": "wheel",
+          "massKg": 5.000000000000001,
+          "massErrorKg": 0.0,
+          "centerErrorM": 0.0,
+          "maxInertiaErrorKgM2": 3.851859888774472e-34
+        }
+      ],
+      "levels": [
+        {
+          "runId": "f83a8fa0bc1c4682bff86684c22d4db5",
+          "modelSha256": "f6a9fe9cb12417aaea42c3376987ae657e31fe0020645d6c26cf0d8bb2c8c3b4",
+          "deckSha256": "2a9ccc00a5527ec9f94c8cb49861985c8c210e1d5e526dd05452a0a3a5c3b00e",
+          "stepS": 0.0005,
+          "samples": 1401,
+          "solverSamples": 1402,
+          "solverFinalTimeS": 0.7005,
+          "comparisonFinalTimeS": 0.7,
+          "maxConstraintResidualM": 7.934131027357192e-27,
+          "maxReferencePositionErrorM": 4.008053579085402e-05,
+          "maxReferenceContactForceErrorN": 10.020133947713475,
+          "analyticFirstContactS": 0.10038262068316395,
+          "observedFirstContactS": 0.1005,
+          "contactTimingErrorS": 0.00011737931683605818,
+          "peakContactForceN": 3496.587921274996
+        },
+        {
+          "runId": "b6b6cddfcabc4d1397976f55381b4abe",
+          "modelSha256": "1ba36e3616dcb038b987d0e711ab21aa20ad0739958eba20708a4f023b8b0abb",
+          "deckSha256": "0ea6380602e17234dbef636404e8aa64dc9064c0a94f5dd9723a049952a28e2b",
+          "stepS": 0.00025,
+          "samples": 2801,
+          "solverSamples": 2802,
+          "solverFinalTimeS": 0.70025,
+          "comparisonFinalTimeS": 0.7,
+          "maxConstraintResidualM": 1.7507242758587457e-28,
+          "maxReferencePositionErrorM": 1.0044376491435969e-05,
+          "maxReferenceContactForceErrorN": 2.511094122859049,
+          "analyticFirstContactS": 0.10038262068316395,
+          "observedFirstContactS": 0.1005,
+          "contactTimingErrorS": 0.00011737931683605818,
+          "peakContactForceN": 3493.984161449998
+        },
+        {
+          "runId": "2fc1859235274d0dbc248a19c9c2a90c",
+          "modelSha256": "28c77411fabf97f040295801b76d0468b492c9d7f5426b5e0ef6d80fec3e6fe1",
+          "deckSha256": "f70a03d83f813d7b9e8ac311651e7b391503461ffec63710757b0a8e8cdd418d",
+          "stepS": 0.000125,
+          "samples": 5601,
+          "solverSamples": 5601,
+          "solverFinalTimeS": 0.7,
+          "comparisonFinalTimeS": 0.7,
+          "maxConstraintResidualM": 1.735304719154183e-28,
+          "maxReferencePositionErrorM": 2.5512034739216816e-06,
+          "maxReferenceContactForceErrorN": 0.6378008684800989,
+          "analyticFirstContactS": 0.10038262068316395,
+          "observedFirstContactS": 0.1005,
+          "contactTimingErrorS": 0.00011737931683605818,
+          "peakContactForceN": 3493.779926874996
+        }
+      ],
+      "matchedTimePositionDifferencesM": [
+        3.006158170001938e-05,
+        7.89447569998769e-06
+      ],
+      "variant": {
+        "change": "Both initial downward velocities reduced 20 percent",
+        "runId": "2687a10a9c1f4f869c2b394676bdb1bf",
+        "modelSha256": "9ec2e951872e9b8f1fb00a2b66438a251b0be8b0b56afa85c4c35b6ce981872f",
+        "deckSha256": "c039478254ddb3736bd6f3179d5a2088362b63b3a0674a811692e5fd34491c53",
+        "stepS": 0.0005,
+        "samples": 1401,
+        "solverSamples": 1402,
+        "solverFinalTimeS": 0.7005,
+        "comparisonFinalTimeS": 0.7,
+        "maxConstraintResidualM": 6.902919839930929e-27,
+        "maxReferencePositionErrorM": 3.719673200897056e-05,
+        "maxReferenceContactForceErrorN": 9.299183002242444,
+        "analyticFirstContactS": 0.11376463688830317,
+        "observedFirstContactS": 0.114,
+        "contactTimingErrorS": 0.00023536311169683466,
+        "peakContactForceN": 3264.300660474999
+      },
+      "interpretation": [
+        "Original two-mass vertical teaching drop; not the sourced nose-gear assembly or a certified aircraft.",
+        "Density is chosen to obtain prescribed masses, not taken from a material certificate.",
+        "Linear strut and elastic sphere-plane tire law; no hydraulic calibration, wheel spin, tire footprint or structure.",
+        "No hard stroke stop; geometric solid intersections are not collision constraints."
+      ],
+      "hardwareValidation": "not-performed"
+    },
+    {
+      "ok": true,
+      "study": "robot-arm",
+      "engineeringRecord": "examples/robot-arm/engineering.json",
+      "modelSha256": "ae828ac97316281216cbe863aba5f9b4afea8c1d649a3d9a5e8323d4d6165e7f",
+      "cadMassChecks": [
+        {
+          "body": "turret",
+          "massKg": 13.049266559422286,
+          "massErrorKg": 0.0,
+          "centerErrorM": 2.775557601858262e-17,
+          "maxInertiaErrorKgM2": 9.01066104448623e-21
+        },
+        {
+          "body": "upper_arm",
+          "massKg": 10.92817558266997,
+          "massErrorKg": 0.0,
+          "centerErrorM": 0.0,
+          "maxInertiaErrorKgM2": 0.0
+        },
+        {
+          "body": "forearm",
+          "massKg": 11.309322298327027,
+          "massErrorKg": 0.0,
+          "centerErrorM": 6.191482951243554e-17,
+          "maxInertiaErrorKgM2": 5.551115123125783e-17
+        }
+      ],
+      "levels": [
+        {
+          "runId": "55f1e241abef4e1b87c50e59e72722c3",
+          "modelSha256": "ae828ac97316281216cbe863aba5f9b4afea8c1d649a3d9a5e8323d4d6165e7f",
+          "deckSha256": "54cfee068249000a9e193be22f0bb9c75fb1331e719fad8919cfea53c186f5ba",
+          "stepS": 0.002,
+          "samples": 3001,
+          "solverSamples": 3002,
+          "solverFinalTimeS": 6.002,
+          "comparisonFinalTimeS": 6.0,
+          "maxConstraintResidualM": 4.225682573970931e-13,
+          "maxIndependentKinematicErrorM": 6.143106607198617e-13,
+          "maxInverseDynamicsTorqueErrorNm": 0.0004144256580360661
+        },
+        {
+          "runId": "ffadb99df69f4ab5b76394400dd24225",
+          "modelSha256": "f4e802800c2e81c0de9bbe972b2014391eb359093b1e7f411e4ffb5d3683ad2b",
+          "deckSha256": "34f71216faffd85102623e6b60446bc14142e8d4b40ff818eb9cc300ccecc4b9",
+          "stepS": 0.001,
+          "samples": 6001,
+          "solverSamples": 6001,
+          "solverFinalTimeS": 6.0,
+          "comparisonFinalTimeS": 6.0,
+          "maxConstraintResidualM": 4.566101117279863e-13,
+          "maxIndependentKinematicErrorM": 6.636916421631525e-13,
+          "maxInverseDynamicsTorqueErrorNm": 0.00010361316310536495
+        },
+        {
+          "runId": "b08fcc2aab654c9a83d05c90e4785619",
+          "modelSha256": "e2646a51727dec6e6f2a17c8c5b712a78e306b422213573baf6385386e25820e",
+          "deckSha256": "1997c2a12e6e2d7651d1c68edda026d4ae603132c9f923114f7bb52db0cfb949",
+          "stepS": 0.0005,
+          "samples": 12001,
+          "solverSamples": 12002,
+          "solverFinalTimeS": 6.0005,
+          "comparisonFinalTimeS": 6.0,
+          "maxConstraintResidualM": 4.163814450941127e-13,
+          "maxIndependentKinematicErrorM": 9.189165106923707e-13,
+          "maxInverseDynamicsTorqueErrorNm": 2.5974089012947843e-05
+        }
+      ],
+      "matchedTimePositionDifferencesM": [
+        3.000932835561798e-13,
+        3.000932835561798e-13
+      ],
+      "variant": {
+        "change": "Shoulder prescribed amplitude reduced 20 percent",
+        "runId": "8b8570ad9ed94277816423b02813b358",
+        "modelSha256": "74ea3d7d6324f8a58cf04873eae7a4dcd1d4a5cbfb297dea1a06aeab32413a6f",
+        "deckSha256": "b419283e0e0b72895aa11d77f8471592dd9196f7f6bf76799f6f56da5d9af7a0",
+        "stepS": 0.002,
+        "samples": 3001,
+        "solverSamples": 3002,
+        "solverFinalTimeS": 6.002,
+        "comparisonFinalTimeS": 6.0,
+        "maxConstraintResidualM": 4.095764341121623e-13,
+        "maxIndependentKinematicErrorM": 5.885724095811141e-13,
+        "maxInverseDynamicsTorqueErrorNm": 0.0003684353289088449
+      },
+      "interpretation": [
+        "Three ideal prescribed axes; torque is an inverse-dynamics requirement, not motor capability or closed-loop control performance.",
+        "Uniform aluminium/steel density assumptions and ideal rigid parts; no gearbox, friction, backlash, flexibility or measured payload inertia.",
+        "Reference checks apply to this yaw/shoulder/elbow chain and stated motion laws.",
+        "No hardware tracking, actuator thermal/electrical model, safety or collision qualification."
+      ],
+      "hardwareValidation": "not-performed"
+    }
+  ],
+  "ok": true,
+  "recordedAtUtc": "2026-11-01T19:50:05.414943+00:00",
+  "executionScope": "Fresh local Windows x64/Cygwin MBDyn 1.7.3 runs; OCP 7.9.3.1.1 density integration. Retained numerical evidence, not hardware correlation or clean-machine GUI qualification."
+}

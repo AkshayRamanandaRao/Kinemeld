@@ -1,9 +1,229 @@
-# Verification record — October 2026
+# Verification record
 
 This records historical checks performed on a local development version. It is
 not a claim of general-purpose CAE qualification or measured usability superiority.
-Run records, generated reports and local logs are ignored and are not included in
-the public checkout; the commands below produce fresh evidence on the target system.
+Detailed run directories, GUI reports and local logs are ignored; selected numerical
+summaries in `examples/` are retained. The commands below produce fresh evidence on
+the target system.
+
+## Robotics roadmap integration (1 November 2026)
+
+The review branch implements P4–P10 with bounded model contracts. These checks
+establish the listed numerical and interface cases, not physical calibration.
+
+- [Integrated Linux CI](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41459624796):
+  **294 backend tests**, two platform-conditional skips; all **98 JavaScript unit
+  checks**, native numerical verifiers and project/robotics GUI workflows pass.
+  Asset and Rust notice inventories remain current; no new runtime dependencies
+  were added.
+- Current packaging and test-helper regression suite: **64 script checks pass**,
+  including macOS bundle sealing, external-manifest coverage, signature rejection,
+  a closing Linux accessibility node and Windows process-tree cleanup independent
+  of the control helper. An exited parent PID is never targeted. Armed Windows
+  actions wait for the actual dialog and acknowledge its observed dismissal.
+  The earlier P3 count below is historical.
+- P4: [four engineering records](engineering-example-verification.md), 16 actual
+  solver runs, CAD mass/COM/tensor assumptions and independent references.
+- P5: cones/tori, 13 frontend geometric checks, extraction checks on OCP 7.9 and 8,
+  and ordinary/curved CAD GUI round trips with transformed attachments.
+- P6: 40 assistant checks; eight proposal/study/result GUI workflows with four
+  native runs. Transport is deterministic; live-language-model accuracy is not
+  part of this evidence.
+- P7: [17 native brake/contact cases](../examples/robot-contact-verification.json),
+  existing plane-contact regressions, editor/Undo/plot/CSV/project workflows and
+  actual HTTP rejection of an energy-producing native brake startup.
+- P8: [nine native controlled cases and two cleanup cases](../examples/rotary-control-verification.json),
+  ten unit checks and five GUI workflows. Real native hinge feedback, previous-step
+  held torque and native applied couples are cross-checked. Cancel and peer failure
+  stop the solver and controller. Linux integration CI and extracted Windows,
+  macOS and Linux packages also exercise the real controller and solver.
+  WSL transport is explicitly rejected.
+- P9: [ten native flexible-link runs](../examples/flexible-link-verification.json),
+  six backend/two renderer checks, actual node playback, section/mesh editing,
+  full CSV and native artifacts, save/reopen/stale gates and actual process Cancel.
+  Static shape, first frequency and mesh/timestep refinements have independent
+  references. Flexible joints, general FE import and stress/fatigue are outside
+  this initial cantilever contract.
+- P10: six unit checks and real GUI candidates ranked from complete CSVs against
+  independent RMS integration. Explicit Apply/Undo/Redo, exact baseline CSV,
+  configuration save/reopen, bounds, cancellation and real 30-second stalled-CSV
+  deadlines are checked. Expired or stopped design downloads are actually aborted;
+  overlapping baseline requests coalesce and ordinary plot downloads remain active.
+  Failed and overflowed responses cannot win. Rankings are
+  session data; the configuration and exported table retain the setup/results.
+  The retained integration report measures the stalled candidate's actual abort
+  at 30.060 seconds, before the next candidate starts.
+- Existing spatial regression: all nine GUI scripts pass against the native solver.
+  Existing and curved CAD GUI scripts pass without page errors. Reports and
+  screenshots are retained under `verification/integrated-regression-8794/`.
+
+P2 cross-platform native-dialog qualification is tracked separately below and in
+[native GUI testing](native-gui-testing.md). Current work remains unpublished.
+
+## Dependency and license audit (1 November 2026)
+
+P3's [audit record](dependency-audit.md) identifies the three actual v1.2.1
+archives, exact runtime/source versions, retained notices and unresolved upstream
+rights. All 13 newly collected runtime files match the published originals byte
+for byte. The current locked Rust inventory covers 194 registry package versions;
+the asset inventory covers 49 assets and 8 notices.
+
+- `python -m unittest discover -s scripts -p 'test_*.py'`: **47 passed**. Missing
+  and changed notices/sources, unknown libraries, compiler/source drift, stale or
+  unlisted source files, wrong platform metadata and unsafe archives are rejected.
+- [Code CI](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41336571338):
+  backend **247 tests, two conditional skips**; featured-study/constraint checks;
+  native tests/builds on Linux, macOS and Windows. The two Linux-job skips are the
+  explicitly enabled WSL cancellation check and Windows launcher diagnostics.
+- The optional OCP 8.0.1.1.0 runtime passes **36/36** affected CAD tests in an
+  isolated Linux environment after fixing its indexed-shape compatibility alias.
+  Seven OCP 7.9 geometry tests also pass locally on Windows.
+- [Unpublished package run](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41336308183):
+  all nine source-build, package and clean-runner jobs pass. Checks include full
+  archive hashes, matching notice/source companions, a fresh packaged service,
+  real MBDyn solves and the native WebGL2/project round trip. This is separate
+  from the operating-system dialog matrix below.
+- The filtered source builds from a fresh tree and passes six actual simulations
+  with Naive solver. Eleven unused Y12 implementations are removed from both the
+  build source and distributed source archive; the transformation is hash-pinned.
+
+The candidates and their per-platform source archives have SHA-256 sidecars;
+[delivery identities](../notices/solver/audit-candidates.json) retain their hashes.
+No release was published or historical binary archive replaced. This establishes
+the tested artifact identity and workflows; it does not resolve the macOS
+SDK-derived binding warning, historical Y12 rights, or the optional private
+Python/OCP runtime's redistribution status.
+
+## Fresh packaged native GUI matrix (2 November 2026)
+
+- [Windows Server 2022 fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41472448506/job/125369286084):
+  all **12 native-dialog cases and four packaged robotics cases pass**. No cases
+  are skipped; no source-workspace override is used. Native exit, backend cleanup,
+  recovery removal and unchanged fixture checks pass. The packaged numerical
+  harness reports `source_injection: false` and unchanged resources.
+- The unpublished local Windows `1.2.1-roadmap.4` review archive passes all 425
+  manifest file hashes, notice/source checks and all twelve native GUI cases
+  after window-owned confirmations were added. Its report records no workspace
+  override or skipped cases, exit zero, backend shutdown, recovery removal and
+  an unchanged fixture. The current Windows release-profile Rust checks pass
+  **33 tests**; one subprocess fixture is intentionally ignored as a direct test
+  and exercised through its startup-test parents.
+- [Linux fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41459624604/job/125325036254):
+  all **12 native-dialog cases and four packaged robotics cases pass**.
+- [macOS 15 fresh runner](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41459624604/job/125325035756):
+  all **12 native-dialog cases and four packaged robotics cases pass**. Both
+  XCUITest phases exit zero against their exact supervised application PIDs;
+  the application itself exits zero and its backend stops. The bundle's signature
+  and own resources are checked. The harness operates on the owned confirmation
+  sheet and actual buttons, with no skipped cases or source override.
+
+Earlier Windows runs retained two distinct failures: a recovery STEP conversion
+exceeded its existing 90-second limit, and a malformed-file Open helper stalled
+past its outer deadline. Both paths pass in the fresh run above. Their exact
+causes remain unclassified; helper failures now retain phase, elapsed-time and
+stack diagnostics. A later run identified filename-field text queries being
+starved by unrelated shell controls; the helper now reads filename/action
+controls first within the same bounded inventory budget. All twelve cases pass
+on the fresh runner above and in the rebuilt local review package. This fixes
+that observed test-driver ordering issue; earlier process/CAD stalls are not
+claimed to have a confirmed production cause.
+
+The GUI job now pins Windows Server 2022. Server 2025 (`windows-latest`) repeatedly
+stalled in different GUI/control stages, including a recovery conversion reaching
+the existing 90-second bound. The [instrumented comparison](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41471695439)
+recorded at most 25% memory load and at least 11.9 GiB free physical RAM; a WebView2
+child averaged roughly three CPU cores during the initial phase. The same native
+matrix passes on Server 2022. These are
+observations of runner sensitivity; causal attribution remains open. Server 2025
+GUI qualification remains open, while its build/unit checks continue. No GUI
+cases or application timeouts were relaxed for the pinned image.
+
+A [same-runner CAD comparison](https://github.com/AkshayRamanandaRao/Kinemeld/actions/runs/41462706260)
+converts the exact retained STEP twice on OCP 8.0.1.1.0 and twice on 7.9.3.1.1:
+all four runs finish in 2.3–2.9 seconds with eleven parts and the same mesh size.
+The STEP SHA-256 is `b53205b3356f9b98b0edf6d2ba4f8b04f46cc61607cad263857192c1aeb7a575`.
+The dependency range and 90-second conversion limit remain unchanged.
+
+## Configured Windows native GUI verification (1 November 2026)
+
+`npm run test:native-dialogs` passes **12/12 cases with no skips** against an
+extracted local Windows package. It connects Playwright to the actual WebView2
+viewer and uses a PID-scoped Win32 helper for operating-system dialogs. The native
+bridge and dialogs are not replaced with fixtures. Package resources are located
+automatically; no source-workspace override is used. All 312 package file hashes
+were checked before the run.
+
+Both the pre-solved fixture and the default shipped nose-gear project pass the
+complete matrix. The default path runs MBDyn in the actual app before checking
+the result round trip.
+
+- Native Open, Save As and reopen retain the model, all 11 STEP bindings, 501
+  MBDyn samples and the 3,611,262-byte full CSV. Ordinary Save keeps a byte-exact
+  backup. Save As cancellation and overwrite refusal leave prior files unchanged.
+- External edits reject Save without overwriting the changed file; a fresh Save As
+  succeeds. New asks for a destination again after each cancelled Save and
+  autosaves without inheriting the previous file path.
+- Declining dirty Open, cancelling its picker, and opening malformed JSON preserve
+  current work. A forced process exit is followed by recovery of the full CAD and
+  result snapshot; a real recovered Save As matches its pre-crash semantic content.
+- Declining Close retains work. Confirmed Close clears the recovery snapshot,
+  exits with code zero and stops the owned backend. Separate clean/dirty close
+  probes pass with the GUI driver attached and detached. Accepted exit now ignores
+  queued application events while the event loop finishes closing.
+- Representative native file/confirmation dialogs and the recovered workbench
+  were inspected from the GUI-test screenshots. JSON reports and PNGs are generated
+  under `tests/evidence/native-dialogs-*`.
+
+The tested executable SHA-256 is
+`d7b23b1a8c11c6cec736b66175f778b22afd4b40f00f54035c012f8b84cbbe1d`;
+the tested `frontend/app.js` SHA-256 is
+`8c939fc7389da07948227ba43a14fbb036a965bb4ae28a6b737d395f92ee8f5b`.
+This is a configured Windows machine using its installed Python/CAD runtime and
+local WSL MBDyn 1.7.3. The QA archive bundles no Python, CAD runtime or solver.
+This configured-run record predates the fresh-runner matrix above and is separate
+from distribution and dependency-license qualification.
+
+## Asynchronous edit preservation (1 November 2026)
+
+- Reproduced a delayed STEP replacement dropping a newer attachment, a delayed
+  startup restore replacing a newer edit, and an older autosave reaching the host
+  after the active document changed. Regression tests fail when the corresponding
+  guards are bypassed in a served test copy; the application source is unchanged
+  by these negative controls.
+- The final `npm run test:project-safety` passes: 10 CAD/project cases, eight
+  startup and pending-input cases, five native-copy identity cases, five autosave
+  races, the existing open/rollback/acknowledgement workflows and two bridge tests.
+  Model edits, CAD bindings, full solver CSV and recorded results are compared;
+  a newer real MBDyn run is included in the autosave checks.
+- `npm run check`, changed-script syntax and whitespace checks pass. Normal STEP
+  append/Undo/save/reopen and primitive generation/Undo/Redo/solve/save/reopen pass.
+- The release-profile Rust suite passes 31 tests, including untitled native
+  sessions, rollback to the previous file, recovery-origin finalization, backups,
+  external-change rejection and service ownership. One direct helper entry is
+  intentionally ignored and exercised through its parent startup tests.
+
+The browser tests above use controlled native bridges for deterministic races.
+They are separate from the real Windows dialog suite described in
+[the desktop guide](../native/README.md#automated-windows-gui-checks).
+
+## Recording refresh (1 November 2026)
+
+- Re-recorded `aircraft-nose-gear` and `workflow-nose-gear` from real MBDyn 1.7.3
+  solutions in headless Chrome on Windows. The featured MP4 is 1280 × 720 / 6.33 s;
+  the workflow MP4 is 1280 × 720 / 106.23 s. Matching GIFs are 720 × 406 and
+  800 × 450. All four files decoded without errors; representative motion frames
+  and the workflow's final MP4/GIF captions were visually inspected.
+- Model and featured-overlay changes affect display names only; source CAD bytes,
+  bindings, model parameters and solver settings are unchanged. Engineering limits
+  remain in the [study guide](aircraft-nose-kinematics.md).
+- Ten focused backend tests passed (`test_aircraft_nose_kinematics` and
+  `test_featured_studies`), as did `npm run check`, recorder syntax checks and the
+  nose-gear browser import, solve, animation and save/reopen regression.
+- The existing independent kinematics and timestep verifier passed: maximum
+  scissor-point error `4.23 × 10⁻¹⁵ m`, refinement difference `1.01 × 10⁻¹³ m` and
+  constraint residual `5.29 × 10⁻¹⁴ m`. These establish numerical consistency of the
+  prescribed fixture; they do not validate aircraft hardware loads. Native dialogs
+  and the remaining roadmap items were not exercised in this increment.
 
 ## Contact friction increment (1.1)
 
@@ -167,7 +387,7 @@ shutdown grace; it explicitly reports time limits rather than implying a
 convergence failure. This is not a run-time performance guarantee.
 
 No live comparative interaction benchmark was completed. Screen
-readers, touch gestures, arbitrary assemblies, general contact, flexible bodies and
+readers, touch gestures, arbitrary assemblies, general contact and flexible assemblies, and
 current-development MBDyn remain outside this verification scope.
 
 

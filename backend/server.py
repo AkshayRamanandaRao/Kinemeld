@@ -187,7 +187,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.respond({"ok": False, "error": "The NASA reference STL does not match the pinned source digest."}, 422)
             else:
                 self.send_file(reference)
-        elif match := re.fullmatch(r"/api/runs/([0-9a-f]{32})/(model\.mbd|solver\.log|results\.csv|project\.json|summary\.json|result\.mov|result\.out|result\.log|result\.jnt)", path):
+        elif match := re.fullmatch(r"/api/runs/([0-9a-f]{32})/(model\.mbd|solver\.log|results\.csv|project\.json|summary\.json|result\.mov|result\.out|result\.log|result\.jnt|result\.frc|result\.act|controller-trace\.jsonl|controller\.log)", path):
             self.send_file(app_paths.run_directory(match[1], solver.RUNS) / match[2], attachment=True)
         elif path.startswith("/api/"):
             self.respond({"ok": False, "error": "Unknown API endpoint."}, 404)
@@ -351,6 +351,9 @@ class Handler(SimpleHTTPRequestHandler):
             self.respond({"ok": False, "error": "Fix the model before continuing.", **check}, 422)
             return
         if path == "/api/deck":
+            if model.get('kind') == 'spatial-assembly' and any(item.get('type') == 'servo' for item in model.get('jointTorques', [])):
+                self.respond({'ok':False,'error':'Controlled actuators require Run simulation with the managed local peer; standalone deck export is unavailable. Save the project to retain the complete controller setup.'},422)
+                return
             self.respond(source_catalog.deck_for_model(model) if is_source else {**check, "deck": deck(model), "filename": model["kind"] + ".mbd"})
         elif is_source:
             self.respond({"ok": False, "error": "Use /api/source-run with the catalog ID for upstream studies; synthetic previews are unavailable."}, 422)

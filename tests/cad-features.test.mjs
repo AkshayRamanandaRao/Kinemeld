@@ -51,6 +51,37 @@ test('a plane anchor is the clicked point projected onto the plane', () => {
   assert.equal(feature.label, 'Plane · normal +x');
 });
 
+test('a cone uses its exact virtual apex and axis rather than the clicked facet', () => {
+  const cone = { type: 'cone', apex: [0.01, 0.1, 0.03], axis: [0, -1, 0], semiAngle: Math.atan(.25) };
+  const placement = cadPlacement({ pose: { x: .2, y: .1, z: -.03, rx: 0, ry: 0, rz: 0 } }, { pose: { x: 1, y: 2, z: 3, rx: 0, ry: 0, rz: 90 } });
+  const feature = worldFeature(cone, placement, new THREE.Vector3(99, 88, 77));
+  close(feature.point, { x: 1, y: 1.81, z: 3.06 });
+  close(feature.axis, { x: 1, y: 0, z: 0 });
+  assert.equal(feature.semiAngle, cone.semiAngle);
+  assert.match(feature.label, /^Cone apex · half angle 14\.04° · axis \+x$/);
+  const model = { bodies: [{ id: 'part', pose: { x: 1, y: 2, z: 3, rx: 0, ry: 0, rz: 90 } }] };
+  const joint = jointFromFeature(model, { type: 'revolute', a: 'ground', b: 'part' }, feature);
+  close(joint.anchorA, { x: 1, y: 1.81, z: 3.06 });
+  close(joint.anchorB, { x: -.19, y: 0, z: .06 });
+  close(joint.axisB, { x: 0, y: -1, z: 0 });
+});
+
+test('a torus uses its centre and rotational axis for joint and named frame placement', () => {
+  const torus = { type: 'torus', centre: [.16, .16, 0], axis: [0, 1, 0], majorRadius: .03, minorRadius: .005 };
+  const feature = worldFeature(torus, cadPlacement(null, null), new THREE.Vector3(.16, .165, .03));
+  close(feature.point, { x: .16, y: .16, z: 0 });
+  close(feature.axis, { x: 0, y: 1, z: 0 });
+  assert.equal(feature.majorRadius, .03);
+  assert.equal(feature.minorRadius, .005);
+  assert.match(feature.label, /^Torus centre · major Ø60\.0 mm · tube Ø10\.0 mm · axis \+y$/);
+  const model = { bodies: [] }, frame = { body: 'ground', ...frameFromFeature(model, { body: 'ground' }, feature) };
+  close(frame.translation, { x: .16, y: .16, z: 0 });
+  close(frameAxis(frame, 'z'), { x: 0, y: 1, z: 0 }, 1e-6);
+  const joint = jointFromFeature(model, { type: 'cylindrical', a: 'ground', b: 'ground' }, feature);
+  close(joint.anchorA, frame.translation);
+  close(joint.anchorB, frame.translation);
+});
+
 test('joint ends share the picked point and axis, expressed in each body frame', () => {
   const model = { bodies: [{ id: 'arm', pose: { x: 1, y: 0, z: 0, rx: 0, ry: 0, rz: 90 } }] };
   const feature = { point: new THREE.Vector3(1, 0.5, 0), axis: new THREE.Vector3(1, 0, 0) };

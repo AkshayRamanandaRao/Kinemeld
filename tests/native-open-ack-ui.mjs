@@ -59,7 +59,7 @@ try {
  await page.reload();await page.waitForFunction(()=>document.querySelector('#solverStatus')?.textContent.includes('MBDyn ready'));
  await page.evaluate(()=>{window.__ackHost.mode='focus-wait';});await page.locator('#importButton').click();await page.waitForFunction(()=>window.__ackHost.attempts===1);
  await page.locator('#field-mass').fill('3');
- await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('Finish editing the active field'),null,{timeout:10000});
+ await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('Edits made while confirmation was pending remain unsaved'),null,{timeout:10000});
  assert.equal(await page.locator('#field-mass').inputValue(),'3');assert.equal(await page.evaluate(()=>window.__ackHost.dirty),true);assert.equal(await page.evaluate(()=>window.__ackHost.cleanAttempts),0);
  await page.locator('#field-mass').press('Tab');await page.waitForFunction(()=>document.querySelector('#notice')?.textContent.includes('Edits made while confirmation was pending remain unsaved'),null,{timeout:10000});
  assert.equal(await page.locator('#field-mass').inputValue(),'3');assert.equal(await page.evaluate(()=>window.__ackHost.dirty),true);

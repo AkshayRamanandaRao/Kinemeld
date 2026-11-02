@@ -58,6 +58,7 @@ export function buildSourceView(view, example) {
   // Contact planes are part of the solver model, so draw them where MBDyn places them.
   const drawnPlanes = new Set();
   for (const contact of view.model?.contacts || []) {
+    if (contact.type === "sphere-sphere") continue;
     const key = JSON.stringify([contact.planePoint, contact.planeNormal]);
     if (drawnPlanes.has(key)) continue;
     drawnPlanes.add(key);
