@@ -9,6 +9,26 @@ from unittest.mock import Mock, patch
 
 
 class NativeControlTests(unittest.TestCase):
+    def test_armed_action_waits_for_dialog_and_acknowledges_actual_dismissal(self):
+        controls_type = runpy.run_path(str(Path(__file__).resolve().parents[1] / "tests" / "native-dialog-platform.py"))["WindowsControls"]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "action.json").write_text(json.dumps({"id": 1, "actions": [{"kind": "cancel", "dialog": "save"}]}))
+            controls = controls_type(root, 1234)
+            with patch.object(controls, "call", return_value={"windows": []}) as call:
+                controls.advance()
+            call.assert_called_once_with("list")
+            self.assertFalse((root / "action-result.json").exists())
+            window = {"hwnd": 456, "class": "#32770", "text": "Save As"}
+            with patch.object(controls, "call", side_effect=[{"windows": [window]}, {}, {"window": window}]):
+                controls.advance()
+            self.assertFalse((root / "action-result.json").exists())
+            with patch.object(controls, "call", return_value={"windows": []}):
+                controls.advance()
+            result = json.loads((root / "action-result.json").read_text())
+            self.assertTrue(result["done"])
+            self.assertEqual(result["events"][0]["control"]["window"]["hwnd"], 456)
+
     def test_windows_cleanup_stops_owned_tree_without_control_helper(self):
         module = runpy.run_path(str(Path(__file__).resolve().parents[1] / "tests" / "native-dialog-platform.py"))
         process = Mock(pid=1234)
