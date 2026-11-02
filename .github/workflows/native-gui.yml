@@ -40,8 +40,8 @@ jobs:
           ${{ fromJSON(
             inputs.platform == 'linux' && '[{"os":"ubuntu-24.04","platform":"linux","solver":"solver-linux"}]' ||
             inputs.platform == 'macos' && '[{"os":"macos-15","platform":"macos","solver":"solver-macos"}]' ||
-            inputs.platform == 'windows' && '[{"os":"windows-latest","platform":"windows","solver":"solver-windows"}]' ||
-            '[{"os":"ubuntu-24.04","platform":"linux","solver":"solver-linux"},{"os":"macos-15","platform":"macos","solver":"solver-macos"},{"os":"windows-latest","platform":"windows","solver":"solver-windows"}]'
+            inputs.platform == 'windows' && '[{"os":"windows-2022","platform":"windows","solver":"solver-windows"}]' ||
+            '[{"os":"ubuntu-24.04","platform":"linux","solver":"solver-linux"},{"os":"macos-15","platform":"macos","solver":"solver-macos"},{"os":"windows-2022","platform":"windows","solver":"solver-windows"}]'
           ) }}
     steps:
       - uses: actions/checkout@v4
@@ -88,3 +88,4 @@ jobs:
             tests/evidence/packaged-robotics-*/report.json
             build/native-gui/*.sha256
             !tests/evidence/**/desktop-webview/**
+
