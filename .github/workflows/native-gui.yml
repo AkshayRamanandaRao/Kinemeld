@@ -88,4 +88,3 @@ jobs:
             tests/evidence/packaged-robotics-*/report.json
             build/native-gui/*.sha256
             !tests/evidence/**/desktop-webview/**
-
